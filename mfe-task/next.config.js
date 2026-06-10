@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
 module.exports = {
-  reactStrictMode: true,
+  basePath: '/tasks',
+  assetPrefix: '/tasks',
+  transpilePackages: ['@taskflow/ui'],
 };

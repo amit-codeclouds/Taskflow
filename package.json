@@ -6,10 +6,8 @@
     "dev:shell": "npm run dev --prefix shell",
     "dev:task": "npm run dev --prefix mfe-task",
     "dev:board": "npm run start --prefix mfe-board",
-    "dev": "concurrently -n shell,task,board -c blue,green,magenta \"npm run dev:shell\" \"npm run dev:task\" \"npm run dev:board\""
-  },
-  "overrides": {
-    "enhanced-resolve": "5.17.1"
+    "dev:worker": "npm run dev --prefix worker",
+    "dev": "concurrently -n shell,task,board,worker -c blue,green,magenta,cyan \"npm run dev:shell\" \"npm run dev:task\" \"npm run dev:board\" \"npm run dev:worker\""
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

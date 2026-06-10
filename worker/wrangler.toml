@@ -1,3 +1,9 @@
 name = "taskflow-router"
 main = "index.js"
-compatibility_date = "2024-01-01"
+compatibility_date = "2026-01-01"
+
+[vars]
+SHELL_URL      = "https://taskflow-shell.vercel.app"
+TASK_MFE_URL   = "https://taskflow-task.vercel.app"
+BOARD_MFE_URL  = "https://taskflow-board.vercel.app"
+GATEWAY_URL    = "https://taskflow-gateway.up.railway.app"

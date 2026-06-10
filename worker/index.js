@@ -3,21 +3,29 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    const upstream = path.startsWith('/api/')
-      ? (env.GATEWAY_URL || 'http://localhost:8080')
-      : (env.SHELL_URL   || 'http://localhost:3002');
+    let upstream;
+
+    if (path.startsWith('/api/')) {
+      upstream = env.GATEWAY_URL || 'http://localhost:8080';
+    } else if (path.startsWith('/board')) {
+      upstream = env.BOARD_MFE_URL || 'http://localhost:4200';
+    } else if (path.startsWith('/tasks')) {
+      upstream = env.TASK_MFE_URL || 'http://localhost:3003';
+    } else {
+      upstream = env.SHELL_URL || 'http://localhost:3002';
+    }
 
     const proxiedRequest = new Request(upstream + path + url.search, {
-      method:  request.method,
+      method: request.method,
       headers: request.headers,
-      body:    ['GET', 'HEAD'].includes(request.method) ? undefined : request.body,
+      body: ['GET', 'HEAD'].includes(request.method) ? undefined : request.body,
     });
 
     try {
       return await fetch(proxiedRequest);
     } catch (e) {
       return new Response(
-        `502 Bad Gateway — upstream unreachable: ${upstream}\n\nMake sure all apps are running:\n  shell:     cd shell && npm run dev      (port 3002)\n  mfe-task:  cd mfe-task && npm run dev   (port 3003)\n  mfe-board: cd mfe-board && npm start    (port 4200)`,
+        `502 Bad Gateway — upstream unreachable: ${upstream}\n\nMake sure all apps are running:\n  shell:     cd shell && npm run dev      (port 3002)\n  mfe-task:  cd mfe-task && npm run dev   (port 3003)\n  mfe-board: cd mfe-board && npm start    (port 4200)\n  worker:    cd worker && npx wrangler dev --local  (port 8787)`,
         { status: 502, headers: { 'Content-Type': 'text/plain' } }
       );
     }
