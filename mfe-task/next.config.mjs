@@ -3,8 +3,10 @@ import { ModuleFederationPlugin } from '@module-federation/enhanced/webpack';
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  webpack(config, options) {
-    if (!options.isServer) {
+  webpack(config, { isServer }) {
+    config.output.publicPath = 'auto';
+
+    if (!isServer) {
       config.plugins.push(
         new ModuleFederationPlugin({
           name: 'taskMfe',
@@ -13,6 +15,8 @@ const nextConfig = {
             './TaskApp': './src/components/TaskApp.tsx',
           },
           shared: {},
+          library: { type: 'window', name: 'taskMfe' },
+          runtime: false,
         })
       );
     }

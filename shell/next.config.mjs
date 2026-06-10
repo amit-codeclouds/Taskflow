@@ -3,8 +3,18 @@ import { ModuleFederationPlugin } from '@module-federation/enhanced/webpack';
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  webpack(config, options) {
-    if (!options.isServer) {
+  webpack(config, { isServer }) {
+    if (isServer) {
+      config.externals = [
+        ...(config.externals || []),
+        ({ request }, callback) => {
+          if (request && (request.startsWith('taskMfe/') || request.startsWith('boardMfe/'))) {
+            return callback(null, 'commonjs ' + request);
+          }
+          callback();
+        },
+      ];
+    } else {
       config.plugins.push(
         new ModuleFederationPlugin({
           name: 'shell',

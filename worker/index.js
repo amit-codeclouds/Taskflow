@@ -6,28 +6,37 @@ export default {
     let upstream, proxyPath = path;
 
     if (path.startsWith('/api/')) {
-      // Future API gateway
-      upstream = env.GATEWAY_URL || 'http://localhost:8080';
+      upstream = env.GATEWAY_URL || 'http://127.0.0.1:8080';
     } else if (path.startsWith('/tasks/_next/')) {
-      // Task MFE webpack chunks (remoteEntry.js, etc.) — strip /tasks namespace prefix
-      upstream = env.TASK_MFE_URL || 'http://localhost:3003';
+      upstream = env.TASK_MFE_URL || 'http://127.0.0.1:3003';
       proxyPath = path.slice('/tasks'.length);
     } else if (path.startsWith('/board/')) {
-      // Board MFE assets (remoteEntry.js, polyfills, etc.) — strip /board namespace prefix
-      upstream = env.BOARD_MFE_URL || 'http://localhost:4200';
+      upstream = env.BOARD_MFE_URL || 'http://127.0.0.1:4200';
       proxyPath = path.slice('/board'.length);
     } else {
-      // Shell handles all page routes: /, /tasks, /board, /_next/static/...
-      upstream = env.SHELL_URL || 'http://localhost:3002';
+      upstream = env.SHELL_URL || 'http://127.0.0.1:3002';
     }
 
     const proxiedUrl = upstream + proxyPath + url.search;
-    const proxiedRequest = new Request(proxiedUrl, {
-      method:  request.method,
-      headers: request.headers,
-      body:    ['GET', 'HEAD'].includes(request.method) ? undefined : request.body,
-    });
 
-    return fetch(proxiedRequest);
+    // Clone headers so we can mutate; drop `host` so upstream sees its own.
+    const headers = new Headers(request.headers);
+    headers.delete('host');
+
+    const init = {
+      method: request.method,
+      headers,
+      body: ['GET', 'HEAD'].includes(request.method) ? undefined : request.body,
+      redirect: 'manual',
+    };
+
+    try {
+      return await fetch(proxiedUrl, init);
+    } catch (err) {
+      return new Response(
+        `Worker proxy error\n\nUpstream: ${proxiedUrl}\nReason:   ${err && err.message ? err.message : String(err)}\n\nIs the upstream dev server running?`,
+        { status: 502, headers: { 'content-type': 'text/plain' } }
+      );
+    }
   },
 };
