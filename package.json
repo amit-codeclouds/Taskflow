@@ -10,10 +10,5 @@
   },
   "devDependencies": {
     "concurrently": "^9.0.0"
-  },
-  "pnpm": {
-    "overrides": {
-      "enhanced-resolve": "5.17.1"
-    }
   }
 }

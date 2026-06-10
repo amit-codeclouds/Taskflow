@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect } from 'react';
-import { dispatchAuthLogout, dispatchAuthToken } from '@/lib/auth-event';
+import { dispatchAuthLogout, dispatchAuthToken } from '@/lib/auth-events';
 
 export default function ShellNav() {
   useEffect(() => {
@@ -15,22 +15,46 @@ export default function ShellNav() {
   }, []);
 
   return (
-    <header className="border-b border-neutral-800 bg-neutral-900">
-      <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link href="/" className="text-lg font-semibold text-neutral-100">
+    <header style={{ borderBottom: '1px solid #222227', background: '#121215' }}>
+      <nav
+        style={{
+          maxWidth: 1200,
+          margin: '0 auto',
+          padding: '16px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <Link href="/" style={{ color: '#F4F3F0', fontSize: 18, fontWeight: 600, textDecoration: 'none' }}>
           Taskflow
         </Link>
-        <div className="flex items-center gap-4 text-sm">
-          <Link className="text-neutral-300 hover:text-white" href="/tasks">Tasks</Link>
-          <Link className="text-neutral-300 hover:text-white" href="/board">Board</Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, fontSize: 14 }}>
+          <Link href="/" style={{ color: '#ABAAA5', textDecoration: 'none' }}>Dashboard</Link>
+          <Link href="/tasks" style={{ color: '#ABAAA5', textDecoration: 'none' }}>Tasks</Link>
+          <Link href="/board" style={{ color: '#ABAAA5', textDecoration: 'none' }}>Board</Link>
           <button
-            className="rounded-md bg-indigo-600 px-3 py-1.5 text-white hover:bg-indigo-500"
+            style={{
+              background: '#6155DD',
+              color: '#F4F3F0',
+              border: 'none',
+              padding: '6px 12px',
+              borderRadius: 6,
+              cursor: 'pointer',
+            }}
             onClick={() => dispatchAuthToken('dev-jwt-' + Date.now())}
           >
             Dispatch token
           </button>
           <button
-            className="rounded-md border border-neutral-700 px-3 py-1.5 text-neutral-200 hover:bg-neutral-800"
+            style={{
+              background: 'transparent',
+              color: '#F4F3F0',
+              border: '1px solid #2a2a2f',
+              padding: '6px 12px',
+              borderRadius: 6,
+              cursor: 'pointer',
+            }}
             onClick={() => dispatchAuthLogout()}
           >
             Logout

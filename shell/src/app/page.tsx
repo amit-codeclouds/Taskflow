@@ -1,15 +1,21 @@
 export default function Home() {
   return (
-    <main className="mx-auto max-w-6xl px-6 py-12">
-      <h1 className="text-3xl font-semibold text-neutral-100">Taskflow Shell</h1>
-      <p className="mt-3 text-neutral-400">
-        Phase 0 — MFE foundation. The Shell (Next.js · 3000) hosts the Task MFE
-        (Next.js · 3001) and the Board MFE (Angular · 4200) via Module Federation.
+    <section style={{ maxWidth: 720 }}>
+      <p style={{ margin: 0, fontSize: 12, letterSpacing: 1, color: '#6155DD' }}>
+        PHASE 0 · MFE FOUNDATION
       </p>
-      <ul className="mt-6 list-disc pl-6 text-neutral-300">
-        <li><a className="text-indigo-400 hover:underline" href="/tasks">/tasks — Task MFE (Next.js remote)</a></li>
-        <li><a className="text-indigo-400 hover:underline" href="/board">/board — Board MFE (Angular remote)</a></li>
+      <h1 style={{ margin: '8px 0 0', fontSize: 32, fontWeight: 600 }}>
+        Welcome to Taskflow
+      </h1>
+      <p style={{ marginTop: 12, color: '#ABAAA5', lineHeight: 1.6 }}>
+        The Shell (Next.js · localhost:3002) hosts the Task MFE (Next.js · localhost:3003)
+        and the Board MFE (Angular · localhost:4200) via Module Federation, composed
+        through the Cloudflare Worker at localhost:8787.
+      </p>
+      <ul style={{ marginTop: 20, paddingLeft: 20, color: '#F4F3F0', lineHeight: 1.8 }}>
+        <li><a href="/tasks" style={{ color: '#6155DD' }}>/tasks</a> — Task MFE (Next.js remote)</li>
+        <li><a href="/board" style={{ color: '#6155DD' }}>/board</a> — Board MFE (Angular remote)</li>
       </ul>
-    </main>
+    </section>
   );
 }

@@ -1,17 +1,21 @@
-import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { CommonModule, AsyncPipe } from '@angular/common';
+import { Component } from '@angular/core';
+import { AuthListenerService } from '../services/auth-listener.service';
 
 @Component({
   selector: 'app-board',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, AsyncPipe],
   template: `
     <section class="board">
-      <h2>Board MFE (Angular · 4200)</h2>
-      <p class="muted">Placeholder. Phase 2 will add the Kanban board with CDK drag-and-drop and NgRx state.</p>
+      <p class="phase">PHASE 0 · MFE FOUNDATION</p>
+      <h2>Kanban Board — coming soon</h2>
+      <p class="muted">Board MFE (Angular · localhost:4200)</p>
       <p class="token">
         Auth token from Shell:
-        <span *ngIf="token; else waiting" class="ok">received</span>
+        <ng-container *ngIf="auth.token$ | async as token; else waiting">
+          <span class="ok">received</span>
+        </ng-container>
         <ng-template #waiting><span class="warn">waiting…</span></ng-template>
       </p>
     </section>
@@ -19,45 +23,21 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
   styles: [
     `
       .board {
-        border: 1px solid #2a2a2a;
-        background: #111;
-        color: #f4f3f0;
+        background: #222227;
+        color: #F4F3F0;
         border-radius: 12px;
-        padding: 24px;
+        padding: 32px;
+        font-family: Inter, system-ui, sans-serif;
       }
-      h2 { margin: 0 0 8px; font-size: 20px; font-weight: 600; }
-      .muted { color: #9a9a9a; font-size: 14px; }
-      .token { font-size: 12px; color: #888; margin-top: 12px; }
+      .phase { margin: 0; font-size: 12px; letter-spacing: 1px; color: #6155DD; }
+      h2 { margin: 8px 0 0; font-size: 24px; font-weight: 600; }
+      .muted { margin: 12px 0 0; font-size: 14px; color: #ABAAA5; }
+      .token { margin-top: 16px; font-size: 12px; color: #ABAAA5; }
       .ok { color: #32B173; }
       .warn { color: #E09D34; }
     `,
   ],
 })
-export class BoardComponent implements OnInit, OnDestroy {
-  token: string | null = null;
-  private onToken = (e: Event) => {
-    const ce = e as CustomEvent<{ token: string }>;
-    this.token = ce.detail.token;
-  };
-  private onLogout = () => (this.token = null);
-
-  private onMessage = (e: MessageEvent) => {
-    if (!e.data || typeof e.data !== 'object') return;
-    if (e.data.type === 'auth:token' && e.data.detail?.token) {
-      this.token = e.data.detail.token;
-    } else if (e.data.type === 'auth:logout') {
-      this.token = null;
-    }
-  };
-
-  ngOnInit(): void {
-    window.addEventListener('auth:token', this.onToken);
-    window.addEventListener('auth:logout', this.onLogout);
-    window.addEventListener('message', this.onMessage);
-  }
-  ngOnDestroy(): void {
-    window.removeEventListener('auth:token', this.onToken);
-    window.removeEventListener('auth:logout', this.onLogout);
-    window.removeEventListener('message', this.onMessage);
-  }
+export class BoardComponent {
+  constructor(public auth: AuthListenerService) {}
 }
