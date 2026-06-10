@@ -1,6 +1,20 @@
-<main style="min-height:100vh;background:#0a0a0a;padding:40px;">
-  <div style="max-width:768px;margin:0 auto;">
-    <h1 style="color:#f4f3f0;font-size:24px;font-weight:600;margin-bottom:24px;">mfe-board · standalone</h1>
+<div *ngIf="loading" class="page-loader">
+  <div class="loader-inner">
+    <div class="loader-icon">
+      <svg width="22" height="22" viewBox="0 0 14 14" fill="none">
+        <path d="M2 3h10M2 7h6M2 11h8" stroke="white" stroke-width="1.75" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="loader-bar-track">
+      <div class="loader-bar"></div>
+    </div>
+  </div>
+</div>
+
+<ng-container *ngIf="!loading">
+  <app-sidebar></app-sidebar>
+  <app-topbar></app-topbar>
+  <div class="content-area">
     <router-outlet></router-outlet>
   </div>
-</main>
+</ng-container>

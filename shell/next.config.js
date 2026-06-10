@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
-module.exports = {
-  transpilePackages: ['@taskflow/ui'],
+const nextConfig = {
   async rewrites() {
     return [
       {
@@ -34,3 +33,5 @@ module.exports = {
     ];
   },
 };
+
+module.exports = nextConfig;

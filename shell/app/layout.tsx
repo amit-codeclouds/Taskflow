@@ -2,13 +2,12 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import PageLoader from '@/components/ui/PageLoader';
-import ShellLayout from '@/components/layout/ShellLayout';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'My Tasks — Taskflow',
-  description: 'Taskflow Task Management',
+  title: 'Taskflow',
+  description: 'Premium task management for engineering teams',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -16,7 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={inter.className}>
       <body className="bg-bg-900 text-text-100 antialiased">
         <PageLoader />
-        <ShellLayout>{children}</ShellLayout>
+        {children}
       </body>
     </html>
   );

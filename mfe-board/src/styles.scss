@@ -1,1 +1,26 @@
-/* You can add global styles to this file, and also import other style files */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  background: #121215;
+  color: #F4F3F0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #1A1A1E; }
+::-webkit-scrollbar-thumb { background: #393940; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #6155DD; }
+
+::selection {
+  background: rgba(97, 85, 221, 0.3);
+  color: #F4F3F0;
+}
+
+a { text-decoration: none; color: inherit; }
+button { cursor: pointer; border: none; background: none; font: inherit; }

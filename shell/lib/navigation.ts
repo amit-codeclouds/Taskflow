@@ -1,0 +1,28 @@
+export type Zone = 'shell' | 'tasks' | 'board';
+
+export interface NavLink {
+  label: string;
+  href: string;
+  zone: Zone;
+  icon: string;
+}
+
+export const NAV_LINKS: NavLink[] = [
+  { label: 'Home',         href: '/',      zone: 'shell', icon: 'home' },
+  { label: 'My Tasks',     href: '/tasks', zone: 'tasks', icon: 'check-square' },
+  { label: 'Kanban Board', href: '/board', zone: 'board', icon: 'layout' },
+];
+
+export const SHELL_ZONE_PATHS = ['/'];
+export const TASK_ZONE_PATHS  = ['/tasks'];
+export const BOARD_ZONE_PATHS = ['/board'];
+
+export function getZoneForPath(pathname: string): Zone {
+  if (pathname.startsWith('/tasks')) return 'tasks';
+  if (pathname.startsWith('/board')) return 'board';
+  return 'shell';
+}
+
+export function isSameZone(href: string, currentPathname: string): boolean {
+  return getZoneForPath(href) === getZoneForPath(currentPathname);
+}
