@@ -3,31 +3,23 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    let upstream, proxyPath = path;
+    const upstream = path.startsWith('/api/')
+      ? (env.GATEWAY_URL || 'http://localhost:8080')
+      : (env.SHELL_URL   || 'http://localhost:3002');
 
-    if (path.startsWith('/api/')) {
-      // Future API gateway
-      upstream = env.GATEWAY_URL || 'http://localhost:8080';
-    } else if (path.startsWith('/tasks/_next/')) {
-      // Task MFE webpack chunks (remoteEntry.js, etc.) — strip /tasks namespace prefix
-      upstream = env.TASK_MFE_URL || 'http://localhost:3003';
-      proxyPath = path.slice('/tasks'.length);
-    } else if (path.startsWith('/board/')) {
-      // Board MFE assets (remoteEntry.js, polyfills, etc.) — strip /board namespace prefix
-      upstream = env.BOARD_MFE_URL || 'http://localhost:4200';
-      proxyPath = path.slice('/board'.length);
-    } else {
-      // Shell handles all page routes: /, /tasks, /board, /_next/static/...
-      upstream = env.SHELL_URL || 'http://localhost:3002';
-    }
-
-    const proxiedUrl = upstream + proxyPath + url.search;
-    const proxiedRequest = new Request(proxiedUrl, {
+    const proxiedRequest = new Request(upstream + path + url.search, {
       method:  request.method,
       headers: request.headers,
       body:    ['GET', 'HEAD'].includes(request.method) ? undefined : request.body,
     });
 
-    return fetch(proxiedRequest);
+    try {
+      return await fetch(proxiedRequest);
+    } catch (e) {
+      return new Response(
+        `502 Bad Gateway — upstream unreachable: ${upstream}\n\nMake sure all apps are running:\n  shell:     cd shell && npm run dev      (port 3002)\n  mfe-task:  cd mfe-task && npm run dev   (port 3003)\n  mfe-board: cd mfe-board && npm start    (port 4200)`,
+        { status: 502, headers: { 'Content-Type': 'text/plain' } }
+      );
+    }
   },
 };

@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// .wrangler/tmp/bundle-GH4kUa/checked-fetch.js
+// .wrangler/tmp/bundle-7Dcdcs/checked-fetch.js
 var urls = /* @__PURE__ */ new Set();
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
@@ -32,25 +32,25 @@ var index_default = {
   async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname;
-    let upstream, proxyPath = path;
-    if (path.startsWith("/api/")) {
-      upstream = env.GATEWAY_URL || "http://localhost:8080";
-    } else if (path.startsWith("/tasks/_next/")) {
-      upstream = env.TASK_MFE_URL || "http://localhost:3003";
-      proxyPath = path.slice("/tasks".length);
-    } else if (path.startsWith("/board/")) {
-      upstream = env.BOARD_MFE_URL || "http://localhost:4200";
-      proxyPath = path.slice("/board".length);
-    } else {
-      upstream = env.SHELL_URL || "http://localhost:3002";
-    }
-    const proxiedUrl = upstream + proxyPath + url.search;
-    const proxiedRequest = new Request(proxiedUrl, {
+    const upstream = path.startsWith("/api/") ? env.GATEWAY_URL || "http://localhost:8080" : env.SHELL_URL || "http://localhost:3002";
+    const proxiedRequest = new Request(upstream + path + url.search, {
       method: request.method,
       headers: request.headers,
       body: ["GET", "HEAD"].includes(request.method) ? void 0 : request.body
     });
-    return fetch(proxiedRequest);
+    try {
+      return await fetch(proxiedRequest);
+    } catch (e) {
+      return new Response(
+        `502 Bad Gateway \u2014 upstream unreachable: ${upstream}
+
+Make sure all apps are running:
+  shell:     cd shell && npm run dev      (port 3002)
+  mfe-task:  cd mfe-task && npm run dev   (port 3003)
+  mfe-board: cd mfe-board && npm start    (port 4200)`,
+        { status: 502, headers: { "Content-Type": "text/plain" } }
+      );
+    }
   }
 };
 
@@ -95,7 +95,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-GH4kUa/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-7Dcdcs/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -127,7 +127,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-GH4kUa/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-7Dcdcs/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

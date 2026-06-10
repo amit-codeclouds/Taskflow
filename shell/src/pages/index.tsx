@@ -1,6 +1,6 @@
 export default function Home() {
   return (
-    <section style={{ maxWidth: 720 }}>
+    <section style={{ maxWidth: 720, padding: '32px 40px' }}>
       <p style={{ margin: 0, fontSize: 12, letterSpacing: 1, color: '#6155DD' }}>
         PHASE 0 · MFE FOUNDATION
       </p>

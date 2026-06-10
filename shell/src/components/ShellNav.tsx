@@ -1,18 +1,8 @@
-'use client';
-
 import Link from 'next/link';
 import { useEffect } from 'react';
 import { dispatchAuthLogout, dispatchAuthToken } from '@/lib/auth-events';
 
 export default function ShellNav() {
-  useEffect(() => {
-    const onShellNav = (e: Event) => {
-      const ce = e as CustomEvent<{ path: string }>;
-      if (ce.detail?.path) window.location.assign(ce.detail.path);
-    };
-    window.addEventListener('shell:navigate', onShellNav);
-    return () => window.removeEventListener('shell:navigate', onShellNav);
-  }, []);
 
   return (
     <header style={{ borderBottom: '1px solid #222227', background: '#121215' }}>
