@@ -13,12 +13,11 @@ All three run simultaneously and compose into one app via the Cloudflare Worker.
 
 ## Project type
 
-Monorepo using **pnpm workspaces**.
+Monorepo using **npm workspaces**.
 
 ```
 taskflow/
 ├── CLAUDE.md
-├── pnpm-workspace.yaml
 ├── package.json
 ├── worker/          ← Cloudflare Worker — single entry point router
 ├── shell/           ← Next.js 14 — MFE Host
@@ -216,28 +215,17 @@ Local dev: `cd worker && npx wrangler dev --local` → `localhost:8787`
 
 ---
 
-## pnpm-workspace.yaml
-
-```yaml
-packages:
-  - 'shell'
-  - 'mfe-task'
-  - 'mfe-board'
-```
-
----
-
 ## How to run everything locally (3 terminals)
 
 ```bash
 # Terminal 1 — Shell
-cd shell && pnpm dev        # localhost:3002
+cd shell && npm run dev        # localhost:3002
 
 # Terminal 2 — Task MFE
-cd mfe-task && pnpm dev     # localhost:3003
+cd mfe-task && npm run dev     # localhost:3003
 
 # Terminal 3 — Board MFE
-cd mfe-board && pnpm start  # localhost:4200
+cd mfe-board && npm run start  # localhost:4200
 
 # Terminal 4 — Worker
 cd worker && npx wrangler dev --local   # localhost:8787
@@ -315,6 +303,22 @@ Design language:
 
 Use this as reference when building the placeholder UI.
 Keep it clean — dark background, indigo accent, Inter font.
+
+---
+
+## Progress Documentation Rule
+
+Every code change — new feature, bug fix, refactor, config update, or dependency change — **MUST** include an update to the `docs/PROGRESS.md` inside the affected app folder(s).
+
+Update the relevant section(s):
+- Mark features as **COMPLETE** / **IN PROGRESS** / **PLANNED**
+- Add new files to the implemented files table when created
+- Update "What's next" / Phase sections when a phase advances
+- Note any version drift, known issues, or blockers discovered
+
+This rule applies to all four apps: `shell`, `mfe-task`, `mfe-board`, `worker`.
+
+No change is considered done until its `docs/PROGRESS.md` reflects the new state.
 
 ---
 

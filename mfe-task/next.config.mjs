@@ -1,19 +1,21 @@
-import NextFederationPlugin from '@module-federation/nextjs-mf';
+import { ModuleFederationPlugin } from '@module-federation/enhanced/webpack';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   webpack(config, options) {
-    config.plugins.push(
-      new NextFederationPlugin({
-        name: 'taskMfe',
-        filename: 'static/chunks/remoteEntry.js',
-        exposes: {
-          './TaskApp': './src/components/TaskApp.tsx',
-        },
-        shared: {},
-      })
-    );
+    if (!options.isServer) {
+      config.plugins.push(
+        new ModuleFederationPlugin({
+          name: 'taskMfe',
+          filename: 'static/chunks/remoteEntry.js',
+          exposes: {
+            './TaskApp': './src/components/TaskApp.tsx',
+          },
+          shared: {},
+        })
+      );
+    }
     return config;
   },
 };

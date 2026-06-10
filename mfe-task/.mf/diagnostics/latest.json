@@ -1,0 +1,10 @@
+{
+  "latestErrorEvent": {
+    "code": "TYPE-001",
+    "message": "Failed to generate type declaration. Execute the below cmd to reproduce and fix the error. #TYPE-001\nargs: {\"cmd\":\"npx tsc --project \\\"D:\\\\\\\\Personal Projects\\\\\\\\Taskflow\\\\\\\\mfe-task\\\\\\\\node_modules\\\\\\\\.federation\\\\\\\\tsconfig.4b2f09cec3df79b27c4c856d14adbcde.json\\\"\"}\nView the docs to see how to solve: https://module-federation.io/guide/troubleshooting/type#type-001",
+    "args": {
+      "cmd": "npx tsc --project \"D:\\\\Personal Projects\\\\Taskflow\\\\mfe-task\\\\node_modules\\\\.federation\\\\tsconfig.4b2f09cec3df79b27c4c856d14adbcde.json\""
+    },
+    "timestamp": 1781091989613
+  }
+}

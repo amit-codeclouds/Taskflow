@@ -3,10 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "dev:shell": "pnpm --filter shell dev",
-    "dev:task": "pnpm --filter mfe-task dev",
-    "dev:board": "pnpm --filter mfe-board start",
-    "dev": "concurrently -n shell,task,board -c blue,green,magenta \"pnpm dev:shell\" \"pnpm dev:task\" \"pnpm dev:board\""
+    "dev:shell": "npm run dev --prefix shell",
+    "dev:task": "npm run dev --prefix mfe-task",
+    "dev:board": "npm run start --prefix mfe-board",
+    "dev": "concurrently -n shell,task,board -c blue,green,magenta \"npm run dev:shell\" \"npm run dev:task\" \"npm run dev:board\""
+  },
+  "overrides": {
+    "enhanced-resolve": "5.17.1"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"
