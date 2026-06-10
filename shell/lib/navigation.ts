@@ -9,11 +9,12 @@ export interface NavLink {
 
 export const NAV_LINKS: NavLink[] = [
   { label: 'Home',         href: '/',      zone: 'shell', icon: 'home' },
+  { label: 'My Teams',     href: '/teams', zone: 'shell', icon: 'users' },
   { label: 'My Tasks',     href: '/tasks', zone: 'tasks', icon: 'check-square' },
   { label: 'Kanban Board', href: '/board', zone: 'board', icon: 'layout' },
 ];
 
-export const SHELL_ZONE_PATHS = ['/'];
+export const SHELL_ZONE_PATHS = ['/', '/teams'];
 export const TASK_ZONE_PATHS  = ['/tasks'];
 export const BOARD_ZONE_PATHS = ['/board'];
 
