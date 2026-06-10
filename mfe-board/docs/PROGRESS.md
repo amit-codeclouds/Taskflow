@@ -4,15 +4,23 @@
 
 | Key | Value |
 |-----|-------|
-| Role | Module Federation **REMOTE** |
-| Framework | Angular 17.3 (see version note below) |
+| Role | Board MFE — standalone Angular app, embedded by Shell via iframe |
+| Framework | Angular **17.3.x** (see version note below) |
 | Port | 4200 |
 | Direct URL | http://localhost:4200 |
-| Proxied via Worker | http://localhost:8787/board/* |
-| MF Plugin | @angular-architects/module-federation@17.0.8 |
-| Build tool | ngx-build-plus (custom webpack via webpack.config.js) |
+| Consumed by Shell as | `<iframe src="http://localhost:4200">` |
+| Composition strategy | **iframe** (not Module Federation) |
+| Build tool | Angular CLI + ngx-build-plus (custom webpack) |
 
-> **Version drift note:** `CLAUDE.md` specifies Angular **19.x** and `@angular-architects/module-federation@^19.0.0`, but the installed versions are Angular **17.3** and plugin **17.0.8**. An upgrade to Angular 19 is a pending task before Phase 1 development starts.
+> **Version note:** `CLAUDE.md` previously specified Angular 19.x. Installed version is Angular **17.3**. Since we are no longer using Module Federation, an Angular 19 upgrade is not required for Phase 0. It can be revisited in a later phase. Do not upgrade unless explicitly planned.
+
+> This app is a fully standalone Angular application. It is NOT a Module Federation remote consumed by the Shell. `webpack.config.js` still contains MF config (from the previous attempt) but it is unused for federation purposes.
+
+---
+
+## Why we moved from Module Federation to iframes
+
+See `shell/docs/PROGRESS.md` for the full account. mfe-board's `webpack.config.js` still exists with MF configuration, but the Shell no longer dynamically imports from it. The Angular app runs standalone and is embedded via `<iframe>`.
 
 ---
 
@@ -20,58 +28,65 @@
 
 **Status: COMPLETE**
 
-### Exposed modules
+### What's working
 
-| Export key | Source file | Consumed by |
-|------------|-------------|-------------|
-| `./BoardApp` | `src/app/board/board.component.ts` | Shell `/board` page |
+| Feature | Status |
+|---|---|
+| Standalone Angular app on port 4200 | COMPLETE |
+| `BoardComponent` placeholder UI | COMPLETE |
+| `AuthListenerService` — window event listener stub | COMPLETE |
+| Design tokens — dark theme, Inter, indigo accent | COMPLETE |
+| Routing — empty path → BoardComponent | COMPLETE |
 
 ### Implemented files
 
 | File | Description |
 |------|-------------|
-| `webpack.config.js` | Module Federation config — name: `boardMfe`, exposes `./BoardApp`, shares Angular core/common/router as singletons |
+| `webpack.config.js` | MF config from previous attempt — present but not used for federation |
 | `webpack.prod.config.js` | Production webpack config, extends base |
-| `src/app/board/board.component.ts` | Standalone Angular component — placeholder "Kanban Board — coming soon", Phase 0 label, subscribes to `token$` for auth status display |
-| `src/app/services/auth-listener.service.ts` | Injectable service — `token$: BehaviorSubject<string \| null>`, listens to `auth:token` and `auth:logout` window events |
-| `src/app/app.component.ts` | Root component with `<router-outlet>` |
-| `src/app/app.config.ts` | Angular app config (standalone bootstrap) |
-| `src/app/app.routes.ts` | Routes: empty path → BoardComponent |
-| `src/bootstrap.ts` | Async bootstrap entry (required for Module Federation) |
-| `src/main.ts` | Imports bootstrap.ts |
+| `src/app/app.component.ts` | Root standalone component with `<router-outlet>` |
+| `src/app/app.component.html` | Full-height dark wrapper with `<router-outlet>` |
+| `src/app/app.config.ts` | Standalone bootstrap config |
+| `src/app/app.routes.ts` | Routes: empty path → `BoardComponent` |
+| `src/app/board/board.component.ts` | Placeholder card: "Kanban Board — coming soon", Phase 0 label, auth token status |
+| `src/app/services/auth-listener.service.ts` | Injectable service — `token$: BehaviorSubject<string \| null>`, listens to `auth:token` / `auth:logout` |
+| `src/bootstrap.ts` | `bootstrapApplication(AppComponent, appConfig)` |
+| `src/main.ts` | Imports `bootstrap.ts` |
 
-### Auth integration
+### Auth service
 
-`AuthListenerService` is injected into `BoardComponent` and exposes `token$` as an RxJS observable. Component subscribes to display auth status.
+`AuthListenerService` is injected into `BoardComponent` and exposes `token$` as an RxJS observable. In iframe mode, the Shell's `window.dispatchEvent` does not reach this app's `window`, so `token$` will not emit in Phase 0.
 
 ```ts
 // board.component.ts
-constructor(private authListener: AuthListenerService) {}
-// template uses authListener.token$ | async
+constructor(public auth: AuthListenerService) {}
+// template: authListener.token$ | async
 ```
 
 ### Definition of done (Phase 0)
 
-- [x] Board MFE runs on port 4200
-- [x] `./BoardApp` exposed and consumable by Shell
+- [x] Board MFE runs standalone on port 4200
 - [x] Placeholder UI rendered with Phase 0 label
 - [x] `AuthListenerService` wired and listening for auth events
+- [x] Starts with `npm run start` (must be PowerShell/cmd — `ng` is a `.cmd` file)
+
+---
+
+## Known Issues / Limitations
+
+- **Auth events not received in iframe.** Shell dispatches on its own `window`; this app's `window` is separate. `token$` will not emit until Phase 1 `postMessage` bridge is added.
+- **`webpack.config.js` has unused MF config.** It is retained as-is to avoid breaking the Angular CLI build. Do not remove it without verifying the build still works.
+- **Must start from PowerShell or cmd.** Git Bash cannot resolve `ng.cmd`.
 
 ---
 
 ## Phase 1 — Planned
 
-- Upgrade Angular 17.3 → 19.x and plugin to @angular-architects/module-federation@^19.0.0
+- Listen for `message` events to receive auth token from Shell via `postMessage`
 - Kanban board UI with columns (To Do, In Progress, Done)
 - Drag-and-drop card movement between columns
-- Subscribe to `token$` for authenticated API calls
+- Authenticated API calls using the received token
 
 ---
 
-## Known Issues / Notes
-
-- **Angular version mismatch**: installed 17.3, spec requires 19.x. Must upgrade before Phase 1. Check CLAUDE.md for exact target versions before upgrading.
-
----
-
-*Last updated: 2026-06-10 — Phase 0 complete*
+*Last updated: 2026-06-10 — Migrated from Module Federation to iframe approach*

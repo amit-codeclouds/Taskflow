@@ -2,12 +2,17 @@
 
 ## What we are building right now
 
-Three frontend apps wired together via Module Federation.
-That is the only goal. No backend. No API calls. No authentication yet.
+Three frontend apps composed into one via **iframes** — not Module Federation.
 
-**Shell** loads Task MFE and Board MFE as remotes.
-Each MFE shows a basic placeholder UI.
-All three run simultaneously and compose into one app via the Cloudflare Worker.
+The Shell (Next.js) renders each MFE inside a full-viewport `<iframe>`. The Cloudflare Worker sits in front and acts as the single entry point, proxying all traffic through `localhost:8787`.
+
+> **Why we moved away from Module Federation:**
+> We attempted Module Federation with Next.js 14 (App Router) using three different plugin strategies:
+> - `@module-federation/nextjs-mf` — hard-blocks App Router; only works with Pages Router
+> - `@module-federation/enhanced/webpack` — generates MF 2.0 chunk format; produces `/_next/undefined` ChunkLoadError in Next.js
+> - webpack's built-in `ModuleFederationPlugin` — publicPath mismatch: shell's `/_next/` prefix intercepts mfe-task asset requests, so chunks load from the wrong origin
+>
+> Every path hit a different hard blocker. The iframe approach delivers the same isolation guarantee with zero bundler complexity, and unblocks forward progress on Phase 0.
 
 ---
 
@@ -19,27 +24,25 @@ Monorepo using **npm workspaces**.
 taskflow/
 ├── CLAUDE.md
 ├── package.json
-├── worker/          ← Cloudflare Worker — single entry point router
-├── shell/           ← Next.js 14 — MFE Host
-├── mfe-task/        ← Next.js 14 — MFE Remote
-└── mfe-board/       ← Angular 19 — MFE Remote
+├── worker/          ← Cloudflare Worker — reverse proxy / single entry point
+├── shell/           ← Next.js 14 — host app (renders MFEs in iframes)
+├── mfe-task/        ← Next.js 14 — Task MFE (standalone app)
+└── mfe-board/       ← Angular 17 — Board MFE (standalone app)
 ```
 
 ---
 
-## Exact versions to use
+## Exact versions in use
 
-| App | Framework | Version | Reason |
+| App | Framework | Version | Notes |
 |---|---|---|---|
-| shell | Next.js | **14.2.x** | Webpack-based — Module Federation works without issues |
-| mfe-task | Next.js | **14.2.x** | Same as shell — must match for shared deps |
-| mfe-board | Angular | **19.x** | Latest stable with Native Federation support |
-| MF plugin (Next.js) | @module-federation/nextjs-mf | **8.x** | Stable for Next.js 14 |
-| MF plugin (Angular) | @angular-architects/module-federation | **^19.0.0** | Matches Angular 19 exactly |
+| shell | Next.js | **14.2.x** | App Router, no MF plugin |
+| mfe-task | Next.js | **14.2.x** | App Router, no MF plugin, standalone |
+| mfe-board | Angular | **17.3.x** | Standalone components, has webpack.config.js but NOT federated |
+| worker | Cloudflare Workers | — | wrangler dev --local |
 
-> Do NOT use Next.js 15 or 16. Turbopack (their new default bundler) has
-> known issues with @module-federation/nextjs-mf. Next.js 14 is the safe,
-> proven choice for Module Federation right now.
+> Do NOT introduce `@module-federation/nextjs-mf`, `@module-federation/enhanced`, or Next.js 15/16.
+> These were all tried and blocked. Keep the configs clean.
 
 ---
 
@@ -47,138 +50,109 @@ taskflow/
 
 | App | Port | Notes |
 |---|---|---|
-| Cloudflare Worker | 8787 | `wrangler dev --local` — open this in browser |
-| Shell | **3002** | MFE host (3001 is taken by another project) |
-| Task MFE | 3003 | MFE remote |
-| Board MFE | 4200 | Angular default |
+| Cloudflare Worker | 8787 | Single entry point — open this in browser |
+| Shell | **3002** | Next.js host, serves nav + sidebar + iframe wrapper |
+| Task MFE | 3003 | Standalone Next.js app |
+| Board MFE | 4200 | Standalone Angular app |
 
 ---
 
-## Module Federation config
+## How composition works (iframe approach)
 
-### Shell — HOST (`shell/next.config.js`)
+The Shell owns the layout (nav + sidebar). Each route renders a full-height iframe pointing directly at the MFE's origin — **not** through the worker.
 
-```js
-const { NextFederationPlugin } = require('@module-federation/nextjs-mf');
-
-module.exports = {
-  webpack(config, options) {
-    config.plugins.push(
-      new NextFederationPlugin({
-        name: 'shell',
-        remotes: {
-          taskMfe: `taskMfe@http://localhost:8787/tasks/_next/static/chunks/remoteEntry.js`,
-          boardMfe: `boardMfe@http://localhost:8787/board/remoteEntry.js`,
-        },
-        shared: {},
-      })
-    );
-    return config;
-  },
-};
+```
+Browser → localhost:8787
+               ↓
+           Worker proxy
+               ↓ (everything except /api)
+       Shell (localhost:3002)
+       ┌──────────────────────────┐
+       │  ShellNav + ShellSidebar │
+       │                          │
+       │  /tasks  →  <iframe      │
+       │    src="localhost:3003"> │
+       │                          │
+       │  /board  →  <iframe      │
+       │    src="localhost:4200"> │
+       └──────────────────────────┘
 ```
 
-### Task MFE — REMOTE (`mfe-task/next.config.js`)
-
-```js
-const { NextFederationPlugin } = require('@module-federation/nextjs-mf');
-
-module.exports = {
-  webpack(config, options) {
-    config.plugins.push(
-      new NextFederationPlugin({
-        name: 'taskMfe',
-        filename: 'static/chunks/remoteEntry.js',
-        exposes: {
-          './TaskApp': './src/components/TaskApp.tsx',
-        },
-        shared: {},
-      })
-    );
-    return config;
-  },
-};
-```
-
-### Board MFE — REMOTE (`mfe-board/webpack.config.js`)
-
-```js
-const {
-  share,
-  withModuleFederationPlugin,
-} = require('@angular-architects/module-federation/webpack');
-
-module.exports = withModuleFederationPlugin({
-  name: 'boardMfe',
-  filename: 'remoteEntry.js',
-  exposes: {
-    './BoardApp': './src/app/board/board.component.ts',
-  },
-  shared: share({
-    '@angular/core':    { singleton: true, strictVersion: true, requiredVersion: 'auto' },
-    '@angular/common':  { singleton: true, strictVersion: true, requiredVersion: 'auto' },
-    '@angular/router':  { singleton: true, strictVersion: true, requiredVersion: 'auto' },
-  }),
-});
-```
-
----
-
-## How Shell loads remotes
+### Shell tasks page (`shell/src/app/tasks/page.tsx`)
 
 ```tsx
-// shell/src/app/tasks/page.tsx
-import dynamic from 'next/dynamic';
-
-const TaskApp = dynamic(
-  () => import('taskMfe/TaskApp').then((m) => m.default),
-  { ssr: false, loading: () => <p>Loading tasks...</p> }
-);
-
 export default function TasksPage() {
-  return <TaskApp />;
+  const src = process.env.NEXT_PUBLIC_TASK_MFE_URL || 'http://localhost:3003';
+  return (
+    <iframe
+      src={src}
+      style={{ width: '100%', height: 'calc(100vh - 65px)', border: 'none', display: 'block' }}
+      title="Task Management"
+    />
+  );
 }
 ```
 
+### Shell board page (`shell/src/app/board/page.tsx`)
+
 ```tsx
-// shell/src/app/board/page.tsx
-import dynamic from 'next/dynamic';
-
-const BoardApp = dynamic(
-  () => import('boardMfe/BoardApp').then((m) => m.BoardComponent),
-  { ssr: false, loading: () => <p>Loading board...</p> }
-);
-
 export default function BoardPage() {
-  return <BoardApp />;
+  const src = process.env.NEXT_PUBLIC_BOARD_MFE_URL || 'http://localhost:4200';
+  return (
+    <iframe
+      src={src}
+      style={{ width: '100%', height: 'calc(100vh - 65px)', border: 'none', display: 'block' }}
+      title="Kanban Board"
+    />
+  );
 }
 ```
 
 ---
 
-## What each MFE should show (Phase 0 — placeholder only)
+## Shell layout
 
-### Shell (`localhost:3002`)
-- Top navigation bar with links: Dashboard · Tasks · Board
-- Sidebar with workspace nav
-- Renders the remote MFE in the main content area based on route
-- `/` → welcome message
-- `/tasks` → loads Task MFE
-- `/board` → loads Board MFE
+Shell has a persistent top nav and left sidebar across all routes. The main area is where iframes render.
 
-### Task MFE (`localhost:3003`)
-- Simple page that says "Task Management — coming soon"
-- Shows current phase label: "Phase 0 · MFE Foundation"
-- A basic card layout is fine — no real data
+- `shell/src/app/layout.tsx` — wraps every page with `<ShellNav />` + `<ShellSidebar />`
+- `shell/src/components/ShellNav.tsx` — top bar: Taskflow logo, Dashboard / Tasks / Board links, auth dispatch buttons
+- `shell/src/components/ShellSidebar.tsx` — left sidebar: workspace nav links
+- `shell/src/app/page.tsx` — dashboard welcome screen (no iframe, plain content)
+- `shell/src/app/tasks/page.tsx` — Task MFE iframe
+- `shell/src/app/board/page.tsx` — Board MFE iframe
 
-### Board MFE (`localhost:4200`)
-- Simple Angular component that says "Kanban Board — coming soon"
-- Shows current phase label: "Phase 0 · MFE Foundation"
-- A basic styled div is fine — no real data
+Shell `next.config.js` is plain — no plugins, no webpack customisation.
+
+---
+
+## MFE apps
+
+### Task MFE (`mfe-task/`)
+
+Standalone Next.js 14 app with App Router. No MF config.
+
+- `src/app/layout.tsx` — minimal layout (no nav, just body wrapper)
+- `src/app/page.tsx` — renders `<TaskApp />`
+- `src/components/TaskApp.tsx` — placeholder UI card ("Task Management — coming soon")
+- `src/hooks/useAuth.ts` — listens for `auth:token` / `auth:logout` window events
+
+`mfe-task/next.config.js` is plain — no plugins.
+
+### Board MFE (`mfe-board/`)
+
+Standalone Angular 17 app.
+
+- `src/app/app.component.ts` — root component with `<router-outlet>`
+- `src/app/app.routes.ts` — single route `''` → `BoardComponent`
+- `src/app/board/board.component.ts` — placeholder UI card ("Kanban Board — coming soon")
+- `src/app/services/auth-listener.service.ts` — listens for `auth:token` / `auth:logout` window events
+- `webpack.config.js` — still present (from the MF attempt), but not used for federation; Angular uses it via `ngx-build-plus` for custom webpack
 
 ---
 
 ## Cloudflare Worker (`worker/index.js`)
+
+Minimal reverse proxy with two routing branches and error handling.
 
 ```js
 export default {
@@ -186,62 +160,55 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    let upstream;
-    if (path.startsWith('/api/'))      upstream = env.GATEWAY_URL || 'http://localhost:8080';
-    else if (path.startsWith('/board')) upstream = env.BOARD_MFE_URL || 'http://localhost:4200';
-    else if (path.startsWith('/tasks')) upstream = env.TASK_MFE_URL  || 'http://localhost:3003';
-    else                                upstream = env.SHELL_URL      || 'http://localhost:3002';
+    const upstream = path.startsWith('/api/')
+      ? (env.GATEWAY_URL || 'http://localhost:8080')
+      : (env.SHELL_URL   || 'http://localhost:3002');
 
-    const proxiedUrl = upstream + path + url.search;
-    const proxiedRequest = new Request(proxiedUrl, {
+    const proxiedRequest = new Request(upstream + path + url.search, {
       method:  request.method,
       headers: request.headers,
-      body:    ['GET','HEAD'].includes(request.method) ? undefined : request.body,
+      body:    ['GET', 'HEAD'].includes(request.method) ? undefined : request.body,
     });
 
-    return fetch(proxiedRequest);
+    try {
+      return await fetch(proxiedRequest);
+    } catch (e) {
+      return new Response(
+        `502 Bad Gateway — upstream unreachable: ${upstream}\n\nMake sure all apps are running:\n  shell:     cd shell && npm run dev      (port 3002)\n  mfe-task:  cd mfe-task && npm run dev   (port 3003)\n  mfe-board: cd mfe-board && npm start    (port 4200)`,
+        { status: 502, headers: { 'Content-Type': 'text/plain' } }
+      );
+    }
   },
 };
 ```
 
+| Request path | Forwarded to | Who handles it |
+|---|---|---|
+| `/api/...` | `env.GATEWAY_URL` (port 8080) | Future backend |
+| everything else | `env.SHELL_URL` (port 3002) | Shell (Next.js) |
+
+> The worker does NOT proxy `/tasks` or `/board` to the MFE servers.
+> The shell's iframes point directly to `localhost:3003` and `localhost:4200`.
+> There is no need to route MFE assets through the worker.
+
+`worker/wrangler.toml`:
 ```toml
-# worker/wrangler.toml
 name = "taskflow-router"
 main = "index.js"
 compatibility_date = "2024-01-01"
 ```
 
-Local dev: `cd worker && npx wrangler dev --local` → `localhost:8787`
-
 ---
 
-## How to run everything locally (3 terminals)
+## Auth event contract
 
-```bash
-# Terminal 1 — Shell
-cd shell && npm run dev        # localhost:3002
+Auth events use `window.dispatchEvent` / `window.addEventListener`. This is wired up and works within each app's own window context.
 
-# Terminal 2 — Task MFE
-cd mfe-task && npm run dev     # localhost:3003
+**Important limitation with iframes:** `window.dispatchEvent` in the Shell fires on the Shell's `window`. Iframes have their own `window` — events dispatched in the Shell do **not** propagate into iframe windows automatically. The current stubs are in place as the contract shape, but cross-iframe communication will require `postMessage` in Phase 1 when real auth is added.
 
-# Terminal 3 — Board MFE
-cd mfe-board && npm run start  # localhost:4200
-
-# Terminal 4 — Worker
-cd worker && npx wrangler dev --local   # localhost:8787
-
-# Open browser at localhost:8787
-```
-
----
-
-## Auth token contract (wire now, use later)
-
-Even though there is no login yet, set up the event listeners now
-so the pattern is in place for Phase 1.
+### Shell dispatches (`shell/src/lib/auth-events.ts`)
 
 ```ts
-// shell/src/lib/auth-events.ts
 export function dispatchAuthToken(token: string) {
   window.dispatchEvent(new CustomEvent('auth:token', { detail: { token } }));
 }
@@ -250,8 +217,9 @@ export function dispatchAuthLogout() {
 }
 ```
 
+### Task MFE listens (`mfe-task/src/hooks/useAuth.ts`)
+
 ```ts
-// mfe-task/src/hooks/useAuth.ts
 import { useState, useEffect } from 'react';
 export function useAuth() {
   const [token, setToken] = useState<string | null>(null);
@@ -269,8 +237,9 @@ export function useAuth() {
 }
 ```
 
+### Board MFE listens (`mfe-board/src/app/services/auth-listener.service.ts`)
+
 ```ts
-// mfe-board/src/app/services/auth-listener.service.ts
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 @Injectable({ providedIn: 'root' })
@@ -293,16 +262,36 @@ export class AuthListenerService {
 
 Figma: https://www.figma.com/design/gyXPilu3pWUYYpmt2NwA3b/Task-Management
 
-Design language:
+Design language applied across all apps:
 - Background: `#121215` (deep dark)
 - Card bg: `#222227`
 - Accent: `#6155DD` (indigo)
 - Text primary: `#F4F3F0`
-- Text secondary: `#ABAA A5`
+- Text secondary: `#ABAAA5`
 - Font: Inter
 
-Use this as reference when building the placeholder UI.
-Keep it clean — dark background, indigo accent, Inter font.
+---
+
+## How to run locally (4 terminals)
+
+```bash
+# Terminal 1 — Shell
+cd shell && npm run dev        # localhost:3002
+
+# Terminal 2 — Task MFE
+cd mfe-task && npm run dev     # localhost:3003
+
+# Terminal 3 — Board MFE (PowerShell / cmd only — ng is a .cmd file)
+cd mfe-board && npm run start  # localhost:4200
+
+# Terminal 4 — Worker
+cd worker && npx wrangler dev --local   # localhost:8787
+
+# Open browser at localhost:8787
+```
+
+> Board MFE (`npm run start`) must be run from PowerShell or cmd.
+> It will not work from Git Bash because `ng` is a `.cmd` file.
 
 ---
 
@@ -328,19 +317,20 @@ No change is considered done until its `docs/PROGRESS.md` reflects the new state
 - Do not add authentication logic beyond the event listener stubs above
 - Do not create more pages than listed above
 - Do not use Next.js 15 or 16
-- Do not use `@angular-architects/native-federation` — use `@angular-architects/module-federation@^19.0.0`
+- Do not introduce `@module-federation/nextjs-mf` — hard-blocks App Router
+- Do not introduce `@module-federation/enhanced` — produces undefined chunk filenames
 - Do not add Redux, Zustand, or any global state library yet
 - Do not add TanStack Query yet
-- Do not import from one MFE into another — only Shell imports from MFEs
-- Do not skip `ssr: false` on dynamic imports in Shell — Angular MFE cannot SSR
+- Do not use `ssr: false` dynamic imports for MFEs — we use iframes, not dynamic federation imports
+- Do not route MFE asset requests through the worker — iframes load direct from MFE origins
 
 ---
 
 ## Definition of done for this phase
 
 - [ ] `localhost:8787` opens the Shell
-- [ ] Navigating to `localhost:8787/tasks` renders the Task MFE placeholder inside Shell
-- [ ] Navigating to `localhost:8787/board` renders the Board MFE placeholder inside Shell
+- [ ] Navigating to `localhost:8787/tasks` renders the Task MFE inside a Shell iframe
+- [ ] Navigating to `localhost:8787/board` renders the Board MFE inside a Shell iframe
 - [ ] All three apps run independently on their own ports
 - [ ] Auth event stubs are in place in all three apps
-- [ ] No console errors about missing remotes or duplicate React instances
+- [ ] Worker returns a 502 with a helpful message if any upstream is unreachable

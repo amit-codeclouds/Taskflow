@@ -1,5 +1,6 @@
+'use client';
+
 import Link from 'next/link';
-import { useEffect } from 'react';
 import { dispatchAuthLogout, dispatchAuthToken } from '@/lib/auth-events';
 
 export default function ShellNav() {
