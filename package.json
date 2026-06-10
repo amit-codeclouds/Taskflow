@@ -1,0 +1,19 @@
+{
+  "name": "taskflow",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev:shell": "pnpm --filter shell dev",
+    "dev:task": "pnpm --filter mfe-task dev",
+    "dev:board": "pnpm --filter mfe-board start",
+    "dev": "concurrently -n shell,task,board -c blue,green,magenta \"pnpm dev:shell\" \"pnpm dev:task\" \"pnpm dev:board\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "enhanced-resolve": "5.17.1"
+    }
+  }
+}

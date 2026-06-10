@@ -1,0 +1,4 @@
+packages:
+  - 'shell'
+  - 'mfe-task'
+  - 'mfe-board'
