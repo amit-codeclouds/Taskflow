@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, UserPlus, Plus, Mail, X, Check, Shield, ChevronDown } from 'lucide-react';
+import { WORKSPACE_MEMBERS } from '@/lib/workspace';
 
 interface Member {
   initials: string;
@@ -75,61 +76,105 @@ function MemberAvatar({ member, size = 'md' }: { member: Member; size?: 'sm' | '
   );
 }
 
-function InviteForm({ teamName, onClose }: { teamName: string; onClose: () => void }) {
-  const [email, setEmail]       = useState('');
-  const [sent, setSent]         = useState(false);
-  const [error, setError]       = useState('');
+function InviteForm({ teamId, teamName, existingMemberEmails, onClose }: {
+  teamId: string; teamName: string; existingMemberEmails: string[]; onClose: () => void;
+}) {
+  const [mode, setMode]             = useState<'workspace' | 'email'>('workspace');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [email, setEmail]           = useState('');
+  const [done, setDone]             = useState(false);
+  const [error, setError]           = useState('');
 
-  function handleSend() {
-    if (!email.includes('@')) {
-      setError('Enter a valid email address.');
-      return;
-    }
-    setError('');
-    setSent(true);
-    setTimeout(() => {
-      setSent(false);
-      setEmail('');
-      onClose();
-    }, 1800);
+  // Workspace members not already in this team
+  const available = WORKSPACE_MEMBERS.filter(m => !existingMemberEmails.includes(m.email));
+
+  function handleAdd() {
+    if (!selectedId) return;
+    setDone(true);
+    setTimeout(() => { setDone(false); setSelectedId(null); onClose(); }, 1500);
+  }
+
+  function handleEmailSend() {
+    if (!email.includes('@')) { setError('Enter a valid email address.'); return; }
+    setError(''); setDone(true);
+    setTimeout(() => { setDone(false); setEmail(''); onClose(); }, 1500);
   }
 
   return (
     <motion.div
       className="mt-3 pt-3 border-t border-border-subtle"
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
+      initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
     >
-      <p className="text-xs text-text-300 mb-2">
-        Invite to <span className="text-text-100 font-medium">{teamName}</span>
+      <p className="text-xs text-text-300 mb-2.5">
+        Add member to <span className="text-text-100 font-medium">{teamName}</span>
       </p>
-      <div className="flex gap-2">
-        <div className="flex-1 relative">
-          <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-300" />
-          <input
-            type="email"
-            value={email}
-            onChange={e => { setEmail(e.target.value); setError(''); }}
-            onKeyDown={e => e.key === 'Enter' && handleSend()}
-            placeholder="colleague@example.com"
-            className="w-full h-9 pl-8 pr-3 bg-bg-600 border border-border-subtle rounded-lg text-sm text-text-100 placeholder:text-text-300 focus:outline-none focus:border-accent transition-colors"
-          />
-        </div>
-        <motion.button
-          onClick={handleSend}
-          disabled={sent}
-          className={`flex items-center gap-1.5 h-9 px-4 rounded-lg text-sm font-medium transition-colors shrink-0 ${
-            sent ? 'bg-green-bg text-status-green' : 'bg-accent text-white hover:bg-accent-hover'
-          }`}
-          whileHover={sent ? {} : { scale: 1.02 }}
-          whileTap={sent ? {} : { scale: 0.98 }}
-        >
-          {sent ? <><Check size={13} /> Sent</> : 'Send Invite'}
-        </motion.button>
+
+      {/* Mode tabs */}
+      <div className="flex gap-0.5 bg-bg-800 rounded-lg p-0.5 w-fit mb-3">
+        {(['workspace', 'email'] as const).map(m => (
+          <button key={m} onClick={() => { setMode(m); setError(''); }}
+            className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${mode === m ? 'bg-bg-600 text-text-100' : 'text-text-300 hover:text-text-200'}`}
+          >
+            {m === 'workspace' ? 'From workspace' : 'Invite by email'}
+          </button>
+        ))}
       </div>
-      {error && <p className="text-xs text-status-red mt-1.5">{error}</p>}
+
+      {mode === 'workspace' ? (
+        <div className="flex flex-col gap-1.5">
+          {available.length === 0 ? (
+            <p className="text-xs text-text-300 py-2">All workspace members are already in this team.</p>
+          ) : (
+            available.map(m => (
+              <button key={m.id} onClick={() => setSelectedId(m.id)}
+                className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-left transition-colors ${
+                  selectedId === m.id ? 'bg-accent-bg border border-accent/30' : 'bg-bg-600 hover:bg-bg-500 border border-transparent'
+                }`}
+              >
+                <div className="w-7 h-7 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xs font-semibold shrink-0">{m.initials}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-text-100 truncate">{m.name}</p>
+                  <p className="text-xs text-text-300 truncate">{m.email}</p>
+                </div>
+                {selectedId === m.id && <Check size={14} className="text-accent shrink-0" />}
+              </button>
+            ))
+          )}
+          {available.length > 0 && (
+            <motion.button onClick={handleAdd} disabled={!selectedId || done}
+              className={`mt-1 flex items-center justify-center gap-1.5 h-8 rounded-lg text-sm font-medium transition-colors ${
+                done ? 'bg-green-bg text-status-green' : selectedId ? 'bg-accent text-white hover:bg-accent-hover' : 'bg-bg-600 text-text-300 cursor-not-allowed'
+              }`}
+              whileHover={selectedId && !done ? { scale: 1.01 } : {}}
+            >
+              {done ? <><Check size={13} />Added</> : 'Add to team'}
+            </motion.button>
+          )}
+        </div>
+      ) : (
+        <div>
+          <div className="flex gap-2">
+            <div className="flex-1 relative">
+              <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-300" />
+              <input type="email" value={email}
+                onChange={e => { setEmail(e.target.value); setError(''); }}
+                onKeyDown={e => e.key === 'Enter' && handleEmailSend()}
+                placeholder="colleague@example.com"
+                className="w-full h-9 pl-8 pr-3 bg-bg-600 border border-border-subtle rounded-lg text-sm text-text-100 placeholder:text-text-300 focus:outline-none focus:border-accent transition-colors"
+              />
+            </div>
+            <motion.button onClick={handleEmailSend} disabled={done}
+              className={`flex items-center gap-1.5 h-9 px-4 rounded-lg text-sm font-medium shrink-0 ${done ? 'bg-green-bg text-status-green' : 'bg-accent text-white hover:bg-accent-hover'}`}
+              whileHover={done ? {} : { scale: 1.02 }} whileTap={done ? {} : { scale: 0.98 }}
+            >
+              {done ? <><Check size={13} />Sent</> : 'Send invite'}
+            </motion.button>
+          </div>
+          {error && <p className="text-xs text-status-red mt-1.5">{error}</p>}
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -275,7 +320,12 @@ function TeamCard({ team, index }: { team: Team; index: number }) {
 
           <AnimatePresence>
             {inviteOpen && (
-              <InviteForm teamName={team.name} onClose={() => setInviteOpen(false)} />
+              <InviteForm
+                teamId={team.id}
+                teamName={team.name}
+                existingMemberEmails={team.members.map(m => m.email)}
+                onClose={() => setInviteOpen(false)}
+              />
             )}
           </AnimatePresence>
         </div>

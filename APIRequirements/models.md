@@ -42,6 +42,8 @@ interface User {
 
 ## Task
 
+> Source: `mfe-task/src/components/tasks/TaskListScreen.tsx`
+
 ```ts
 interface Task {
   id: string;           // e.g. "TF-001" — human-readable sequential ID
@@ -51,6 +53,8 @@ interface Task {
   label: LabelType;
   assigneeId: string;   // FK → User.id
   assignee?: User;      // populated on fetch
+  teamId: string;       // FK → Team.id — required; every task belongs to a team
+  team?: Team;          // populated on fetch
   dueDate: string;      // ISO 8601 date string, e.g. "2026-06-12"
   description?: string;
   projectId?: string;   // FK → Project.id (null = personal task)
@@ -97,16 +101,38 @@ interface Sprint {
 
 ## Board Column (derived — not persisted as its own table)
 
-The board derives columns from `TaskStatus`. Column metadata (title, dot
-colour) is static config on the frontend.  
-The API returns tasks grouped by status; the board assembles columns client-side.
+The board derives columns from `TaskStatus`, **scoped to a team**.
+Column metadata (title, dot colour) is static config on the frontend.  
+The API returns tasks grouped by status for a given `teamId`; the board assembles columns client-side.
 
 ```ts
 interface BoardColumn {
   id: TaskStatus;
   title: string;        // 'To Do' | 'In Progress' | 'Review' | 'Done'
   color: string;        // hex — display only, not persisted
-  tasks: Task[];
+  tasks: Task[];        // tasks where task.teamId === requested teamId
+}
+```
+
+---
+
+## WorkspaceMember
+
+> Source: `shell/lib/workspace.ts` — workspace-level people directory.  
+> A WorkspaceMember is any user (active or pending invite) who has access to the workspace,
+> regardless of which teams they belong to. Used by the People screen and the Teams invite form.
+
+```ts
+type MemberStatus = 'active' | 'pending';
+
+interface WorkspaceMember {
+  id: string;             // FK → User.id (null if invite not yet accepted)
+  initials: string;       // e.g. "AC" — derived from name
+  name: string;
+  email: string;
+  title: string;          // job title or role description; "—" if unknown
+  teamIds: string[];      // FK → Team.id[] — teams this member belongs to
+  status: MemberStatus;
 }
 ```
 
