@@ -1,28 +1,21 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import {
-  ClipboardList,
-  Clock3,
-  CheckCircle2,
-  LayoutDashboard,
-  CheckSquare,
-  Kanban,
-} from 'lucide-react';
+import { ClipboardList, Clock3, CheckCircle2, Kanban } from 'lucide-react';
 import StatCard from '@/components/ui/stat-card';
 import Badge from '@/components/ui/Badge';
 
 const STATS = [
-  { icon: ClipboardList, label: 'Total Tasks',  value: '142', trend: '+12%',    trendPositive: true,  color: 'text-accent',         delay: 0 },
-  { icon: Clock3,        label: 'In Progress',  value: '28',  trend: '+3 today', trendPositive: true,  color: 'text-status-amber',   delay: 0.08 },
-  { icon: CheckCircle2,  label: 'Completed',    value: '96',  trend: '67%',      trendPositive: true,  color: 'text-status-green',   delay: 0.16 },
-  { icon: Kanban,        label: 'Board Items',  value: '18',  trend: '4 cols',   trendPositive: true,  color: 'text-text-200',       delay: 0.24 },
+  { icon: ClipboardList, label: 'Total Tasks',  value: '142', trend: '+12%',     trendPositive: true,  color: 'text-accent',       delay: 0    },
+  { icon: Clock3,        label: 'In Progress',  value: '28',  trend: '+3 today', trendPositive: true,  color: 'text-status-amber', delay: 0.08 },
+  { icon: CheckCircle2,  label: 'Completed',    value: '96',  trend: '67%',      trendPositive: true,  color: 'text-status-green', delay: 0.16 },
+  { icon: Kanban,        label: 'Board Items',  value: '18',  trend: '4 cols',   trendPositive: true,  color: 'text-text-200',     delay: 0.24 },
 ];
 
 const PHASES = [
-  { number: 0, label: 'MFE Foundation',   status: 'Active',  variant: 'active'  as const, symbol: '✓' },
-  { number: 1, label: 'Identity + Tasks', status: 'Next',    variant: 'next'    as const, symbol: '○' },
-  { number: 2, label: 'Board + Kanban',   status: 'Planned', variant: 'planned' as const, symbol: '○' },
+  { number: 0, label: 'MFE Foundation',   status: 'Active',  variant: 'active'  as const },
+  { number: 1, label: 'Identity + Tasks', status: 'Next',    variant: 'next'    as const },
+  { number: 2, label: 'Board + Kanban',   status: 'Planned', variant: 'planned' as const },
 ];
 
 function getGreeting() {
@@ -38,11 +31,241 @@ function formatDate() {
   });
 }
 
+// ─── Task MFE preview mockup ────────────────────────────────────────────────
+
+function TasksPreview() {
+  const rows = [
+    { dot: '#DC4949', title: 'Implement authentication flow',  badge: 'In Progress', badgeBg: '#261F42', badgeColor: '#766Be8' },
+    { dot: '#E09D34', title: 'Design onboarding screens',      badge: 'Review',      badgeBg: '#2A2210', badgeColor: '#E09D34' },
+    { dot: '#DC4949', title: 'Fix navigation bug on mobile',   badge: 'In Progress', badgeBg: '#261F42', badgeColor: '#766Be8' },
+    { dot: '#393940', title: 'Write API documentation',        badge: 'To Do',       badgeBg: '#222227', badgeColor: '#6E6C6A' },
+  ];
+
+  return (
+    <div className="absolute inset-0 p-4 flex flex-col gap-2.5 overflow-hidden">
+      {/* Mini topbar */}
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex flex-col gap-0.5">
+          <div className="h-2 w-14 bg-text-100 rounded-full opacity-70" />
+          <div className="h-1.5 w-20 bg-text-300 rounded-full opacity-40" />
+        </div>
+        <div className="h-5 w-16 rounded-md bg-accent opacity-80 flex items-center justify-center gap-1 px-1.5">
+          <div className="w-1.5 h-1.5 border border-white rounded-sm opacity-80" />
+          <div className="h-1 w-7 bg-white rounded-full opacity-70" />
+        </div>
+      </div>
+
+      {/* Mini stats */}
+      <div className="grid grid-cols-4 gap-1.5">
+        {['#766Be8', '#E09D34', '#E09D34', '#32B173'].map((c, i) => (
+          <div key={i} className="bg-bg-800 rounded border border-border-subtle p-1.5">
+            <div className="h-1 w-5 bg-text-300 rounded-full opacity-40 mb-1" />
+            <div className="h-3" style={{ color: c }}>
+              <div className="h-full w-4 rounded-sm opacity-70" style={{ background: c }} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Mini task rows */}
+      <div className="bg-bg-800 rounded-lg border border-border-subtle overflow-hidden flex-1">
+        {rows.map((row, i) => (
+          <div
+            key={i}
+            className={`flex items-center gap-2 px-2.5 py-2 ${i < rows.length - 1 ? 'border-b border-border-subtle' : ''}`}
+          >
+            <div className="w-2.5 h-2.5 rounded border border-bg-500 shrink-0" />
+            <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: row.dot }} />
+            <div className="flex-1 h-1.5 bg-text-300 rounded-full opacity-30" />
+            <div
+              className="text-[8px] font-medium px-1.5 py-0.5 rounded-full shrink-0"
+              style={{ background: row.badgeBg, color: row.badgeColor }}
+            >
+              {row.badge}
+            </div>
+            <div className="w-4 h-4 rounded-full bg-accent-bg flex items-center justify-center text-accent shrink-0"
+              style={{ fontSize: 6, fontWeight: 700 }}>AC</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Board MFE preview mockup ────────────────────────────────────────────────
+
+function BoardPreview() {
+  const cols = [
+    {
+      title: 'To Do',     dot: '#6E6C6A',
+      cards: [
+        { label: 'feature', labelColor: '#766Be8', dot: '#E09D34' },
+        { label: 'bug',     labelColor: '#DC4949', dot: '#DC4949' },
+      ],
+    },
+    {
+      title: 'In Progress', dot: '#6155DD',
+      cards: [
+        { label: 'feature', labelColor: '#766Be8', dot: '#DC4949' },
+        { label: 'infra',   labelColor: '#32B173', dot: '#E09D34' },
+      ],
+    },
+    {
+      title: 'Done', dot: '#32B173',
+      cards: [
+        { label: 'infra',   labelColor: '#32B173', dot: '#DC4949' },
+      ],
+    },
+  ];
+
+  return (
+    <div className="absolute inset-0 p-4 flex flex-col gap-3 overflow-hidden">
+      {/* Mini board header */}
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-0.5">
+          <div className="h-2 w-20 bg-text-100 rounded-full opacity-70" />
+          <div className="h-1.5 w-28 bg-accent rounded-full opacity-40" />
+        </div>
+        <div className="flex gap-1.5">
+          <div className="h-5 w-12 rounded-md bg-bg-800 border border-border-subtle" />
+          <div className="h-5 w-14 rounded-md bg-accent opacity-80" />
+        </div>
+      </div>
+
+      {/* Mini columns */}
+      <div className="grid grid-cols-3 gap-2 flex-1">
+        {cols.map((col) => (
+          <div key={col.title} className="bg-bg-800 rounded-lg border border-border-subtle p-2 flex flex-col gap-1.5">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: col.dot }} />
+              <div className="h-1.5 w-10 bg-text-100 rounded-full opacity-50" />
+              <div className="h-3.5 w-3.5 rounded bg-bg-700 text-[7px] text-text-300 flex items-center justify-center ml-auto">
+                {col.cards.length}
+              </div>
+            </div>
+            {col.cards.map((card, ci) => (
+              <div key={ci} className="bg-bg-700 rounded-lg border border-border-subtle p-1.5 flex flex-col gap-1">
+                <div className="flex items-center justify-between">
+                  <div
+                    className="text-[7px] font-medium px-1 py-px rounded-full"
+                    style={{ background: card.labelColor + '22', color: card.labelColor }}
+                  >
+                    {card.label}
+                  </div>
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: card.dot }} />
+                </div>
+                <div className="h-1 w-full bg-text-300 rounded-full opacity-20" />
+                <div className="h-1 w-3/4 bg-text-300 rounded-full opacity-20" />
+                <div className="flex items-center justify-between mt-0.5">
+                  <div className="h-1 w-6 bg-text-300 rounded-full opacity-30 font-mono" />
+                  <div className="w-3 h-3 rounded-full bg-accent-bg" style={{ fontSize: 5, color: '#6155DD', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>AC</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── App showcase card ────────────────────────────────────────────────────────
+
+interface AppCardProps {
+  href: string;
+  accentColor: string;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  cta: string;
+  preview: React.ReactNode;
+  delay: number;
+  variant: 'primary' | 'secondary';
+}
+
+function AppCard({ href, icon, title, description, cta, preview, delay, variant, accentColor }: AppCardProps) {
+  return (
+    <motion.div
+      className="bg-bg-700 rounded-xl border border-border-subtle overflow-hidden flex flex-col group"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: 'spring', stiffness: 260, damping: 28, delay }}
+      whileHover={{ y: -3, boxShadow: `0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px ${accentColor}33` }}
+    >
+      {/* Preview area */}
+      <div className="relative h-52 bg-bg-900 overflow-hidden">
+        {/* Gradient overlay at bottom so preview fades into card body */}
+        <div className="absolute inset-x-0 bottom-0 h-16 z-10"
+          style={{ background: 'linear-gradient(to bottom, transparent, #222227)' }} />
+        {/* Subtle top accent line */}
+        <div className="absolute top-0 inset-x-0 h-[2px] z-10" style={{ background: accentColor }} />
+        <motion.div
+          className="absolute inset-0"
+          initial={{ scale: 1.04, opacity: 0.7 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.6, delay: delay + 0.1 }}
+        >
+          {preview}
+        </motion.div>
+      </div>
+
+      {/* Card body */}
+      <div className="p-5 flex flex-col gap-3 flex-1">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: accentColor + '22', color: accentColor }}>
+              {icon}
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-text-100">{title}</h3>
+            </div>
+          </div>
+          <motion.div
+            className="w-6 h-6 rounded-full flex items-center justify-center text-text-300"
+            animate={{ x: [0, 3, 0] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', delay: delay + 0.5 }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M2.5 6h7M6.5 3l3 3-3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </motion.div>
+        </div>
+        <p className="text-sm text-text-200 leading-relaxed">{description}</p>
+        <a href={href} className="mt-auto block">
+          <motion.span
+            className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg w-fit transition-colors"
+            style={
+              variant === 'primary'
+                ? { background: accentColor, color: '#fff' }
+                : { background: 'transparent', border: `1px solid #2C2C32`, color: '#F4F3F0' }
+            }
+            whileHover={
+              variant === 'primary'
+                ? { scale: 1.02, boxShadow: `0 0 20px ${accentColor}55` }
+                : { scale: 1.02, borderColor: accentColor, color: accentColor }
+            }
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+          >
+            {cta}
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M2.5 6h7M6.5 3l3 3-3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </motion.span>
+        </a>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Main screen ──────────────────────────────────────────────────────────────
+
 export default function WelcomeScreen() {
   return (
     <div className="max-w-5xl mx-auto flex flex-col gap-8">
 
-      {/* Greeting row */}
+      {/* Greeting */}
       <motion.div
         className="flex items-start justify-between"
         initial={{ opacity: 0, y: -10 }}
@@ -68,73 +291,52 @@ export default function WelcomeScreen() {
         ))}
       </div>
 
-      {/* Quick access */}
+      {/* App showcase */}
       <div className="flex flex-col gap-4">
-        <motion.p
-          className="text-2xs text-text-300 tracking-widest uppercase"
+        <motion.div
+          className="flex items-center justify-between"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.35 }}
+          transition={{ delay: 0.3 }}
         >
-          Quick Access
-        </motion.p>
+          <p className="text-2xs text-text-300 tracking-widest uppercase">Your Apps</p>
+          <p className="text-xs text-text-300">Click to open</p>
+        </motion.div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <motion.div
-            className="bg-bg-700 rounded-card p-6 border border-border-subtle flex flex-col gap-4"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0.38 }}
-            whileHover={{ y: -2, boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}
-          >
-            <div className="w-10 h-10 rounded-xl bg-accent-bg flex items-center justify-center text-accent">
-              <CheckSquare size={20} strokeWidth={1.5} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <h3 className="text-base font-semibold text-text-100">Task Management</h3>
-              <p className="text-sm text-text-200 leading-relaxed">
-                Create, assign and track tasks across your team. Status updates, priorities, and due dates.
-              </p>
-            </div>
-            <a href="/tasks">
-              <motion.span
-                className="inline-flex items-center gap-1.5 bg-accent text-white text-sm font-medium px-5 py-2.5 rounded-lg cursor-pointer w-fit"
-                whileHover={{ scale: 1.02, boxShadow: '0 0 20px rgba(97,85,221,0.35)' }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              >
-                Go to Tasks →
-              </motion.span>
-            </a>
-          </motion.div>
-
-          <motion.div
-            className="bg-bg-700 rounded-card p-6 border border-border-subtle flex flex-col gap-4"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0.43 }}
-            whileHover={{ y: -2, boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}
-          >
-            <div className="w-10 h-10 rounded-xl bg-bg-600 flex items-center justify-center text-text-200">
-              <LayoutDashboard size={20} strokeWidth={1.5} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <h3 className="text-base font-semibold text-text-100">Kanban Board</h3>
-              <p className="text-sm text-text-200 leading-relaxed">
-                Visualise your workflow. Drag and drop tasks across columns. Track sprint progress.
-              </p>
-            </div>
-            <a href="/board">
-              <motion.span
-                className="inline-flex items-center gap-1.5 border border-border-subtle text-text-100 text-sm font-medium px-5 py-2.5 rounded-lg cursor-pointer w-fit"
-                whileHover={{ scale: 1.02, borderColor: '#6155DD', color: '#6155DD' }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              >
-                Go to Board →
-              </motion.span>
-            </a>
-          </motion.div>
+        <div className="grid grid-cols-2 gap-5">
+          <AppCard
+            href="/tasks"
+            accentColor="#6155DD"
+            variant="primary"
+            icon={
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+                <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.3"/>
+                <path d="M5.5 8l1.5 1.5 3.5-3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            }
+            title="Task Management"
+            description="Create, prioritise, and track tasks. Filter by status, assign to teammates, and stay on top of due dates."
+            cta="Open Tasks"
+            preview={<TasksPreview />}
+            delay={0.32}
+          />
+          <AppCard
+            href="/board"
+            accentColor="#32B173"
+            variant="secondary"
+            icon={
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+                <rect x="2" y="2" width="5" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+                <rect x="9" y="2" width="5" height="5" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+                <rect x="9" y="9" width="5" height="5" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+              </svg>
+            }
+            title="Kanban Board"
+            description="Visualise your workflow across sprint columns. Drag tasks between stages and track team progress at a glance."
+            cta="Open Board"
+            preview={<BoardPreview />}
+            delay={0.4}
+          />
         </div>
       </div>
 
@@ -152,34 +354,33 @@ export default function WelcomeScreen() {
           {PHASES.map((phase, index) => (
             <motion.div
               key={phase.number}
-              className={`flex flex-col gap-2 p-4 rounded-card ${
-                phase.variant === 'active' ? 'bg-green-bg' : 'bg-bg-600'
+              className={`flex flex-col gap-2 p-4 rounded-xl border ${
+                phase.variant === 'active'
+                  ? 'bg-green-bg border-status-green/20'
+                  : 'bg-bg-700 border-border-subtle'
               }`}
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.52 + index * 0.08 }}
             >
               <div className="flex items-center justify-between">
-                <span
-                  className={`text-2xs font-medium tracking-widest uppercase ${
-                    phase.variant === 'active' ? 'text-status-green' : 'text-text-300'
-                  }`}
-                >
+                <span className={`text-2xs font-medium tracking-widest uppercase ${
+                  phase.variant === 'active' ? 'text-status-green' : 'text-text-300'
+                }`}>
                   Phase {phase.number}
                 </span>
                 <Badge label={phase.status} variant={phase.variant} />
               </div>
-              <p
-                className={`text-sm font-medium ${
-                  phase.variant === 'active' ? 'text-status-green' : 'text-text-300'
-                }`}
-              >
-                {phase.symbol}  {phase.label}
+              <p className={`text-sm font-medium ${
+                phase.variant === 'active' ? 'text-status-green' : 'text-text-300'
+              }`}>
+                {phase.label}
               </p>
             </motion.div>
           ))}
         </div>
       </div>
+
     </div>
   );
 }

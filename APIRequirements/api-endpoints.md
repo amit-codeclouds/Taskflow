@@ -147,6 +147,7 @@ Sets `Set-Cookie: taskflow_session=<signed>; Path=/; HttpOnly; SameSite=Lax`
 ```
 status=todo|in-progress|review|done   (optional)
 priority=high|medium|low              (optional)
+teamId=team_1|team_2|...              (optional — omit to get all teams, "My Tasks" view)
 assigneeId=uuid                       (optional)
 projectId=uuid                        (optional)
 sprintId=uuid                         (optional)
@@ -163,6 +164,7 @@ page=1&limit=20
       "status": "in-progress",
       "label": "feature",
       "assignee": { "id": "uuid", "name": "Alice Chen", "avatarInitials": "AC" },
+      "team": { "id": "team_1", "name": "Taskflow Core", "color": "#6155DD" },
       "dueDate": "2026-06-12",
       "createdAt": "2026-06-01T00:00:00Z",
       "updatedAt": "2026-06-10T00:00:00Z"
@@ -196,6 +198,7 @@ page=1&limit=20
   "status": "todo",
   "label": "feature",
   "assigneeId": "uuid",
+  "teamId": "team_1",
   "dueDate": "2026-06-20",
   "description": "optional",
   "projectId": "uuid (optional)",
@@ -226,8 +229,9 @@ page=1&limit=20
 ### `GET /api/board`
 **Query params**
 ```
-projectId=uuid    (optional — defaults to personal board)
-sprintId=uuid     (optional)
+teamId=team_1     (required — board is always scoped to a team; see BoardComponent team selector)
+sprintId=uuid     (optional — filters to a specific sprint; omit for current active sprint)
+projectId=uuid    (optional)
 ```
 **Response `200`**
 ```json
@@ -266,6 +270,84 @@ sprintId=uuid     (optional)
 
 ---
 
+## People / Workspace Service  `/api/people`
+
+> Drives the **Shell** — `shell/components/people/PeopleScreen.tsx`.  
+> Manages the workspace-level member directory — all users (active + pending) who have been
+> invited to the workspace, regardless of team membership.  
+> This is distinct from `/api/teams/:id/members` which is team-scoped.
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/people` | Auth | List all workspace members (active + pending) |
+| GET | `/api/people/stats` | Auth | Aggregate counts (total, active, pending, teams) |
+| POST | `/api/people/invite` | Auth | Invite someone to the workspace by email |
+| PATCH | `/api/people/:userId` | Auth | Update member title / role |
+| DELETE | `/api/people/:userId` | Auth | Remove member from workspace (and all teams) |
+
+### `GET /api/people`
+**Query params**
+```
+teamId=team_1           (optional — filter by team membership)
+status=active|pending   (optional)
+search=string           (optional — name or email substring)
+page=1&limit=50
+```
+**Response `200`**
+```json
+{
+  "data": [
+    {
+      "id": "u1",
+      "initials": "AC",
+      "name": "Arkabrata C.",
+      "email": "arkabrata@codeclouds.com",
+      "title": "Engineer",
+      "teamIds": ["team_1", "team_2"],
+      "status": "active"
+    },
+    {
+      "id": "u5",
+      "initials": "PR",
+      "name": "Priya R.",
+      "email": "priya@external.com",
+      "title": "—",
+      "teamIds": [],
+      "status": "pending"
+    }
+  ],
+  "total": 5,
+  "page": 1,
+  "limit": 50
+}
+```
+
+### `GET /api/people/stats`
+**Response `200`**
+```json
+{
+  "totalMembers": 5,
+  "active": 4,
+  "pendingInvites": 1,
+  "totalTeams": 3
+}
+```
+> Feeds the 4-card stats row in `PeopleScreen`.
+
+### `POST /api/people/invite`
+**Request**
+```json
+{ "email": "colleague@example.com" }
+```
+**Response `201`**
+```json
+{ "id": "uuid", "email": "colleague@example.com", "status": "pending", "expiresAt": "2026-06-18T00:00:00Z" }
+```
+Sends a workspace invitation email. Returns `409` if already an active member or has a pending invite.  
+The invited person appears in the People list with `status: "pending"` until they accept.
+
+---
+
 ## Team Service  `/api/teams`
 
 > Drives the **Shell** — `shell/components/teams/TeamsScreen.tsx`.
@@ -279,7 +361,8 @@ sprintId=uuid     (optional)
 | PATCH | `/api/teams/:id` | Auth | Update team name / description |
 | DELETE | `/api/teams/:id` | Auth | Delete team (admin only) |
 | GET | `/api/teams/stats` | Auth | Aggregate: total teams, members, pending invites |
-| POST | `/api/teams/:id/invite` | Auth | Send email invitation |
+| POST | `/api/teams/:id/members` | Auth | Add an existing workspace member to the team |
+| POST | `/api/teams/:id/invite` | Auth | Send email invitation to a non-member |
 | DELETE | `/api/teams/:id/members/:userId` | Auth | Remove a member |
 | PATCH | `/api/teams/:id/members/:userId` | Auth | Change member role |
 
@@ -323,7 +406,21 @@ sprintId=uuid     (optional)
 ```
 **Response `201`** — full Team object. Creator is automatically added as `admin`.
 
+### `POST /api/teams/:id/members`
+Adds an existing **workspace member** (already in `/api/people`) to a team.  
+This is used by the "From workspace" tab in the Teams invite form.
+
+**Request**
+```json
+{ "userId": "u2" }
+```
+**Response `201`** — new TeamMember object.  
+Returns `409` if the user is already on the team.
+
 ### `POST /api/teams/:id/invite`
+Invites someone **not yet in the workspace** to the workspace AND the team in one step.  
+Used by the "Invite by email" tab in the Teams invite form.
+
 **Request**
 ```json
 { "email": "colleague@example.com" }
@@ -463,13 +560,24 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | Frontend element | Endpoint |
 |---|---|
 | WelcomeScreen — 4 stat cards (Total Tasks, In Progress, Completed, Board Items) | `GET /api/dashboard/stats` |
-| WelcomeScreen — "Go to Tasks" / "Go to Board" buttons | client navigation only |
-| WelcomeScreen — Project Timeline phases | static/no API needed |
+| WelcomeScreen — App showcase cards (Tasks, Board) | client navigation only — `<a>` cross-zone links |
+| WelcomeScreen — Project Timeline phases | static / no API needed |
 | TeamsScreen — 3 stat cards (Total Teams, Total Members, Pending Invites) | `GET /api/teams/stats` |
 | TeamsScreen — team list | `GET /api/teams` |
 | TeamsScreen — "New Team" button + create form | `POST /api/teams` |
-| TeamsScreen — "Invite" button + email form | `POST /api/teams/:id/invite` |
-| Sidebar — user card (name, role) | `GET /api/auth/me` |
+| TeamsScreen — InviteForm "From workspace" tab (pick existing member) | `POST /api/teams/:id/members` |
+| TeamsScreen — InviteForm "Invite by email" tab (new person) | `POST /api/teams/:id/invite` |
+| PeopleScreen — 4 stat cards (Total, Active, Pending Invites, Teams) | `GET /api/people/stats` |
+| PeopleScreen — member list | `GET /api/people` |
+| PeopleScreen — search filter | `GET /api/people?search=...` |
+| PeopleScreen — team filter dropdown | `GET /api/people?teamId=...` |
+| PeopleScreen — status filter dropdown | `GET /api/people?status=active\|pending` |
+| PeopleScreen — "Invite to workspace" button + email form | `POST /api/people/invite` |
+| PeopleScreen — "Resend" action (pending member) | `POST /api/people/invite` (re-send to same email) |
+| SettingsScreen — Profile (name, role) read | `GET /api/auth/me` |
+| SettingsScreen — Profile save | `PATCH /api/users/:id` |
+| SettingsScreen — Notification toggles save | `PATCH /api/preferences` |
+| Sidebar — user card (name, role, initials) | `GET /api/auth/me` |
 | Topbar — bell icon / notification dot | `GET /api/notifications` |
 | Topbar — avatar | `GET /api/auth/me` |
 
@@ -477,10 +585,12 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 
 | Frontend element | Endpoint |
 |---|---|
-| Task list | `GET /api/tasks` |
+| Task list (all teams — "My Tasks" view) | `GET /api/tasks` |
 | Stats row (Total / In Progress / In Review / Done) | `GET /api/tasks/stats` |
-| Filter tabs (All / In Progress / Review / To Do / Done) | `GET /api/tasks?status=...` |
-| "New Task" button | `POST /api/tasks` |
+| Status filter tabs (All / In Progress / Review / To Do / Done) | `GET /api/tasks?status=...` |
+| Team filter bar (All / Taskflow Core / Design System / API Gateway) | `GET /api/tasks?teamId=...` |
+| Team badge on each task row | populated from `task.team` in response |
+| "New Task" button | `POST /api/tasks` (must include `teamId`) |
 | Task row checkbox (mark done) | `PATCH /api/tasks/:id` `{ status: 'done' }` |
 | Sidebar — user card | `GET /api/auth/me` |
 | Topbar — notification bell | `GET /api/notifications` |
@@ -489,9 +599,10 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 
 | Frontend element | Endpoint |
 |---|---|
-| Kanban columns with tasks | `GET /api/board` |
+| Team selector dropdown in board header | `GET /api/teams` (populate list); selection sets `teamId` for board fetch |
+| Kanban columns with tasks (team-scoped) | `GET /api/board?teamId=team_1` |
 | Drag task to another column | `PATCH /api/board/move` |
-| "+ Add Task" button per column | `POST /api/tasks` |
-| "Filter" button (future) | `GET /api/board?sprintId=...` |
+| "+ Add Task" button per column | `POST /api/tasks` (must include `teamId` + `status`) |
+| "Filter" button (future) | `GET /api/board?teamId=...&sprintId=...` |
 | Sidebar — user card | `GET /api/auth/me` |
 | Topbar — notification bell | `GET /api/notifications` |
