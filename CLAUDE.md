@@ -54,7 +54,6 @@ A plain Angular 17 standalone app is correct. No `federation.config.js` needed.
 taskflow/
 ├── CLAUDE.md                  ← this file
 ├── package.json               ← root (concurrently scripts only — no workspaces)
-├── .env.example
 │
 ├── packages/
 │   └── ui/                    ← shared nav bar component (React)
@@ -330,17 +329,41 @@ export async function POST() {
 
 ---
 
-## .env.example
+## Environment variables
+
+There is no root `.env.example`. Each app owns its own env file.
+
+### `worker/.dev.vars` — Wrangler local dev only
 
 ```env
-# Shell
+SHELL_URL=http://localhost:3002
 TASK_MFE_URL=http://localhost:3003
 BOARD_MFE_URL=http://localhost:4200
-
-# Worker (production — fill after Vercel deploy)
-SHELL_URL=
-GATEWAY_URL=
+GATEWAY_URL=http://localhost:8080
 ```
+
+Wrangler reads `.dev.vars` automatically during `wrangler dev --local`.
+Production values live in `worker/wrangler.toml` under `[vars]`.
+Never commit `.dev.vars` — it is gitignored.
+
+### `shell/.env.local` — Next.js shell
+
+```env
+NEXT_PUBLIC_TASK_MFE_URL=http://localhost:3003
+NEXT_PUBLIC_BOARD_MFE_URL=http://localhost:4200
+```
+
+Must use `NEXT_PUBLIC_` prefix — these are inlined at build time for client components.
+
+### `mfe-task/.env.local` — Task MFE
+
+Empty for now. Add `NEXT_PUBLIC_` vars here if the Task MFE ever needs to reference
+another service directly.
+
+### `mfe-board/` — Angular
+
+No env file. Angular reads from `src/environments/` — add environment-specific values
+there when needed.
 
 ---
 
@@ -402,6 +425,44 @@ card background `#222227`, primary text `#F4F3F0`.
 - [ ] All three apps run independently on their own ports
 - [ ] No 404s, no broken asset paths, no CORS errors in the console
 - [ ] `basePath` and `assetPrefix` are correctly set — no `/_next` asset 404s
+
+---
+
+## APIRequirements — mandatory update rule
+
+The `APIRequirements/` folder is the single source of truth for the backend contract.
+**You must update it whenever any of the following happens in any app:**
+
+### Triggers — update the docs if you touch any of these
+
+| Change | Which file(s) to update |
+|---|---|
+| New page or screen added | `api-endpoints.md` — add endpoints + traceability row; `models.md` — add any new interfaces |
+| New component that displays data (list, card, stat) | `api-endpoints.md` — add/update the endpoint it will call |
+| New TypeScript interface or type for entity data | `models.md` — mirror the interface there |
+| New form that creates or mutates data | `api-endpoints.md` — add the POST/PATCH/DELETE endpoint |
+| Field added or removed from an existing interface | `models.md` + `database-schema.md` — update the model and the column |
+| New entity introduced (e.g. Sprint, Label, Comment) | All four files — model, schema, endpoints, auth if needed |
+| Pagination, filtering, or sorting added to a list | `api-endpoints.md` — document the new query params |
+
+### What to update in each file
+
+- **`models.md`** — keep every interface in sync with what the frontend TypeScript types actually are.  
+  Add a `> Source:` comment referencing the file the type came from.
+
+- **`database-schema.md`** — add the table or collection that backs the new model.  
+  For PostgreSQL: write the `CREATE TABLE` DDL. For MongoDB: write the collection spec + indexes.
+
+- **`api-endpoints.md`** — add the endpoint to the correct service section and add a row to the  
+  **Frontend → Endpoint traceability** table at the bottom, keyed to the specific UI element.
+
+- **`auth.md`** — only if the auth mechanism or cookie spec changes.
+
+### How to update — do it in the same task, not later
+
+Do not defer APIRequirements updates to a separate task.
+If you add a screen, update the docs before marking the work done.
+The rule: **frontend change and doc update ship together.**
 
 ---
 
