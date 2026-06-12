@@ -76,7 +76,7 @@ function MemberAvatar({ member, size = 'md' }: { member: Member; size?: 'sm' | '
   );
 }
 
-function InviteForm({ teamId, teamName, existingMemberEmails, onClose }: {
+function InviteForm({ teamName, existingMemberEmails, onClose }: {
   teamId: string; teamName: string; existingMemberEmails: string[]; onClose: () => void;
 }) {
   const [mode, setMode]             = useState<'workspace' | 'email'>('workspace');
