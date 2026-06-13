@@ -35,7 +35,7 @@ function InviteToWorkspaceForm({ onClose }: { onClose: () => void }) {
         <button onClick={onClose} className="text-text-300 hover:text-text-100 transition-colors"><X size={16} /></button>
       </div>
       <p className="text-xs text-text-300 mb-3 leading-relaxed">
-        They'll receive an email and will appear here as <span className="text-status-amber">Pending</span> until they accept.
+        They&apos;ll receive an email and will appear here as <span className="text-status-amber">Pending</span> until they accept.
       </p>
       <div className="flex gap-2">
         <div className="relative flex-1">
@@ -136,7 +136,7 @@ function MemberRow({ member, index }: { member: WorkspaceMember; index: number }
 }
 
 export default function PeopleScreen() {
-  const [members, setMembers] = useState(WORKSPACE_MEMBERS);
+  const [members] = useState(WORKSPACE_MEMBERS);
   const [showInvite, setShowInvite] = useState(false);
   const [search, setSearch]         = useState('');
   const [teamFilter, setTeamFilter] = useState('all');
