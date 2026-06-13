@@ -66,10 +66,13 @@ CREATE TABLE teams (
 CREATE TABLE team_members (
   team_id    UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
   user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  role       TEXT NOT NULL DEFAULT 'member',   -- 'admin' | 'member'
+  role       TEXT NOT NULL DEFAULT 'developer',
+                                               -- 'admin' | 'pm' | 'tl' | 'developer'
   joined_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (team_id, user_id)
+  PRIMARY KEY (team_id, user_id),
+  CHECK (role IN ('admin', 'pm', 'tl', 'developer'))
 );
+-- Application-level invariant: every team must have at least one row with role = 'admin'.
 ```
 
 ---
@@ -129,33 +132,64 @@ CREATE TABLE sprints (
 
 ---
 
+### `board_statuses`
+
+> Dynamic statuses per team. Each team owns its own ordered list of statuses.
+
+```sql
+CREATE TABLE board_statuses (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id     UUID        NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  name        TEXT        NOT NULL,
+  description TEXT,
+  position    INTEGER     NOT NULL DEFAULT 0,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (team_id, name)
+);
+
+CREATE INDEX board_statuses_team_id_idx ON board_statuses(team_id, position);
+```
+
+Application-level invariant: a team must always have at least one `board_statuses` row. Deleting the last status returns `422`. Deleting a non-last status soft-deletes its tasks (sets `tasks.deleted_at`).
+
+---
+
 ### `tasks`
 
 ```sql
 CREATE TABLE tasks (
-  id            UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
-  task_number   INTEGER NOT NULL,                  -- scoped to project; TF-001
-  project_id    UUID    REFERENCES projects(id) ON DELETE SET NULL,
-  sprint_id     UUID    REFERENCES sprints(id)  ON DELETE SET NULL,
-  assignee_id   UUID    REFERENCES users(id)    ON DELETE SET NULL,
-  title         TEXT        NOT NULL,
-  description   TEXT,
-  status        TEXT        NOT NULL DEFAULT 'todo',
-                                                   -- 'todo'|'in-progress'|'review'|'done'
-  priority      TEXT        NOT NULL DEFAULT 'medium',
-                                                   -- 'high'|'medium'|'low'
-  due_date      DATE,
-  created_by    UUID    NOT NULL REFERENCES users(id),
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (project_id, task_number)
+  id                   UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_number          INTEGER NOT NULL,                  -- scoped to project; TF-001
+  team_id              UUID    NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  status_id            UUID    NOT NULL REFERENCES board_statuses(id) ON DELETE RESTRICT,
+  project_id           UUID    REFERENCES projects(id) ON DELETE SET NULL,
+  sprint_id            UUID    REFERENCES sprints(id)  ON DELETE SET NULL,
+  assignee_id          UUID    REFERENCES users(id)    ON DELETE SET NULL,
+  title                TEXT        NOT NULL,
+  description          TEXT,                              -- rich-text (HTML/markdown)
+  priority             TEXT        NOT NULL DEFAULT 'medium',
+                                                          -- 'high'|'medium'|'low'
+  expected_completion  DATE,                              -- renamed from due_date
+  progress             SMALLINT    NOT NULL DEFAULT 0,    -- 0–100, manual
+  image_urls           TEXT[]      NOT NULL DEFAULT '{}', -- Cloudinary URLs
+  created_by           UUID    NOT NULL REFERENCES users(id),
+  deleted_at           TIMESTAMPTZ,                       -- soft-delete (set when parent status is deleted)
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (project_id, task_number),
+  CHECK (progress BETWEEN 0 AND 100)
 );
 
+CREATE INDEX tasks_team_id_idx      ON tasks(team_id);
+CREATE INDEX tasks_status_id_idx    ON tasks(status_id);
 CREATE INDEX tasks_project_id_idx   ON tasks(project_id);
 CREATE INDEX tasks_sprint_id_idx    ON tasks(sprint_id);
 CREATE INDEX tasks_assignee_id_idx  ON tasks(assignee_id);
-CREATE INDEX tasks_status_idx       ON tasks(status);
+CREATE INDEX tasks_deleted_at_idx   ON tasks(deleted_at);
 ```
+
+All read queries must filter `deleted_at IS NULL` unless explicitly recovering deleted tasks.
 
 ---
 
