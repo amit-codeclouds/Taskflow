@@ -3,17 +3,30 @@
 import { motion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Users, UserCircle2, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, UserCircle2, Settings, KanbanSquare } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
 import { WORKSPACE_TEAMS } from '@/lib/workspace';
 
-const NAV_ITEMS = [
+type NavItem = { label: string; href: string; icon: React.ReactNode; external?: boolean };
+
+const NAV_ITEMS: NavItem[] = [
   { label: 'Home',    href: '/',       icon: <LayoutDashboard size={16} strokeWidth={1.5} /> },
   { label: 'Teams',   href: '/teams',  icon: <Users           size={16} strokeWidth={1.5} /> },
   { label: 'People',  href: '/people', icon: <UserCircle2     size={16} strokeWidth={1.5} /> },
+  { label: 'Board',   href: '/board',  icon: <KanbanSquare    size={16} strokeWidth={1.5} />, external: true },
 ];
 
-function NavLink({ label, href, icon, isActive, index }: { label: string; href: string; icon: React.ReactNode; isActive: boolean; index: number }) {
+function NavLink({ label, href, icon, isActive, index, external }: NavItem & { isActive: boolean; index: number }) {
+  const inner = (
+    <span className={`relative flex items-center gap-3 h-11 px-4 rounded-lg text-sm transition-colors ${
+      isActive ? 'bg-accent-bg text-accent-hover font-medium' : 'text-text-200 hover:bg-bg-700 hover:text-text-100'
+    }`}>
+      {isActive && <motion.span layoutId="activeNav" className="absolute left-0 top-[14%] h-[72%] w-[3px] bg-accent rounded-r-full" />}
+      <span className="shrink-0 w-4 h-4">{icon}</span>
+      <span>{label}</span>
+    </span>
+  );
+
   return (
     <motion.div
       className="mx-2"
@@ -22,15 +35,11 @@ function NavLink({ label, href, icon, isActive, index }: { label: string; href: 
       transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0.05 + index * 0.04 }}
       whileHover={isActive ? undefined : { x: 4 }}
     >
-      <Link href={href} className="block">
-        <span className={`relative flex items-center gap-3 h-11 px-4 rounded-lg text-sm transition-colors ${
-          isActive ? 'bg-accent-bg text-accent-hover font-medium' : 'text-text-200 hover:bg-bg-700 hover:text-text-100'
-        }`}>
-          {isActive && <motion.span layoutId="activeNav" className="absolute left-0 top-[14%] h-[72%] w-[3px] bg-accent rounded-r-full" />}
-          <span className="shrink-0 w-4 h-4">{icon}</span>
-          <span>{label}</span>
-        </span>
-      </Link>
+      {external ? (
+        <a href={href} className="block">{inner}</a>
+      ) : (
+        <Link href={href} className="block">{inner}</Link>
+      )}
     </motion.div>
   );
 }

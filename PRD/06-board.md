@@ -2,18 +2,13 @@
 
 ## Overview
 
-The Board is a Kanban view scoped to **one team at a time**. Statuses on the board are **fully dynamic per team** — each team owns its own list of statuses (no global enum). Tasks belong to a team and to one of that team's statuses.
+The Board is a Kanban view scoped to **one team at a time**. Unlike the Tasks list (which aggregates across all projects), the Board shows a single team's work in column format so the team can see the current state of all their tasks at once.
 
 The Board is an Angular 17 standalone app, served separately at `/board` through the Cloudflare Worker.
 
-**Routes**
-- `/board` — team list (landing). One card per team the user belongs to, each with an "Open Kanban" button.
-- `/board/:teamId` — Kanban for the selected team.
-
-**Angular base href**: `/board/`
-**Components**:
-- `mfe-board/src/app/teams/teams-list.component.ts`
-- `mfe-board/src/app/board/board.component.ts`
+**Route**: `/board` (Board MFE, Angular)  
+**Angular base href**: `/board/`  
+**Component**: `mfe-board/src/app/board/board.component.ts`
 
 ---
 
@@ -21,161 +16,207 @@ The Board is an Angular 17 standalone app, served separately at `/board` through
 
 | # | Story |
 |---|---|
-| US-BOARD-1 | As a team member I can see a list of all teams I belong to at `/board` |
-| US-BOARD-2 | As a team member I can click "Open Kanban" on a team card to open `/board/:teamId` |
-| US-BOARD-3 | As a team member I can switch teams from a topbar dropdown inside the Kanban view |
-| US-BOARD-4 | As an authorised role I can add a new status to my team's board ("Add Status" modal) |
-| US-BOARD-5 | As an authorised role I can edit or delete an existing status |
-| US-BOARD-6 | As a team member I can move a task from one status column to another by drag-and-drop |
-| US-BOARD-7 | As a team member I can click "+ Add Task" on a column and be taken to `/tasks/new` pre-filled with that team and status |
-| US-BOARD-8 | As a team member I can click an icon on a card to open the task detail page at `/tasks/:id` |
-| US-BOARD-9 | As a team member I see only 5 tasks per status by default and can load more |
+| US-BOARD-1 | As a team member I can see all tasks for my team arranged in status columns |
+| US-BOARD-2 | As a team member I can switch which team's board I am viewing |
+| US-BOARD-3 | As a team member I can move a task from one column to another by dragging |
+| US-BOARD-4 | As a team member I can create a new task from any column |
+| US-BOARD-5 | As a team member I can see each task's priority, label, due date, and assignee at a glance |
+| US-BOARD-6 | As a team member I can click a task card to see its full details |
 
 ---
 
-## /board — Team List (landing)
+## Layout
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  Boards                                                 │
-│  ─────────────────────────────────────────────────────  │
-│  ┌──────────────────┐  ┌──────────────────┐             │
-│  │ ● Taskflow Core  │  │ ● Design System  │             │
-│  │ 4 members        │  │ 2 members        │             │
-│  │ [Open Kanban →]  │  │ [Open Kanban →]  │             │
-│  └──────────────────┘  └──────────────────┘             │
+│  Sidebar  │  Kanban Board          Team: [Taskflow ▾]   │
+│           │  Phase 0 · Multi-Zones Foundation           │
+│           │  ─────────────────────────────────────────  │
+│           │  ┌──────────┐ ┌──────────┐ ┌──────┐ ┌────┐ │
+│           │  │ To Do (2)│ │In Prog(2)│ │Rev(1)│ │Done│ │
+│           │  │   [+]    │ │   [+]    │ │  [+] │ │[+] │ │
+│           │  │ ┌──────┐ │ │ ┌──────┐ │ │      │ │    │ │
+│           │  │ │TF-003│ │ │ │TF-001│ │ │      │ │    │ │
+│           │  │ │Auth  │ │ │ │NavBug│ │ │      │ │    │ │
+│           │  │ │Feat ●│ │ │ │Bug  ●│ │ │      │ │    │ │
+│           │  │ │Jun20 │ │ │ │Jun15 │ │ │      │ │    │ │
+│           │  │ │ [AC] │ │ │ │ [AC] │ │ │      │ │    │ │
+│           │  │ └──────┘ │ │ └──────┘ │ │      │ │    │ │
+│           │  │ ┌──────┐ │ │ ┌──────┐ │ │      │ │    │ │
+│           │  │ │TF-005│ │ │ │TF-002│ │ │      │ │    │ │
+│           │  │ └──────┘ │ │ └──────┘ │ │      │ │    │ │
+│           │  └──────────┘ └──────────┘ └──────┘ └────┘ │
 └─────────────────────────────────────────────────────────┘
 ```
-
-Each team card shows: colour dot, name, description, member count, **Open Kanban** button → navigates to `/board/:teamId`.
-
-Data source: `GET /api/teams` (teams the user belongs to).
 
 ---
 
-## /board/:teamId — Kanban View
+## Columns
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  Kanban Board                Team: [Taskflow Core ▾]    │
-│                              [+ Add Status]             │
-│  ─────────────────────────────────────────────────────  │
-│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐    │
-│  │ Backlog  (8) │ │ In Prog. (3) │ │ Done    (12) │    │
-│  │ ✎  🗑         │ │ ✎  🗑         │ │ ✎  🗑         │    │
-│  │ [+ Add Task] │ │ [+ Add Task] │ │ [+ Add Task] │    │
-│  │ ┌──────────┐ │ │ ┌──────────┐ │ │ ┌──────────┐ │    │
-│  │ │TF-003 ↗  │ │ │ │TF-001 ↗  │ │ │ │TF-007 ↗  │ │    │
-│  │ │Auth feat │ │ │ │Nav bug   │ │ │ │Migrate   │ │    │
-│  │ └──────────┘ │ │ └──────────┘ │ │ └──────────┘ │    │
-│  │ … 5 shown    │ │              │ │              │    │
-│  │ [Load more]  │ │              │ │              │    │
-│  └──────────────┘ └──────────────┘ └──────────────┘    │
-└─────────────────────────────────────────────────────────┘
-```
+The board has exactly four columns, fixed in this order:
 
-### Topbar — team switcher
+| Column ID | Display name | Colour |
+|---|---|---|
+| `todo` | To Do | Neutral / grey |
+| `in-progress` | In Progress | Blue |
+| `review` | Review | Purple |
+| `done` | Done | Green |
 
-A dropdown in the **Board MFE topbar** lists every team the user belongs to. Selecting a team navigates to `/board/:newTeamId`. This dropdown only appears inside the Board MFE; Shell pages do not show it.
+Each column header shows:
+- Column name
+- Task count in parentheses
+- `[+]` add button (creates a task pre-set to that status)
 
-### Column header
+---
 
-| Element | Description |
-|---|---|
-| Status name | e.g. "Backlog", "In Progress" |
-| Task count | Total tasks in this status |
-| Edit (✎) | Open edit modal — same fields as Add Status |
-| Delete (🗑) | Confirm dialog → `DELETE /api/board/:teamId/status/:statusId`. Tasks in this status are **soft-deleted** (see Status Deletion below). |
-| + Add Task | Navigates to `/tasks/new?teamId=<id>&statusId=<id>` |
+## Team Selector
 
-### Task card
+A dropdown in the Topbar lets the user switch which team's board they are viewing.
+
+- Populated from `GET /api/teams` (user's teams only).
+- Selecting a team re-fetches `GET /api/board?teamId=<id>`.
+- Default: first team the user belongs to (or the last selected, persisted in `user_preferences`).
+- If user belongs to only one team, the selector is shown but disabled.
+
+---
+
+## Task Card
+
+Each card on the board shows:
 
 | Field | Description |
 |---|---|
-| Task ID | e.g. `TF-003` (top-left muted) |
-| Open icon (↗) | Top-right; navigates to `/tasks/:id` |
+| Task ID | e.g. `TF-003` (top-left, muted text) |
 | Title | Short task title |
-| Label badge | feature / bug / design / docs / infra / refactor |
-| Priority dot | red (high) / amber (medium) / green (low) |
-| Expected completion | Date string. Red if overdue. |
-| Assignee avatar | Initials circle |
-| Progress % | Small inline progress bar (0–100) |
+| Label badge | Coloured pill: `feature` / `bug` / `design` / `docs` / `infra` / `refactor` |
+| Priority dot | Red (high) · Amber (medium) · Green (low) |
+| Due date | Short date string. Red if overdue. |
+| Assignee avatar | Initials circle (bottom-right) |
 
-Drag-and-drop moves a card to another status column.
-
----
-
-## Add / Edit Status
-
-Clicking **+ Add Status** (or the ✎ icon on a column) opens a modal:
-
-| Field | Type | Required |
-|---|---|---|
-| Status name | text (max 40) | yes |
-| Description | text (max 200) | no |
-
-Submit:
-- Add → `POST /api/board/:teamId/statuses`
-- Edit → `PATCH /api/board/:teamId/statuses/:statusId`
-
-Status order is preserved by `position` (integer); new statuses append to the end.
-
-### Status Deletion
-
-`DELETE /api/board/:teamId/statuses/:statusId`
-
-- Tasks belonging to the deleted status are **soft-deleted** (`tasks.deleted_at` set; they disappear from all lists but remain in the database).
-- Column is removed from the board immediately.
-- The last remaining status of a team cannot be deleted (returns `422`).
+Clicking a card opens the Task Detail drawer (same as in My Tasks).
 
 ---
 
-## Drag-and-Drop
+## Drag-and-Drop (Move Task)
 
-1. User drags a card from its current column to another.
-2. Card previews in target column while dragging.
-3. On drop → `PATCH /api/tasks/:id/status` with `{ statusId }`.
-4. Card stays in the new column; column counts update.
-5. On API error → snap back, toast.
+1. User drags a card from its current column to another column.
+2. Card previews in the new column while dragging.
+3. On drop → `PATCH /api/board/move` with `{ taskId, newStatus }`.
+4. Card stays in the new column. The task's `status` is updated.
+5. Column counts update immediately.
 
----
-
-## Pagination per column
-
-Each status returns the first **5 tasks** in `GET /api/board/:teamId`. Each column has a **Load more** button that calls `GET /api/board/:teamId/status/:statusId/tasks?page=2&limit=10`. The "page" continues incrementing as the user clicks Load more.
-
----
-
-## Permissions on the Board
-
-See `PRD/04-teams.md` for the full role definitions. Summary:
-
-| Action | Admin | PM | TL | Developer |
-|---|---|---|---|---|
-| Add status | ✅ | ✅ | ❌ | ❌ |
-| Edit / delete status | ✅ | ✅ | ✅ | ❌ |
-| Create task | ✅ | ✅ | ✅ | ✅ (own only) |
-| Edit task (any) | ✅ | ✅ | ✅ | ❌ |
-| Edit task (own) | ✅ | ✅ | ✅ | ✅ |
-| Move task (drag) | ✅ | ✅ | ✅ | ✅ (own only) |
-| Invite members / assign roles | ✅ | ❌ | ❌ | ❌ |
-
-`403` is returned if the role lacks permission.
+**Rules**:
+- Any direction is valid (e.g. Done → To Do is allowed).
+- Only one card can be dragged at a time.
+- If the API call fails, the card snaps back to its original column and a toast error is shown.
 
 ---
 
-## API Endpoints (overview)
+## Create Task from Column
 
-| Method | Path | Purpose |
-|---|---|---|
-| GET | `/api/board/:teamId` | Listing: team → statuses → first 5 tasks each |
-| GET | `/api/board/:teamId/status/:statusId/tasks?page&limit` | Load more tasks for one status |
-| POST | `/api/board/:teamId/statuses` | Add status |
-| PATCH | `/api/board/:teamId/statuses/:statusId` | Edit status |
-| DELETE | `/api/board/:teamId/statuses/:statusId` | Delete status (soft-deletes its tasks) |
-| PATCH | `/api/tasks/:id/status` | Drag-drop move |
+1. User clicks `[+]` in a column header.
+2. A task creation drawer opens, with the **Status pre-set** to that column's status.
+3. User fills in: Title (required), Team (pre-set to the current team), Assignee, Priority, Label, Due Date.
+4. Submit → `POST /api/tasks`.
+5. New card appears at the bottom of the column immediately.
 
-Full request/response shapes live in `APIRequirements/api-endpoints.md`.
+---
+
+## Sprint Filter (Phase 2)
+
+A secondary dropdown in the Topbar will allow filtering the board by sprint. Initially this shows "All Sprints". When a sprint is selected, only tasks in that sprint appear.
+
+**Query param**: `sprintId=<id>` added to `GET /api/board`.
+
+---
+
+## API Endpoints
+
+### `GET /api/board`
+
+Returns tasks grouped into columns for a given team.
+
+**Auth**: Required
+
+**Query params**:
+- `teamId=<id>` (required)
+- `sprintId=<id>` (optional)
+
+**Response (200)**
+```json
+{
+  "columns": [
+    {
+      "id": "todo",
+      "title": "To Do",
+      "color": "#ABAAA5",
+      "tasks": [
+        {
+          "id": "TF-003",
+          "title": "Implement API auth",
+          "priority": "high",
+          "status": "todo",
+          "label": "feature",
+          "assigneeId": "u1",
+          "assignee": { "id": "u1", "name": "Arkabrata C.", "avatarInitials": "AC" },
+          "teamId": "team_1",
+          "dueDate": "2026-06-20"
+        }
+      ]
+    },
+    {
+      "id": "in-progress",
+      "title": "In Progress",
+      "color": "#5B9CF6",
+      "tasks": [ ... ]
+    },
+    {
+      "id": "review",
+      "title": "Review",
+      "color": "#A78BFA",
+      "tasks": []
+    },
+    {
+      "id": "done",
+      "title": "Done",
+      "color": "#32B173",
+      "tasks": []
+    }
+  ]
+}
+```
+
+---
+
+### `PATCH /api/board/move`
+
+Move a task to a different column (status change).
+
+**Auth**: Required
+
+**Request**
+```json
+{
+  "taskId": "TF-001",
+  "newStatus": "review"
+}
+```
+
+**Success (200)**
+```json
+{
+  "task": {
+    "id": "TF-001",
+    "status": "review",
+    "updatedAt": "2026-06-12T14:00:00Z"
+  }
+}
+```
+
+**Error (404)**
+```json
+{ "message": "Task not found" }
+```
 
 ---
 
@@ -183,9 +224,9 @@ Full request/response shapes live in `APIRequirements/api-endpoints.md`.
 
 | Scenario | Message |
 |---|---|
+| Column has no tasks | Dashed card outline with `+` icon and "Add task" text |
+| Team has no tasks at all | "This team has no tasks yet. Add your first task." |
 | User has no teams | "You're not a member of any team. Ask an admin to add you." |
-| Team has no statuses yet | "No statuses yet. Click + Add Status to create your first column." |
-| Column has no tasks | Dashed outline with "Add task" link |
 
 ---
 
@@ -193,32 +234,42 @@ Full request/response shapes live in `APIRequirements/api-endpoints.md`.
 
 ```
 mfe-board/src/app/
-├── app.routes.ts                 — '' → TeamsListComponent, ':teamId' → BoardComponent
-├── app.component.ts
-├── app.config.ts
-├── teams/
-│   └── teams-list.component.ts   — landing /board
+├── app.routes.ts         — defines route '' → BoardComponent
+├── app.component.ts      — root component, mounts BoardComponent
+├── app.config.ts         — standalone bootstrap
 ├── board/
-│   ├── board.component.ts        — Kanban container, team switcher, statuses
-│   ├── column.component.ts       — single status column with cards + load-more
-│   ├── task-card.component.ts
-│   └── status-modal.component.ts — Add / Edit status modal
-└── layout/
-    └── topbar.component.ts       — team switcher dropdown (Board MFE only)
+│   └── board.component.ts — main Kanban view with columns + cards
+├── layout/
+│   ├── sidebar.component.ts — left nav
+│   └── topbar.component.ts  — top bar with team selector
+└── styles.scss           — global dark theme styles
 ```
 
-All components are Angular 17 standalone (no NgModules).
+All Angular components are standalone (no NgModules).
 
 ---
 
 ## Cross-Zone Navigation
 
-The Board MFE may navigate to `/tasks/new` and `/tasks/:id` (Task MFE) — these are **cross-zone**. Use plain `<a href="...">`, not `[routerLink]`.
+All Sidebar links from the Board MFE that point outside `/board` must use plain HTML `<a>` tags:
 
 ```html
-<!-- correct: cross-zone -->
-<a [href]="'/tasks/' + task.id">Open</a>
+<!-- Correct -->
+<a href="/tasks">My Tasks</a>
+<a href="/">Home</a>
 
-<!-- correct: same-zone (board internal) -->
-<a [routerLink]="['/board', otherTeamId]">Switch team</a>
+<!-- Wrong -->
+<a [routerLink]="['/tasks']">My Tasks</a>
 ```
+
+Internal board routes (if any are added) can use Angular Router `[routerLink]`.
+
+---
+
+## Design Notes
+
+- Columns have a fixed width, horizontally scrollable if the viewport is narrow.
+- Cards use a drag handle or are fully draggable.
+- Card placeholder appears in the target column while dragging.
+- The team selector dropdown matches the shell sidebar's visual style.
+- Angular component inline styles use the same `#121215` / `#222227` / `#6155DD` palette.

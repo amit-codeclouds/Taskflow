@@ -38,7 +38,6 @@ A plain Angular 17 standalone app is correct. No `federation.config.js` needed.
 
 ---
 
-
 ## Exact versions
 
 | App | Framework | Version |
