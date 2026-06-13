@@ -145,15 +145,14 @@ Sets `Set-Cookie: taskflow_session=<signed>; Path=/; HttpOnly; SameSite=Lax`
 ### `GET /api/tasks`
 **Query params**
 ```
-statusId=stat_1                       (optional — only meaningful with teamId)
+status=todo|in-progress|review|done   (optional)
 priority=high|medium|low              (optional)
-teamId=team_1|team_2|...              (optional — omit for "My Tasks" view across teams)
+teamId=team_1|team_2|...              (optional — omit to get all teams, "My Tasks" view)
 assigneeId=uuid                       (optional)
 projectId=uuid                        (optional)
 sprintId=uuid                         (optional)
 page=1&limit=20
 ```
-Soft-deleted tasks (`deleted_at IS NOT NULL`) are excluded.
 **Response `200`**
 ```json
 {
@@ -162,14 +161,11 @@ Soft-deleted tasks (`deleted_at IS NOT NULL`) are excluded.
       "id": "TF-001",
       "title": "Implement authentication flow",
       "priority": "high",
-      "statusId": "stat_2",
+      "status": "in-progress",
       "label": "feature",
       "assignee": { "id": "uuid", "name": "Alice Chen", "avatarInitials": "AC" },
       "team": { "id": "team_1", "name": "Taskflow Core", "color": "#6155DD" },
-      "status": { "id": "stat_2", "name": "In Progress" },
-      "expectedCompletion": "2026-06-12",
-      "progress": 35,
-      "imageUrls": [],
+      "dueDate": "2026-06-12",
       "createdAt": "2026-06-01T00:00:00Z",
       "updatedAt": "2026-06-10T00:00:00Z"
     }
@@ -198,21 +194,18 @@ Soft-deleted tasks (`deleted_at IS NOT NULL`) are excluded.
 ```json
 {
   "title": "string",
-  "description": "<p>rich-text body</p>",
   "priority": "high",
-  "statusId": "stat_1",
+  "status": "todo",
   "label": "feature",
   "assigneeId": "uuid",
   "teamId": "team_1",
-  "expectedCompletion": "2026-06-20",
-  "progress": 0,
-  "imageUrls": ["https://res.cloudinary.com/..."],
+  "dueDate": "2026-06-20",
+  "description": "optional",
   "projectId": "uuid (optional)",
   "sprintId": "uuid (optional)"
 }
 ```
-**Response `201`** — full Task object.
-> Image upload itself happens directly client → Cloudinary (signed upload). The returned secure URLs are then passed in `imageUrls`.
+**Response `201`** — full Task object
 
 ### `PATCH /api/tasks/:id`
 **Request** — any subset of Task fields
@@ -225,92 +218,55 @@ Soft-deleted tasks (`deleted_at IS NOT NULL`) are excluded.
 
 ## Board Service  `/api/board`
 
-> Drives the **Board MFE** (`mfe-board`). Statuses are dynamic per team — each team owns a `board_statuses` list. Tasks reference a status by id.
+> Drives the **Board MFE** (`mfe-board`) — Kanban columns.
+> The board is a view over tasks; no separate board rows are persisted.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/api/board/:teamId` | Auth | Team's statuses + first 5 tasks per status |
-| GET | `/api/board/:teamId/status/:statusId/tasks` | Auth | Load more tasks for one status (pagination) |
-| POST | `/api/board/:teamId/statuses` | Auth | Create a status (admin / pm only) |
-| PATCH | `/api/board/:teamId/statuses/:statusId` | Auth | Edit a status (admin / pm / tl) |
-| DELETE | `/api/board/:teamId/statuses/:statusId` | Auth | Delete a status; soft-deletes its tasks (admin / pm / tl) |
-| PATCH | `/api/tasks/:id/status` | Auth | Drag-drop: change a task's status |
+| GET | `/api/board` | Auth | Tasks grouped by status (Kanban columns) |
+| PATCH | `/api/board/move` | Auth | Move a task to a different column (status change) |
 
-### `GET /api/board/:teamId`
-Returns the team's statuses, each with its first 5 tasks.
-
+### `GET /api/board`
+**Query params**
+```
+teamId=team_1     (required — board is always scoped to a team; see BoardComponent team selector)
+sprintId=uuid     (optional — filters to a specific sprint; omit for current active sprint)
+projectId=uuid    (optional)
+```
 **Response `200`**
 ```json
 {
-  "statuses": [
+  "columns": [
     {
-      "id": "stat_1",
-      "name": "Backlog",
-      "description": "Not yet started",
-      "position": 0,
-      "totalTasks": 8,
-      "tasks": [ /* up to 5 Task objects */ ]
+      "id": "todo",
+      "title": "To Do",
+      "tasks": [ /* Task objects */ ]
     },
     {
-      "id": "stat_2",
-      "name": "In Progress",
-      "description": null,
-      "position": 1,
-      "totalTasks": 3,
-      "tasks": [ /* up to 5 Task objects */ ]
+      "id": "in-progress",
+      "title": "In Progress",
+      "tasks": [ /* Task objects */ ]
+    },
+    {
+      "id": "review",
+      "title": "Review",
+      "tasks": []
+    },
+    {
+      "id": "done",
+      "title": "Done",
+      "tasks": []
     }
   ]
 }
 ```
 
-### `GET /api/board/:teamId/status/:statusId/tasks`
-Paginated tasks for one status, used by the column's "Load more" button.
-
-**Query params**
-```
-page=2&limit=10
-```
-**Response `200`**
-```json
-{
-  "data": [ /* Task objects */ ],
-  "count": 10,
-  "total": 8,
-  "page": 2,
-  "limit": 10,
-  "totalPages": 1
-}
-```
-
-### `POST /api/board/:teamId/statuses`
+### `PATCH /api/board/move`
 **Request**
 ```json
-{ "name": "Code Review", "description": "Awaiting PR approval" }
+{ "taskId": "TF-001", "toStatus": "done" }
 ```
-**Response `201`** — new BoardStatus object. Appended to the end (`position = max + 1`).
-`403` if caller is not `admin` or `pm` on this team.
-
-### `PATCH /api/board/:teamId/statuses/:statusId`
-**Request** — any subset of `{ name, description, position }`.
-**Response `200`** — updated BoardStatus object.
-`403` if caller is `developer`.
-
-### `DELETE /api/board/:teamId/statuses/:statusId`
-Deletes the status; all tasks belonging to it are **soft-deleted** (`tasks.deleted_at = now()`).
-Returns `422` if this is the last remaining status of the team.
-**Response `200`**
-```json
-{ "ok": true, "softDeletedTaskCount": 8 }
-```
-
-### `PATCH /api/tasks/:id/status`
-Drag-drop move. Replaces the old `PATCH /api/board/move`.
-**Request**
-```json
-{ "statusId": "stat_2" }
-```
-**Response `200`** — updated Task object.
-`403` if a `developer` attempts to move a task they are not the assignee of.
+**Response `200`** — updated Task object
 
 ---
 
@@ -643,15 +599,10 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 
 | Frontend element | Endpoint |
 |---|---|
-| Teams list landing at `/board` | `GET /api/teams` |
-| Topbar team-switcher dropdown (Board MFE only) | `GET /api/teams` |
-| Kanban columns + first 5 tasks each | `GET /api/board/:teamId` |
-| Column "Load more" tasks | `GET /api/board/:teamId/status/:statusId/tasks?page&limit` |
-| "+ Add Status" modal submit | `POST /api/board/:teamId/statuses` |
-| Edit status (✎) modal submit | `PATCH /api/board/:teamId/statuses/:statusId` |
-| Delete status (🗑) | `DELETE /api/board/:teamId/statuses/:statusId` |
-| Drag task to another column | `PATCH /api/tasks/:id/status` |
-| "+ Add Task" button per column | navigates to `/tasks/new?teamId=&statusId=` → `POST /api/tasks` |
-| Task card "↗" open icon | navigates to `/tasks/:id` |
+| Team selector dropdown in board header | `GET /api/teams` (populate list); selection sets `teamId` for board fetch |
+| Kanban columns with tasks (team-scoped) | `GET /api/board?teamId=team_1` |
+| Drag task to another column | `PATCH /api/board/move` |
+| "+ Add Task" button per column | `POST /api/tasks` (must include `teamId` + `status`) |
+| "Filter" button (future) | `GET /api/board?teamId=...&sprintId=...` |
 | Sidebar — user card | `GET /api/auth/me` |
 | Topbar — notification bell | `GET /api/notifications` |

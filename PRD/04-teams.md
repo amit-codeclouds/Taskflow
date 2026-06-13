@@ -275,37 +275,15 @@ Change role.
 
 ---
 
-## Roles (per team)
+## Permissions
 
-Each `team_member` row carries a **role**. Roles are scoped to one team — a user may be `Admin` on team A and `Developer` on team B.
-
-| Role | Description |
+| Action | Who |
 |---|---|
-| `admin` | Granted automatically to the team creator. Full control: create/edit/delete the team, invite & remove members, assign any role, full board permissions (status + task), drag any task. |
-| `pm` | Project Manager. Full board operations on this team's Kanban: create/edit/delete statuses, create/edit/delete tasks, drag any task. **Cannot** manage team membership or assign roles. |
-| `tl` | Team Lead. Same as PM **except** cannot create statuses (can edit/delete existing statuses). Can drag any task. Cannot manage team membership. |
-| `developer` | Can create tasks; can edit and drag **only their own** tasks (tasks where they are the assignee). No status management. No member management. |
-
-### Permission matrix
-
-| Action | admin | pm | tl | developer |
-|---|---|---|---|---|
-| Edit team meta (name/desc/colour) | ✅ | ❌ | ❌ | ❌ |
-| Delete team | ✅ (creator only) | ❌ | ❌ | ❌ |
-| Invite members / assign roles / change roles / remove members | ✅ | ❌ | ❌ | ❌ |
-| Add board status | ✅ | ✅ | ❌ | ❌ |
-| Edit / delete board status | ✅ | ✅ | ✅ | ❌ |
-| Create task | ✅ | ✅ | ✅ | ✅ |
-| Edit any task | ✅ | ✅ | ✅ | ❌ |
-| Edit own task (assignee == self) | ✅ | ✅ | ✅ | ✅ |
-| Drag (move status of) any task | ✅ | ✅ | ✅ | ❌ |
-| Drag own task | ✅ | ✅ | ✅ | ✅ |
-| View team / view board | ✅ | ✅ | ✅ | ✅ |
-
-`403` is returned when the role lacks permission. A team must always have **at least one `admin`** — the last admin cannot be demoted or removed.
-
-### Assigning roles
-
-- The creator of a team is automatically `admin`.
-- Admins invite members via email or pick from the workspace. New members default to `developer`.
-- Admin can change any member's role at any time via `PATCH /api/teams/:id/members/:userId` with `{ "role": "admin" | "pm" | "tl" | "developer" }`.
+| View teams list | Any workspace member |
+| Create team | Any workspace member |
+| Edit team (name/desc/colour) | Team Admin or Workspace Admin |
+| Delete team | Team Owner (creator) or Workspace Admin |
+| Add member from workspace | Team Admin |
+| Invite by email | Team Admin |
+| Remove member | Team Admin |
+| Change member role | Team Admin |

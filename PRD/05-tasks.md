@@ -4,18 +4,9 @@
 
 The Tasks screen is a personal task inbox. It shows every task assigned to the logged-in user, aggregated across **all projects and all teams** they belong to. This is NOT a single project view — it is a cross-project list so a user can see everything they need to work on in one place.
 
-**Routes**
-- `/tasks` — list view
-- `/tasks/new` — create task form (also reached from Board column "+ Add Task" with `?teamId=&statusId=` prefill)
-- `/tasks/:id` — task detail page (also reached from Board task card "↗" icon)
-
-**Base path**: `/tasks` (basePath + assetPrefix)
-**Components**:
-- `mfe-task/src/components/tasks/TaskListScreen.tsx`
-- `mfe-task/src/components/tasks/TaskFormScreen.tsx` (used by `/tasks/new` and edit)
-- `mfe-task/src/components/tasks/TaskDetailScreen.tsx`
-
-> **Note on `expectedCompletion`**: throughout this document and the API the date a task is expected to be completed is the field **`expectedCompletion`**. This replaces the older `expectedCompletion` name — same field, renamed.
+**Route**: `/tasks` (Task MFE, Next.js)  
+**Base path**: `/tasks` (basePath + assetPrefix)  
+**Component**: `mfe-task/src/components/tasks/TaskListScreen.tsx`
 
 ---
 
@@ -116,17 +107,18 @@ Clicking a row opens the Task Detail drawer.
 
 ---
 
-## Task Detail Page (`/tasks/:id`)
+## Task Detail Drawer (Phase 1)
 
-Navigated to from the Board card "↗" icon or by clicking a row in the list. A full-page detail view (not a drawer). Shows and allows editing of:
+Slides in from the right when a row is clicked. Shows:
 
-- Title
-- Description (rich-text editor)
-- Status (team-scoped dropdown — see `/tasks/new`)
-- Priority / Label / Team / Assignee
-- Expected completion (date)
-- Progress % (0–100)
-- Images (Cloudinary URLs; add or remove)
+- Full title (editable)
+- Description (markdown, editable)
+- Status selector (dropdown)
+- Priority selector
+- Label selector
+- Assignee picker (shows workspace members)
+- Team picker
+- Due date picker
 - Comments section
 - Activity / history timeline
 
@@ -134,26 +126,19 @@ All changes auto-save via `PATCH /api/tasks/:id`.
 
 ---
 
-## Create Task Flow (`/tasks/new`)
+## Create Task Flow
 
-Clicking **"New Task"** (or "+ Add Task" on a Board column) navigates to `/tasks/new`. When the source is a Board column, the URL carries `?teamId=<id>&statusId=<id>` so those fields are pre-filled and locked.
-
-The form fields (existing fields are kept; new fields added per the latest requirements):
-
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| Title | text | yes | max 200 chars |
-| Description | rich-text editor | no | stored as HTML/markdown |
-| Team | dropdown of user's teams | yes | pre-filled from query string if present |
-| Status | dropdown of the selected team's statuses | yes | pre-filled from query string if present; dynamic per team — fetched from `GET /api/board/:teamId/statuses` |
-| Assignee | user picker (team members) | no | defaults to current user |
-| Priority | high / medium / low | no | defaults to `medium` |
-| Label | feature / bug / design / docs / infra / refactor | no | |
-| Expected completion | date picker | no | renamed from "Due Date" |
-| Progress % | integer 0–100 | no | manual entry; defaults to 0; not auto-computed |
-| Images | multi-image upload to **Cloudinary** | no | accepts multiple files; backend returns Cloudinary URLs which are stored on the task as `imageUrls: string[]` |
-
-Submit → `POST /api/tasks`. On success the user is redirected to `/tasks/:id` (or back to the previous board if `?returnTo=board` is present).
+1. Click **"New Task"** button.
+2. A drawer/modal opens with:
+   - Title (required)
+   - Description (optional)
+   - Team (required — dropdown of user's teams)
+   - Assignee (optional — defaults to current user)
+   - Priority (defaults to `medium`)
+   - Label (optional)
+   - Due Date (optional)
+3. Submit → `POST /api/tasks`.
+4. New task appears at the top of the list.
 
 ---
 
@@ -192,11 +177,9 @@ Future: user-sortable columns (click column header to sort).
 
 **Query params**:
 - `assigneeId=me` — always present (returns only current user's tasks)
-- `statusId=<id>` — filter by a team-specific status (only meaningful in combination with `teamId`)
+- `status=todo|in-progress|review|done` — from filter tab
 - `teamId=<id>` — from team dropdown
 - `page=1&limit=20`
-
-> **Note**: with dynamic per-team statuses there is no global status enum any more. The Tasks list status tabs ("To Do / In Progress / Review / Done") apply only when a single team is selected and are populated from that team's statuses. When "All Teams" is selected, status tabs are hidden.
 
 **Response (200)**
 ```json
@@ -210,7 +193,7 @@ Future: user-sortable columns (click column header to sort).
       "label": "bug",
       "assigneeId": "u1",
       "teamId": "team_1",
-      "expectedCompletion": "2026-06-15",
+      "dueDate": "2026-06-15",
       "createdAt": "2026-06-03T00:00:00Z",
       "updatedAt": "2026-06-10T00:00:00Z"
     }
@@ -246,15 +229,12 @@ Future: user-sortable columns (click column header to sort).
 ```json
 {
   "title": "New task",
-  "description": "<p>rich text body</p>",
   "priority": "medium",
-  "statusId": "stat_42",
+  "status": "todo",
   "label": "feature",
   "teamId": "team_1",
   "assigneeId": "u1",
-  "expectedCompletion": "2026-06-30",
-  "progress": 0,
-  "imageUrls": ["https://res.cloudinary.com/..."]
+  "dueDate": "2026-06-30"
 }
 ```
 
