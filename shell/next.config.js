@@ -1,21 +1,32 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   async rewrites() {
-    const isDev = process.env.NODE_ENV === 'development';
-    const taskMfeUrl = isDev ? 'http://localhost:3003' : process.env.TASK_MFE_URL;
-    const boardMfeUrl = isDev ? 'http://localhost:4200' : process.env.BOARD_MFE_URL;
-
-    if (!isDev) {
-      if (!taskMfeUrl) throw new Error('NEXT_PUBLIC_TASK_MFE_URL env var is required in production');
-      if (!boardMfeUrl) throw new Error('NEXT_PUBLIC_BOARD_MFE_URL env var is required in production');
+    if (process.env.NODE_ENV === 'development') {
+      return [
+        { source: '/tasks',        destination: 'http://localhost:3003/tasks'        },
+        { source: '/tasks/:path*', destination: 'http://localhost:3003/tasks/:path*' },
+        { source: '/board',        destination: 'http://localhost:4200/board'        },
+        { source: '/board/:path*', destination: 'http://localhost:4200/board/:path*' },
+      ];
     }
 
-    return [
-      { source: '/tasks', destination: `${taskMfeUrl}/tasks` },
-      { source: '/tasks/:path*', destination: `${taskMfeUrl}/tasks/:path*` },
-      { source: '/board', destination: `${boardMfeUrl}/board` },
-      { source: '/board/:path*', destination: `${boardMfeUrl}/board/:path*` },
-    ];
+    const rewrites = [];
+    const taskUrl  = process.env.TASK_MFE_URL;
+    const boardUrl = process.env.BOARD_MFE_URL;
+
+    if (taskUrl) {
+      rewrites.push(
+        { source: '/tasks',        destination: `${taskUrl}/tasks`        },
+        { source: '/tasks/:path*', destination: `${taskUrl}/tasks/:path*` },
+      );
+    }
+    if (boardUrl) {
+      rewrites.push(
+        { source: '/board',        destination: `${boardUrl}/board`        },
+        { source: '/board/:path*', destination: `${boardUrl}/board/:path*` },
+      );
+    }
+    return rewrites;
   },
 };
 
