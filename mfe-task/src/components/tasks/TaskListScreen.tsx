@@ -1,55 +1,49 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import Badge from '@/components/ui/Badge';
+import {
+  TASKS, TEAMS, LABEL_STYLES, PRIORITY_COLORS,
+  type Task,
+} from '@/lib/taskData';
 
-type Priority = 'high' | 'medium' | 'low';
-type Status   = 'in-progress' | 'review' | 'todo' | 'done';
+type FilterKey = 'all' | 'in-progress' | 'review' | 'todo' | 'done';
 
-interface Team { id: string; name: string; color: string; }
-interface Task {
-  id: string; title: string; priority: Priority; status: Status;
-  assignee: string; due: string; label: string; team: Team;
-}
-
-const TEAMS: Team[] = [
-  { id: 'team_1', name: 'Taskflow Core',  color: '#6155DD' },
-  { id: 'team_2', name: 'Design System',  color: '#32B173' },
-  { id: 'team_3', name: 'API Gateway',    color: '#E09D34' },
-];
-
-const TASKS: Task[] = [
-  { id: 'TF-001', title: 'Implement authentication flow',   priority: 'high',   status: 'in-progress', assignee: 'AC', due: 'Jun 12', label: 'feature',  team: TEAMS[0] },
-  { id: 'TF-002', title: 'Design onboarding screens',       priority: 'medium', status: 'review',      assignee: 'AC', due: 'Jun 14', label: 'design',   team: TEAMS[0] },
-  { id: 'TF-003', title: 'Fix navigation bug on mobile',    priority: 'high',   status: 'in-progress', assignee: 'AC', due: 'Jun 11', label: 'bug',      team: TEAMS[0] },
-  { id: 'TF-004', title: 'Write API documentation',         priority: 'low',    status: 'todo',        assignee: 'AC', due: 'Jun 20', label: 'docs',     team: TEAMS[0] },
-  { id: 'TF-005', title: 'Set up CI/CD pipeline',           priority: 'medium', status: 'done',        assignee: 'AC', due: 'Jun 8',  label: 'infra',    team: TEAMS[0] },
-  { id: 'DS-001', title: 'Button component variants',       priority: 'high',   status: 'todo',        assignee: 'AC', due: 'Jun 20', label: 'design',   team: TEAMS[1] },
-  { id: 'DS-002', title: 'Dark mode token audit',           priority: 'medium', status: 'review',      assignee: 'AC', due: 'Jun 22', label: 'refactor', team: TEAMS[1] },
-  { id: 'AG-001', title: 'Rate limiting middleware',        priority: 'high',   status: 'todo',        assignee: 'AC', due: 'Jun 25', label: 'infra',    team: TEAMS[2] },
-  { id: 'AG-002', title: 'Auth token validation',           priority: 'high',   status: 'in-progress', assignee: 'AC', due: 'Jun 14', label: 'feature',  team: TEAMS[2] },
-];
-
-const STATUS_FILTERS = [
+const STATUS_FILTERS: { key: FilterKey; label: string }[] = [
   { key: 'all',         label: 'All'         },
   { key: 'in-progress', label: 'In Progress' },
   { key: 'review',      label: 'Review'      },
   { key: 'todo',        label: 'To Do'       },
   { key: 'done',        label: 'Done'        },
-] as const;
+];
 
-const STATUS_LABELS: Record<Status, string> = {
-  'in-progress': 'In Progress', review: 'Review', todo: 'To Do', done: 'Done',
-};
-const PRIORITY_DOT: Record<Priority, string> = { high: 'bg-status-red', medium: 'bg-status-amber', low: 'bg-bg-500' };
-const LABEL_STYLES: Record<string, string> = {
-  feature: 'bg-accent-bg text-accent-hover', bug: 'bg-red-bg text-status-red',
-  design: 'bg-[#1a2038] text-[#6a9eef]', docs: 'bg-bg-600 text-text-300',
-  infra: 'bg-[#1a2a20] text-status-green', refactor: 'bg-amber-bg text-status-amber',
+// Map task statusId to a filter key for the tab
+const STATUS_KEY_MAP: Record<string, FilterKey> = {
+  stat_1:  'todo',
+  stat_2:  'in-progress',
+  stat_3:  'review',
+  stat_4:  'done',
+  stat_5:  'todo',
+  stat_6:  'in-progress',
+  stat_7:  'done',
+  stat_8:  'todo',
+  stat_9:  'in-progress',
+  stat_10: 'review',
+  stat_11: 'done',
 };
 
-type FilterKey = typeof STATUS_FILTERS[number]['key'];
+const STATUS_BADGE_MAP: Record<string, string> = {
+  in_progress: 'in-progress',
+  review: 'review',
+  todo: 'todo',
+  done: 'done',
+};
+
+function getFilterKey(task: Task): FilterKey {
+  return STATUS_KEY_MAP[task.statusId] ?? 'todo';
+}
 
 function PlusIcon() {
   return <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" /></svg>;
@@ -57,26 +51,47 @@ function PlusIcon() {
 function CalendarIcon() {
   return <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="2" width="10" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.2" /><path d="M4 1v2M8 1v2M1 5h10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>;
 }
+function RedirectIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+      <path d="M5 2H2a1 1 0 00-1 1v7a1 1 0 001 1h7a1 1 0 001-1V7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M8 2h2v2M10 2L6.5 5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function EditIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+      <path d="M8.5 1.5a1.414 1.414 0 012 2L3.5 10.5l-3 .5.5-3 7.5-6.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+const STATUS_LABELS: Record<FilterKey, string> = {
+  'all': 'All', 'in-progress': 'In Progress', review: 'Review', todo: 'To Do', done: 'Done',
+};
 
 export default function TaskListScreen() {
   const [statusFilter, setStatusFilter] = useState<FilterKey>('all');
   const [teamFilter, setTeamFilter]     = useState<string>('all');
 
   const filtered = TASKS.filter(t => {
-    const matchStatus = statusFilter === 'all' || t.status === statusFilter;
-    const matchTeam   = teamFilter === 'all' || t.team.id === teamFilter;
+    const matchStatus = statusFilter === 'all' || getFilterKey(t) === statusFilter;
+    const matchTeam   = teamFilter === 'all' || t.teamId === teamFilter;
     return matchStatus && matchTeam;
   });
 
   const countFor = (key: FilterKey) =>
-    key === 'all' ? TASKS.filter(t => teamFilter === 'all' || t.team.id === teamFilter).length
-      : TASKS.filter(t => t.status === key && (teamFilter === 'all' || t.team.id === teamFilter)).length;
+    TASKS.filter(t =>
+      (key === 'all' || getFilterKey(t) === key) &&
+      (teamFilter === 'all' || t.teamId === teamFilter)
+    ).length;
 
   const STATS = [
-    { label: 'Total',       value: TASKS.length,                                  color: 'text-text-100'      },
-    { label: 'In Progress', value: TASKS.filter(t => t.status === 'in-progress').length, color: 'text-accent-hover'  },
-    { label: 'In Review',   value: TASKS.filter(t => t.status === 'review').length,      color: 'text-status-amber'  },
-    { label: 'Done',        value: TASKS.filter(t => t.status === 'done').length,        color: 'text-status-green'  },
+    { label: 'Total',       value: TASKS.length,                                          color: 'text-text-100'      },
+    { label: 'In Progress', value: TASKS.filter(t => getFilterKey(t) === 'in-progress').length, color: 'text-accent-hover'  },
+    { label: 'In Review',   value: TASKS.filter(t => getFilterKey(t) === 'review').length,      color: 'text-status-amber'  },
+    { label: 'Done',        value: TASKS.filter(t => getFilterKey(t) === 'done').length,         color: 'text-status-green'  },
   ];
 
   return (
@@ -90,14 +105,16 @@ export default function TaskListScreen() {
           <h1 className="text-2xl font-semibold text-text-100">My Tasks</h1>
           <p className="text-sm text-text-300 mt-1">All tasks across all teams</p>
         </div>
-        <motion.button
-          className="flex items-center gap-2 bg-accent text-white text-sm font-medium px-4 py-2 rounded-lg"
-          whileHover={{ scale: 1.02, boxShadow: '0 0 16px rgba(97,85,221,0.3)' }}
-          whileTap={{ scale: 0.97 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-        >
-          <PlusIcon />New Task
-        </motion.button>
+        <Link href="/new">
+          <motion.button
+            className="flex items-center gap-2 bg-accent text-white text-sm font-medium px-4 py-2 rounded-lg"
+            whileHover={{ scale: 1.02, boxShadow: '0 0 16px rgba(97,85,221,0.3)' }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+          >
+            <PlusIcon />New Task
+          </motion.button>
+        </Link>
       </motion.div>
 
       {/* Stats */}
@@ -113,7 +130,7 @@ export default function TaskListScreen() {
         ))}
       </motion.div>
 
-      {/* Filter bar: status tabs + team dropdown */}
+      {/* Filter bar */}
       <div className="flex items-center justify-between mb-4 gap-3">
         <motion.div className="flex items-center gap-1 bg-bg-800 rounded-lg p-1 w-fit"
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
@@ -135,7 +152,6 @@ export default function TaskListScreen() {
           ))}
         </motion.div>
 
-        {/* Team filter */}
         <motion.div className="flex items-center gap-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.12 }}>
           <span className="text-xs text-text-300">Team:</span>
           <div className="flex items-center gap-1 bg-bg-800 rounded-lg p-1">
@@ -161,68 +177,10 @@ export default function TaskListScreen() {
       </div>
 
       {/* Task list */}
-      <div className="bg-bg-700 rounded-card border border-border-subtle overflow-hidden">
+      <div className="bg-bg-700 rounded-card border border-border-subtle overflow-visible">
         <AnimatePresence mode="popLayout">
           {filtered.map((task, i) => (
-            <motion.div
-              key={task.id} layout
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.97 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30, delay: i * 0.04 }}
-              className={`flex items-center gap-4 px-5 py-4 hover:bg-bg-600 transition-colors cursor-pointer group ${
-                i < filtered.length - 1 ? 'border-b border-border-subtle' : ''
-              }`}
-            >
-              {/* Checkbox */}
-              <div className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-colors ${
-                task.status === 'done' ? 'border-status-green bg-green-bg' : 'border-bg-500 group-hover:border-accent'
-              }`}>
-                {task.status === 'done' && (
-                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                    <path d="M1.5 4l1.5 1.5 3.5-3" stroke="#32B173" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
-              </div>
-
-              {/* Priority dot */}
-              <span className={`w-2 h-2 rounded-full shrink-0 ${PRIORITY_DOT[task.priority]}`} />
-
-              {/* Title + label */}
-              <div className="flex-1 min-w-0 flex items-center gap-3">
-                <span className={`text-sm truncate ${task.status === 'done' ? 'line-through text-text-300' : 'text-text-100'}`}>
-                  {task.title}
-                </span>
-                <span className={`text-2xs font-medium px-2 py-0.5 rounded-full shrink-0 hidden sm:inline-flex ${LABEL_STYLES[task.label] ?? 'bg-bg-600 text-text-300'}`}>
-                  {task.label}
-                </span>
-              </div>
-
-              {/* Team badge */}
-              <span
-                className="text-2xs font-medium px-2 py-0.5 rounded-full shrink-0 hidden md:inline-flex"
-                style={{ background: task.team.color + '22', color: task.team.color }}
-              >
-                {task.team.name}
-              </span>
-
-              {/* Status badge */}
-              <div className="shrink-0 hidden md:block">
-                <Badge label={STATUS_LABELS[task.status]} variant={task.status} />
-              </div>
-
-              {/* Due date */}
-              <div className="flex items-center gap-1.5 text-2xs text-text-300 shrink-0 hidden lg:flex">
-                <CalendarIcon />{task.due}
-              </div>
-
-              {/* Task ID */}
-              <span className="text-2xs text-text-300 font-mono shrink-0 hidden xl:block">{task.id}</span>
-
-              {/* Assignee */}
-              <div className="w-7 h-7 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xs font-semibold shrink-0">
-                {task.assignee}
-              </div>
-            </motion.div>
+            <TaskRow key={task.id} task={task} index={i} isLast={i === filtered.length - 1} />
           ))}
         </AnimatePresence>
 
@@ -233,5 +191,82 @@ export default function TaskListScreen() {
         )}
       </div>
     </div>
+  );
+}
+
+function TaskRow({ task, index, isLast }: { task: Task; index: number; isLast: boolean }) {
+  const filterKey = getFilterKey(task);
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.97 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30, delay: index * 0.04 }}
+      className={`flex items-center gap-4 px-5 py-4 hover:bg-bg-600 transition-colors group ${
+        !isLast ? 'border-b border-border-subtle' : 'rounded-b-xl'
+      } ${index === 0 ? 'rounded-t-xl' : ''}`}
+    >
+      {/* Priority dot */}
+      <span className={`w-2 h-2 rounded-full shrink-0 ${PRIORITY_COLORS[task.priority]}`} />
+
+      {/* Title + label */}
+      <Link href={`/${task.id}`} className="flex-1 min-w-0 flex items-center gap-3 cursor-pointer">
+        <span className={`text-sm truncate ${filterKey === 'done' ? 'line-through text-text-300' : 'text-text-100'}`}>
+          {task.title}
+        </span>
+        <span className={`text-2xs font-medium px-2 py-0.5 rounded-full shrink-0 hidden sm:inline-flex ${LABEL_STYLES[task.label] ?? 'bg-bg-600 text-text-300'}`}>
+          {task.label}
+        </span>
+      </Link>
+
+      {/* Team badge */}
+      <span
+        className="text-2xs font-medium px-2 py-0.5 rounded-full shrink-0 hidden md:inline-flex"
+        style={{ background: task.team.color + '22', color: task.team.color }}
+      >
+        {task.team.name}
+      </span>
+
+      {/* Status badge */}
+      <div className="shrink-0 hidden md:block">
+        <Badge label={task.status.name} variant={filterKey === 'in-progress' ? 'in-progress' : filterKey} />
+      </div>
+
+      {/* Due date */}
+      {task.expectedCompletion && (
+        <div className="flex items-center gap-1.5 text-2xs text-text-300 shrink-0 hidden lg:flex">
+          <CalendarIcon />
+          {new Date(task.expectedCompletion).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+        </div>
+      )}
+
+      {/* Task ID */}
+      <span className="text-2xs text-text-300 font-mono shrink-0 hidden xl:block">{task.id}</span>
+
+      {/* Assignee */}
+      <div className="w-7 h-7 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xs font-semibold shrink-0">
+        {task.assignee}
+      </div>
+
+      {/* Edit icon — permanently visible */}
+      <Link
+        href={`/${task.id}/edit`}
+        data-tooltip="Edit task"
+        className="w-7 h-7 rounded-lg flex items-center justify-center text-text-300 hover:text-accent hover:bg-accent-bg transition-colors shrink-0"
+      >
+        <EditIcon />
+      </Link>
+
+      {/* Open detail */}
+      <Link
+        href={`/${task.id}`}
+        data-tooltip="Open task"
+        className="w-7 h-7 rounded-lg flex items-center justify-center text-text-300 hover:text-accent hover:bg-accent-bg transition-colors shrink-0"
+      >
+        <RedirectIcon />
+      </Link>
+    </motion.div>
   );
 }

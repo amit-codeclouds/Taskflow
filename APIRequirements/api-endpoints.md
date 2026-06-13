@@ -634,8 +634,16 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | Status filter tabs (All / In Progress / Review / To Do / Done) | `GET /api/tasks?status=...` |
 | Team filter bar (All / Taskflow Core / Design System / API Gateway) | `GET /api/tasks?teamId=...` |
 | Team badge on each task row | populated from `task.team` in response |
-| "New Task" button | `POST /api/tasks` (must include `teamId`) |
-| Task row checkbox (mark done) | `PATCH /api/tasks/:id` `{ status: 'done' }` |
+| "New Task" button | navigates to `/tasks/new` |
+| Task row ↗ redirect icon | navigates to `/tasks/:id` (client-side — no API) |
+| Task row click (title) | navigates to `/tasks/:id` (client-side — no API) |
+| Task row checkbox (mark done) | `PATCH /api/tasks/:id` `{ statusId: <done-status-id> }` |
+| TaskFormScreen — Team dropdown | `GET /api/teams` |
+| TaskFormScreen — Status dropdown (per team) | `GET /api/board/:teamId/statuses` |
+| TaskFormScreen — submit | `POST /api/tasks` |
+| TaskDetailScreen — task data | `GET /api/tasks/:id` |
+| TaskDetailScreen — activity timeline | `GET /api/activity/tasks/:taskId` |
+| TaskDetailScreen — Edit Task button | navigates to `/tasks/new?edit=:id` |
 | Sidebar — user card | `GET /api/auth/me` |
 | Topbar — notification bell | `GET /api/notifications` |
 
