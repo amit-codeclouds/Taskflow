@@ -11,7 +11,8 @@
 ```ts
 type Priority = 'high' | 'medium' | 'low';
 
-type TaskStatus = 'todo' | 'in-progress' | 'review' | 'done';
+// Board statuses are now dynamic per team (see BoardStatus below).
+// No global TaskStatus enum exists — a task references a status by id.
 
 type LabelType =
   | 'feature'
@@ -46,19 +47,23 @@ interface User {
 
 ```ts
 interface Task {
-  id: string;           // e.g. "TF-001" — human-readable sequential ID
+  id: string;                  // e.g. "TF-001"
   title: string;
+  description?: string;        // rich-text (HTML/markdown)
   priority: Priority;
-  status: TaskStatus;
+  statusId: string;            // FK → BoardStatus.id (team-scoped, dynamic)
+  status?: BoardStatus;        // populated on fetch
   label: LabelType;
-  assigneeId: string;   // FK → User.id
-  assignee?: User;      // populated on fetch
-  teamId: string;       // FK → Team.id — required; every task belongs to a team
-  team?: Team;          // populated on fetch
-  dueDate: string;      // ISO 8601 date string, e.g. "2026-06-12"
-  description?: string;
-  projectId?: string;   // FK → Project.id (null = personal task)
-  sprintId?: string;    // FK → Sprint.id (null = backlog)
+  assigneeId: string;          // FK → User.id
+  assignee?: User;
+  teamId: string;              // FK → Team.id — required
+  team?: Team;
+  expectedCompletion?: string; // ISO 8601 date. Renamed from `dueDate`.
+  progress: number;            // integer 0–100, manual, defaults to 0
+  imageUrls: string[];         // Cloudinary secure URLs, multi-upload
+  projectId?: string;
+  sprintId?: string;
+  deletedAt?: string | null;   // soft-delete; set when parent status is deleted
   createdAt: string;
   updatedAt: string;
 }
@@ -99,18 +104,34 @@ interface Sprint {
 
 ---
 
-## Board Column (derived — not persisted as its own table)
+## BoardStatus
 
-The board derives columns from `TaskStatus`, **scoped to a team**.
-Column metadata (title, dot colour) is static config on the frontend.  
-The API returns tasks grouped by status for a given `teamId`; the board assembles columns client-side.
+> Statuses are fully dynamic per team. Each team owns its own ordered list of statuses.
+
+```ts
+interface BoardStatus {
+  id: string;           // UUID
+  teamId: string;       // FK → Team.id
+  name: string;         // e.g. "Backlog", "In Progress"
+  description?: string;
+  position: number;     // column order
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+## BoardColumn (API response shape — not persisted)
+
+`GET /api/board/:teamId` returns columns built from BoardStatus rows plus the first 5 tasks each.
 
 ```ts
 interface BoardColumn {
-  id: TaskStatus;
-  title: string;        // 'To Do' | 'In Progress' | 'Review' | 'Done'
-  color: string;        // hex — display only, not persisted
-  tasks: Task[];        // tasks where task.teamId === requested teamId
+  id: string;           // BoardStatus.id
+  name: string;
+  description?: string;
+  position: number;
+  totalTasks: number;   // total count in this status
+  tasks: Task[];        // first 5 by default; paginated via "load more"
 }
 ```
 
@@ -143,7 +164,8 @@ interface WorkspaceMember {
 > Source: `shell/components/teams/TeamsScreen.tsx`
 
 ```ts
-type TeamRole = 'admin' | 'member';
+// Per-team role. See PRD/04-teams.md for the full permission matrix.
+type TeamRole = 'admin' | 'pm' | 'tl' | 'developer';
 
 interface TeamMember {
   userId: string;         // FK → User.id
