@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { LayoutDashboard, Users, UserCircle2, Settings, KanbanSquare } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
 import { WORKSPACE_TEAMS } from '@/lib/workspace';
+import { useAuth } from '@/lib/useAuth';
 
 type NavItem = { label: string; href: string; icon: React.ReactNode; external?: boolean };
 
@@ -46,6 +47,7 @@ function NavLink({ label, href, icon, isActive, index, external }: NavItem & { i
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const user = useAuth();
 
   return (
     <motion.aside
@@ -109,10 +111,14 @@ export default function Sidebar() {
         <div className="mx-4 h-px bg-border-subtle" />
         <Link href="/settings" className="block">
           <motion.div className="h-[68px] flex items-center gap-3 px-4 cursor-pointer hover:bg-bg-700 transition-colors" whileHover={{ x: 2 }}>
-            <div className="w-8 h-8 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xs font-semibold shrink-0">AC</div>
+            <div className="w-8 h-8 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xs font-semibold shrink-0 select-none">
+              {user.initials || '??'}
+            </div>
             <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-sm font-medium text-text-100 truncate">Arkabrata</span>
-              <span className="text-2xs text-text-300 truncate">Engineer</span>
+              <span className="text-sm font-medium text-text-100 truncate capitalize">
+                {user.name || 'User'}
+              </span>
+              <span className="text-2xs text-text-300 truncate">{user.email || ''}</span>
             </div>
             <Settings size={13} className="text-text-300 shrink-0" strokeWidth={1.5} />
           </motion.div>
