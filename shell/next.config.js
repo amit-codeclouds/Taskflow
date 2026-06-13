@@ -11,10 +11,10 @@ const nextConfig = {
     }
 
     return [
-      { source: '/tasks', destination: `${taskMfeUrl}/tasks` },
-      { source: '/tasks/:path*', destination: `${taskMfeUrl}/tasks/:path*` },
-      { source: '/board', destination: `${boardMfeUrl}/board` },
-      { source: '/board/:path*', destination: `${boardMfeUrl}/board/:path*` },
+      { source: 'tasks', destination: `${taskMfeUrl}/tasks` },
+      { source: 'tasks/:path*', destination: `${taskMfeUrl}/tasks/:path*` },
+      { source: 'board', destination: `${boardMfeUrl}/board` },
+      { source: 'board/:path*', destination: `${boardMfeUrl}/board/:path*` },
     ];
   },
 };
