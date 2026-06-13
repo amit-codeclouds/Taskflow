@@ -2,8 +2,8 @@
 const nextConfig = {
   async rewrites() {
     const isDev = process.env.NODE_ENV === 'development';
-    const taskMfeUrl = isDev ? 'http://localhost:3003' : process.env.NEXT_PUBLIC_TASK_MFE_URL;
-    const boardMfeUrl = isDev ? 'http://localhost:4200' : process.env.NEXT_PUBLIC_BOARD_MFE_URL;
+    const taskMfeUrl = isDev ? 'http://localhost:3003' : process.env.TASK_MFE_URL;
+    const boardMfeUrl = isDev ? 'http://localhost:4200' : process.env.BOARD_MFE_URL;
 
     if (!isDev) {
       if (!taskMfeUrl) throw new Error('NEXT_PUBLIC_TASK_MFE_URL env var is required in production');
