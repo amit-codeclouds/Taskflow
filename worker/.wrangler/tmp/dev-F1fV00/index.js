@@ -79,7 +79,11 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
+<<<<<<<< HEAD:worker/.wrangler/tmp/dev-5sc3xy/index.js
+// .wrangler/tmp/bundle-AoS0Il/middleware-insertion-facade.js
+========
 // .wrangler/tmp/bundle-OcY274/middleware-insertion-facade.js
+>>>>>>>> 641f51bfd8dc3d8c889aa3941fd99901ea548db0:worker/.wrangler/tmp/dev-F1fV00/index.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -111,7 +115,11 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
+<<<<<<<< HEAD:worker/.wrangler/tmp/dev-5sc3xy/index.js
+// .wrangler/tmp/bundle-AoS0Il/middleware-loader.entry.ts
+========
 // .wrangler/tmp/bundle-OcY274/middleware-loader.entry.ts
+>>>>>>>> 641f51bfd8dc3d8c889aa3941fd99901ea548db0:worker/.wrangler/tmp/dev-F1fV00/index.js
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

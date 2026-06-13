@@ -3,12 +3,21 @@
 // export dynamically through wrangler, or we can potentially let users directly
 // add them as a sort of "plugin" system.
 
-import ENTRY, { __INTERNAL_WRANGLER_MIDDLEWARE__ } from "D:\\Personal Projects\\Taskflow\\worker\\.wrangler\\tmp\\bundle-690hnF\\middleware-insertion-facade.js";
+<<<<<<<< HEAD:worker/.wrangler/tmp/bundle-AoS0Il/middleware-loader.entry.ts
+import ENTRY, { __INTERNAL_WRANGLER_MIDDLEWARE__ } from "D:\\Personal Projects\\Taskflow\\worker\\.wrangler\\tmp\\bundle-AoS0Il\\middleware-insertion-facade.js";
 import { __facade_invoke__, __facade_register__, Dispatcher } from "C:\\Users\\CODECLOUDS-ARKABRATA\\AppData\\Local\\npm-cache\\_npx\\32026684e21afda6\\node_modules\\wrangler\\templates\\middleware\\common.ts";
-import type { WorkerEntrypointConstructor } from "D:\\Personal Projects\\Taskflow\\worker\\.wrangler\\tmp\\bundle-690hnF\\middleware-insertion-facade.js";
+import type { WorkerEntrypointConstructor } from "D:\\Personal Projects\\Taskflow\\worker\\.wrangler\\tmp\\bundle-AoS0Il\\middleware-insertion-facade.js";
 
 // Preserve all the exports from the worker
-export * from "D:\\Personal Projects\\Taskflow\\worker\\.wrangler\\tmp\\bundle-690hnF\\middleware-insertion-facade.js";
+export * from "D:\\Personal Projects\\Taskflow\\worker\\.wrangler\\tmp\\bundle-AoS0Il\\middleware-insertion-facade.js";
+========
+import ENTRY, { __INTERNAL_WRANGLER_MIDDLEWARE__ } from "D:\\Amit\\Personal\\taskflow\\worker\\.wrangler\\tmp\\bundle-zjUEKa\\middleware-insertion-facade.js";
+import { __facade_invoke__, __facade_register__, Dispatcher } from "C:\\Users\\CODECLOUDS-AMIT\\AppData\\Local\\npm-cache\\_npx\\32026684e21afda6\\node_modules\\wrangler\\templates\\middleware\\common.ts";
+import type { WorkerEntrypointConstructor } from "D:\\Amit\\Personal\\taskflow\\worker\\.wrangler\\tmp\\bundle-zjUEKa\\middleware-insertion-facade.js";
+
+// Preserve all the exports from the worker
+export * from "D:\\Amit\\Personal\\taskflow\\worker\\.wrangler\\tmp\\bundle-zjUEKa\\middleware-insertion-facade.js";
+>>>>>>>> 641f51bfd8dc3d8c889aa3941fd99901ea548db0:worker/.wrangler/tmp/bundle-zjUEKa/middleware-loader.entry.ts
 
 class __Facade_ScheduledController__ implements ScheduledController {
 	readonly #noRetry: ScheduledController["noRetry"];
