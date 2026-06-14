@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { NgIf } from '@angular/common';
-import { SidebarComponent } from './layout/sidebar.component';
-import { TopbarComponent } from './layout/topbar.component';
+import { SidebarComponent } from './layout/sidebar/sidebar.component';
+import { TopbarComponent } from './layout/topbar/topbar.component';
 
 @Component({
   selector: 'app-root',
