@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { BoardComponent } from './board/board.component';
+import { BoardComponent } from './features/board/board.component';
 
 export const routes: Routes = [
   { path: '', component: BoardComponent },
