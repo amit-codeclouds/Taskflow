@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
-  const { name, email, password } = await request.json();
+  const { name, email, password, title } = await request.json();
 
   if (!name || !email || !password) {
     return NextResponse.json({ ok: false, error: 'All fields are required' }, { status: 400 });
@@ -26,6 +26,12 @@ export async function POST(request: NextRequest) {
     sameSite: 'lax',
     path: '/',
   });
+  if (title) {
+    response.cookies.set('taskflow_title', title, {
+      sameSite: 'lax',
+      path: '/',
+    });
+  }
 
   return response;
 }

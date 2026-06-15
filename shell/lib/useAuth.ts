@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 export interface AuthUser {
   name: string;
   email: string;
+  title: string;
   initials: string;
 }
 
@@ -14,7 +15,7 @@ function getCookie(name: string): string {
 }
 
 export function useAuth(): AuthUser {
-  const [user, setUser] = useState<AuthUser>({ name: '', email: '', initials: '' });
+  const [user, setUser] = useState<AuthUser>({ name: '', email: '', title: '', initials: '' });
 
   useEffect(() => {
     const email = getCookie('taskflow_email');
@@ -25,7 +26,8 @@ export function useAuth(): AuthUser {
       parts.length >= 2
         ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
         : name.slice(0, 2).toUpperCase();
-    setUser({ name, email, initials });
+    const title = getCookie('taskflow_title');
+    setUser({ name, email, title, initials });
   }, []);
 
   return user;

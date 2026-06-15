@@ -5,16 +5,18 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { LayoutDashboard, Users, UserCircle2, Settings, KanbanSquare } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
-import { WORKSPACE_TEAMS } from '@/lib/workspace';
 import { useAuth } from '@/lib/useAuth';
 
 type NavItem = { label: string; href: string; icon: React.ReactNode; external?: boolean };
 
-const NAV_ITEMS: NavItem[] = [
-  { label: 'Home',    href: '/',       icon: <LayoutDashboard size={16} strokeWidth={1.5} /> },
-  { label: 'Teams',   href: '/teams',  icon: <Users           size={16} strokeWidth={1.5} /> },
-  { label: 'People',  href: '/people', icon: <UserCircle2     size={16} strokeWidth={1.5} /> },
-  { label: 'Board',   href: '/board',  icon: <KanbanSquare    size={16} strokeWidth={1.5} />, external: true },
+const WORKSPACE_ITEMS: NavItem[] = [
+  { label: 'Home',   href: '/',       icon: <LayoutDashboard size={16} strokeWidth={1.5} /> },
+  { label: 'Teams',  href: '/teams',  icon: <Users           size={16} strokeWidth={1.5} /> },
+  { label: 'People', href: '/people', icon: <UserCircle2     size={16} strokeWidth={1.5} /> },
+];
+
+const TOOLS_ITEMS: NavItem[] = [
+  { label: 'Board', href: '/board', icon: <KanbanSquare size={16} strokeWidth={1.5} />, external: true },
 ];
 
 function NavLink({ label, href, icon, isActive, index, external }: NavItem & { isActive: boolean; index: number }) {
@@ -60,37 +62,42 @@ export default function Sidebar() {
       <div className="h-16 flex items-center px-5 shrink-0"><Logo /></div>
       <div className="mx-4 h-px bg-border-subtle shrink-0" />
 
+      {/* Workspace indicator */}
+      <div className="px-3 pt-3 pb-1 shrink-0">
+        <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-bg-700 border border-border-subtle">
+          <div className="w-5 h-5 rounded bg-accent flex items-center justify-center text-white shrink-0" style={{ fontSize: 10, fontWeight: 700 }}>
+            {user.initials?.[0] ?? 'W'}
+          </div>
+          <p className="text-xs font-medium text-text-100 truncate">
+            {user.name ? `${user.name.split(' ')[0]}'s Workspace` : 'My Workspace'}
+          </p>
+        </div>
+      </div>
+
       <div className="flex-1 overflow-y-auto pt-3 pb-2">
-        {/* Workspace nav */}
+        {/* Workspace group */}
         <div className="pb-1.5 px-5">
           <p className="text-2xs text-text-300 tracking-widest uppercase">Workspace</p>
         </div>
         <nav className="flex flex-col gap-0.5">
-          {NAV_ITEMS.map((item, i) => {
+          {WORKSPACE_ITEMS.map((item, i) => {
             const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
             return <NavLink key={item.href} {...item} isActive={isActive} index={i} />;
           })}
         </nav>
 
-        {/* Teams (project list) */}
+        {/* Tools group */}
         <div className="mt-5">
           <div className="mx-4 mb-2 h-px bg-border-subtle" />
           <div className="pb-1.5 px-5">
-            <p className="text-2xs text-text-300 tracking-widest uppercase">Teams</p>
+            <p className="text-2xs text-text-300 tracking-widest uppercase">Tools</p>
           </div>
-          <div className="flex flex-col gap-1 px-5">
-            {WORKSPACE_TEAMS.map((t, i) => (
-              <motion.div
-                key={t.id}
-                className="flex items-center gap-2.5 h-8 text-sm text-text-200 cursor-pointer hover:text-text-100 transition-colors"
-                initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0.2 + i * 0.05 }}
-              >
-                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: t.color }} />
-                <span className="truncate">{t.name}</span>
-              </motion.div>
-            ))}
-          </div>
+          <nav className="flex flex-col gap-0.5">
+            {TOOLS_ITEMS.map((item, i) => {
+              const isActive = pathname.startsWith(item.href);
+              return <NavLink key={item.href} {...item} isActive={isActive} index={WORKSPACE_ITEMS.length + i} />;
+            })}
+          </nav>
         </div>
       </div>
 

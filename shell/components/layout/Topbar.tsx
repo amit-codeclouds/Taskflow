@@ -91,14 +91,14 @@ export default function Topbar() {
       transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0.1 }}
     >
       {/* Page title */}
-      <div className="flex flex-col">
-        <span className="text-sm font-semibold text-text-100 leading-tight">{title}</span>
-        <span className="text-2xs text-text-300">{subtitle}</span>
+      <div className="flex items-baseline gap-2.5">
+        <span className="text-xl font-semibold text-text-100 leading-none">{title}</span>
+        <span className="text-xs text-text-300">{subtitle}</span>
       </div>
 
       {/* Right controls */}
       <div className="flex items-center gap-3">
-        {/* Bell */}
+        {/* Bell — commented out for now
         <motion.button
           className="relative w-8 h-8 rounded-lg bg-bg-600 flex items-center justify-center text-text-200"
           whileHover={{ scale: 1.05 }}
@@ -112,6 +112,7 @@ export default function Topbar() {
             transition={{ repeat: Infinity, duration: 2 }}
           />
         </motion.button>
+        */}
 
         {/* Profile dropdown */}
         <div className="relative" ref={dropdownRef}>

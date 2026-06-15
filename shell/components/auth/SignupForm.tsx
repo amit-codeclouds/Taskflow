@@ -4,6 +4,45 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
+import Select from 'react-select';
+import { getSelectStyles, type SelectOption } from '@/lib/selectStyles';
+
+type TitleOption = SelectOption;
+
+const TITLE_OPTIONS: TitleOption[] = [
+  { value: 'Engineer',        label: 'Engineer'        },
+  { value: 'Designer',        label: 'Designer'        },
+  { value: 'Product Manager', label: 'Product Manager' },
+  { value: 'QA Engineer',     label: 'QA Engineer'     },
+  { value: 'DevOps',          label: 'DevOps'          },
+  { value: 'Team Lead',       label: 'Team Lead'       },
+  { value: 'Manager',         label: 'Manager'         },
+  { value: 'Director',        label: 'Director'        },
+  { value: 'Founder',         label: 'Founder'         },
+  { value: 'Other',           label: 'Other'           },
+];
+
+const schema = Yup.object({
+  name:  Yup.string().min(2, 'Name must be at least 2 characters').required('Full name is required'),
+  email: Yup.string().email('Enter a valid email address').required('Email is required'),
+  title: Yup.string(),
+  customTitle: Yup.string().when('title', {
+    is:        'Other',
+    then:      (s) => s.min(2, 'Must be at least 2 characters').required('Please describe your role'),
+    otherwise: (s) => s.notRequired(),
+  }),
+  password: Yup.string().min(6, 'Password must be at least 6 characters').required('Password is required'),
+});
+
+type FormValues = Yup.InferType<typeof schema>;
+
+function inputClass(touched: boolean, error?: string) {
+  return `h-10 px-3 rounded-lg bg-bg-700 border text-sm text-text-100 placeholder:text-text-300 focus:outline-none transition-colors w-full ${
+    touched && error ? 'border-status-red focus:border-status-red' : 'border-border-subtle focus:border-accent'
+  }`;
+}
 
 function EyeOpenIcon() {
   return (
@@ -23,41 +62,44 @@ function EyeClosedIcon() {
 }
 
 export default function SignupForm() {
-  const router = useRouter();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const router  = useRouter();
   const [showPw, setShowPw] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError('');
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters.');
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Account creation failed. Please try again.');
-        return;
+  const formik = useFormik<FormValues>({
+    initialValues: { name: '', email: '', title: '', customTitle: '', password: '' },
+    validationSchema: schema,
+    onSubmit: async (values, { setStatus, setSubmitting }) => {
+      setStatus(null);
+      const finalTitle = values.title === 'Other' ? (values.customTitle ?? '') : (values.title ?? '');
+      try {
+        const res  = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name:     values.name,
+            email:    values.email,
+            password: values.password,
+            title:    finalTitle,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setStatus(data.error || 'Account creation failed. Please try again.');
+          return;
+        }
+        router.push('/');
+        router.refresh();
+      } catch {
+        setStatus('Network error — please try again.');
+      } finally {
+        setSubmitting(false);
       }
-      router.push('/');
-      router.refresh();
-    } catch {
-      setError('Network error — please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }
+    },
+  });
+
+  const titleTouched  = !!formik.touched.title;
+  const titleError    = formik.errors.title as string | undefined;
+  const isOther       = formik.values.title === 'Other';
 
   return (
     <div className="min-h-screen bg-bg-900 flex items-center justify-center px-4">
@@ -96,47 +138,95 @@ export default function SignupForm() {
             <p className="text-sm text-text-300 mt-1">Join your team on Taskflow</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={formik.handleSubmit} className="flex flex-col gap-4" noValidate>
             {/* Full name */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-text-200">Full name</label>
+              <label htmlFor="name" className="text-xs font-medium text-text-200">Full name</label>
               <input
+                id="name"
                 type="text"
-                required
                 autoComplete="name"
-                value={name}
-                onChange={e => setName(e.target.value)}
                 placeholder="Arkabrata Das"
-                className="h-10 px-3 rounded-lg bg-bg-700 border border-border-subtle text-sm text-text-100 placeholder:text-text-300 focus:outline-none focus:border-accent transition-colors"
+                {...formik.getFieldProps('name')}
+                className={inputClass(!!formik.touched.name, formik.errors.name)}
               />
+              {formik.touched.name && formik.errors.name && (
+                <p className="text-xs text-status-red">{formik.errors.name}</p>
+              )}
             </div>
 
             {/* Email */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-text-200">Email address</label>
+              <label htmlFor="email" className="text-xs font-medium text-text-200">Email address</label>
               <input
+                id="email"
                 type="email"
-                required
                 autoComplete="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="h-10 px-3 rounded-lg bg-bg-700 border border-border-subtle text-sm text-text-100 placeholder:text-text-300 focus:outline-none focus:border-accent transition-colors"
+                {...formik.getFieldProps('email')}
+                className={inputClass(!!formik.touched.email, formik.errors.email)}
               />
+              {formik.touched.email && formik.errors.email && (
+                <p className="text-xs text-status-red">{formik.errors.email}</p>
+              )}
+            </div>
+
+            {/* Designation */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-text-200">
+                Designation <span className="text-text-300 font-normal">(optional)</span>
+              </label>
+              <Select<TitleOption, false>
+                inputId="title"
+                options={TITLE_OPTIONS}
+                value={TITLE_OPTIONS.find(o => o.value === formik.values.title) ?? null}
+                onChange={(opt) => {
+                  formik.setFieldValue('title', opt?.value ?? '');
+                  formik.setFieldValue('customTitle', '');
+                }}
+                onBlur={() => formik.setFieldTouched('title', true)}
+                styles={getSelectStyles({ hasError: titleTouched && !!titleError })}
+                placeholder="What describes your role?"
+                isClearable
+                instanceId="title-select"
+              />
+              {titleTouched && titleError && (
+                <p className="text-xs text-status-red">{titleError}</p>
+              )}
+
+              {isOther && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+                >
+                  <input
+                    id="customTitle"
+                    type="text"
+                    autoFocus
+                    placeholder="Describe your role…"
+                    {...formik.getFieldProps('customTitle')}
+                    className={inputClass(!!formik.touched.customTitle, formik.errors.customTitle)}
+                  />
+                  {formik.touched.customTitle && formik.errors.customTitle && (
+                    <p className="text-xs text-status-red mt-1">{formik.errors.customTitle}</p>
+                  )}
+                </motion.div>
+              )}
             </div>
 
             {/* Password */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-text-200">Password</label>
+              <label htmlFor="password" className="text-xs font-medium text-text-200">Password</label>
               <div className="relative">
                 <input
+                  id="password"
                   type={showPw ? 'text' : 'password'}
-                  required
                   autoComplete="new-password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
                   placeholder="Min. 6 characters"
-                  className="w-full h-10 px-3 pr-10 rounded-lg bg-bg-700 border border-border-subtle text-sm text-text-100 placeholder:text-text-300 focus:outline-none focus:border-accent transition-colors"
+                  {...formik.getFieldProps('password')}
+                  className={inputClass(!!formik.touched.password, formik.errors.password) + ' pr-10'}
                 />
                 <button
                   type="button"
@@ -147,29 +237,32 @@ export default function SignupForm() {
                   {showPw ? <EyeClosedIcon /> : <EyeOpenIcon />}
                 </button>
               </div>
+              {formik.touched.password && formik.errors.password && (
+                <p className="text-xs text-status-red">{formik.errors.password}</p>
+              )}
             </div>
 
-            {/* Error */}
-            {error && (
+            {/* Server error */}
+            {formik.status && (
               <motion.p
                 className="text-xs text-status-red bg-red-bg px-3 py-2 rounded-lg"
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                {error}
+                {formik.status}
               </motion.p>
             )}
 
             {/* Submit */}
             <motion.button
               type="submit"
-              disabled={loading}
+              disabled={formik.isSubmitting}
               className="h-10 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed mt-1"
-              whileHover={loading ? undefined : { scale: 1.01 }}
-              whileTap={loading ? undefined : { scale: 0.99 }}
+              whileHover={formik.isSubmitting ? undefined : { scale: 1.01 }}
+              whileTap={formik.isSubmitting ? undefined : { scale: 0.99 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             >
-              {loading ? 'Creating account…' : 'Create account'}
+              {formik.isSubmitting ? 'Creating account…' : 'Create account'}
             </motion.button>
           </form>
         </motion.div>
