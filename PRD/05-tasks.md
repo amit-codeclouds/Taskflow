@@ -8,6 +8,7 @@ The Tasks screen is a personal task inbox. It shows every task assigned to the l
 - `/tasks` — list view
 - `/tasks/new` — create task form (also reached from Board column "+ Add Task" with `?teamId=&statusId=` prefill)
 - `/tasks/:id` — task detail page (also reached from Board task card "↗" icon)
+- `/tasks/:id/edit` — edit task form (same layout as `/tasks/new` but pre-filled; reached from the permanent ✏ icon on list rows or the "Edit Task" button on detail page)
 
 **Base path**: `/tasks` (basePath + assetPrefix)
 **Components**:
@@ -29,7 +30,8 @@ The Tasks screen is a personal task inbox. It shows every task assigned to the l
 | US-TASK-4 | As a user I can see how many tasks I have in each status at a glance |
 | US-TASK-5 | As a user I can create a new task from this screen |
 | US-TASK-6 | As a user I can click a task to see its full details |
-| US-TASK-7 | As a user I can update a task's status directly from the list |
+| US-TASK-7 | As a user I can open a task's edit form directly from the list via the permanent ✏ icon |
+| US-TASK-8 | As a user I can open a task's detail page directly from the list via the permanent ↗ icon |
 
 ---
 
@@ -104,15 +106,17 @@ Each row in the list shows:
 
 | Column | Description |
 |---|---|
-| ID | Task identifier (e.g. `TF-001`) |
-| Title | Short task title |
+| Priority dot | Coloured dot: red (high) · amber (medium) · green (low) |
+| Title | Short task title — click to navigate to `/tasks/:id` |
 | Label | Coloured badge: `feature` / `bug` / `design` / `docs` / `infra` / `refactor` |
-| Priority | Coloured dot: red (high) · amber (medium) · green (low) |
-| Due Date | Formatted date string. Red if overdue. |
-| Team | Team name badge (so user knows which context) |
-| Status | Status pill: `Todo` · `In Progress` · `Review` · `Done` |
+| Team | Team name badge |
+| Status | Status pill |
+| Due Date | Formatted date string |
+| Assignee | Avatar with initials |
+| ✏ Edit icon | Permanently visible — navigates to `/tasks/:id/edit` — tooltip: "Edit task" |
+| ↗ Open icon | Permanently visible — navigates to `/tasks/:id` — tooltip: "Open task" |
 
-Clicking a row opens the Task Detail drawer.
+Both action icons are always visible (not hover-gated). Tooltips are pure CSS via `data-tooltip` attribute — no JS library. There is no row checkbox.
 
 ---
 
@@ -143,10 +147,10 @@ The form fields (existing fields are kept; new fields added per the latest requi
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | Title | text | yes | max 200 chars |
-| Description | rich-text editor | no | stored as HTML/markdown |
+| Description | rich-text editor | no | CKEditor 5 (dark theme); bold/italic/headings/lists/alignment/blockquote/code/image upload (base64 stub → Cloudinary); HTML output |
 | Team | dropdown of user's teams | yes | pre-filled from query string if present |
 | Status | dropdown of the selected team's statuses | yes | pre-filled from query string if present; dynamic per team — fetched from `GET /api/board/:teamId/statuses` |
-| Assignee | user picker (team members) | no | defaults to current user |
+| Assignees | multi-select user picker (team members) | no | supports multiple assignees; stored as `assigneeIds: string[]` |
 | Priority | high / medium / low | no | defaults to `medium` |
 | Label | feature / bug / design / docs / infra / refactor | no | |
 | Expected completion | date picker | no | renamed from "Due Date" |

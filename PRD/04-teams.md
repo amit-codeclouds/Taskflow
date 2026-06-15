@@ -4,8 +4,16 @@
 
 Teams are the primary unit of organisation in Taskflow. Every Kanban board is scoped to a team. Tasks belong to a team. People can belong to multiple teams. The Teams screen lets workspace admins create teams, manage membership, and invite new people directly into a team.
 
-**Route**: `/teams` (Shell, Next.js)  
-**Component**: `shell/src/components/teams/TeamsScreen.tsx`
+**Routes**:
+- `/teams` — Teams list (Shell, Next.js)
+- `/teams/new` — Create Team page (Shell, Next.js)
+- `/teams/:id` — Manage Team page (Shell, Next.js)
+
+**Components**:
+- `shell/components/teams/TeamsScreen.tsx` — list + stats
+- `shell/app/(shell)/teams/new/page.tsx` — Create Team full page
+- `shell/app/(shell)/teams/[id]/page.tsx` — Manage Team full page
+- `shell/components/teams/TeamInviteModal.tsx` — Invite by email (modal, stays open)
 
 ---
 
@@ -17,7 +25,7 @@ Teams are the primary unit of organisation in Taskflow. Every Kanban board is sc
 | US-TEAM-2 | As an admin I can see all teams in the workspace |
 | US-TEAM-3 | As an admin I can add existing workspace members to a team |
 | US-TEAM-4 | As an admin I can invite someone by email directly into a team (they also join the workspace) |
-| US-TEAM-5 | As an admin I can change a team member's role (Admin / Member) |
+| US-TEAM-5 | As an admin I can change a team member's role (Admin / PM / Team Lead / Developer) via a dropdown on the Manage Team page |
 | US-TEAM-6 | As an admin I can remove a member from a team |
 | US-TEAM-7 | As any member I can see which teams I belong to and who else is on those teams |
 | US-TEAM-8 | As an admin I can delete a team |
@@ -30,19 +38,20 @@ Teams are the primary unit of organisation in Taskflow. Every Kanban board is sc
 ┌─────────────────────────────────────────────────────────┐
 │  Teams                                    [New Team]    │
 │  ─────────────────────────────────────────────────────  │
-│  ┌──────────────────┐  ┌──────────────────┐             │
-│  │ ● Taskflow Core  │  │ ● Design System  │             │
-│  │ 4 members        │  │ 2 members        │             │
-│  │ 0 pending        │  │ 0 pending        │             │
-│  │ [View] [Invite]  │  │ [View] [Invite]  │             │
-│  └──────────────────┘  └──────────────────┘             │
-│                                                         │
-│  ┌──────────────────┐                                   │
-│  │ ● API Gateway    │                                   │
-│  │ 1 member         │                                   │
-│  │ 1 pending        │                                   │
-│  │ [View] [Invite]  │                                   │
-│  └──────────────────┘                                   │
+│  ┌─────────────────────────────────────────────────┐    │
+│  │ Total Teams  │  Total Members  │  Pending Invites│   │
+│  │     2        │       4         │       0         │   │
+│  └─────────────────────────────────────────────────┘    │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │ ● Taskflow Core                                  │   │
+│  │   Engineering team building the core platform.  │   │
+│  │   ●●● AC JD MK    3 members  [Manage] [Invite]  │   │
+│  └──────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │ ● Design System                                  │   │
+│  │   Maintains the shared UI component library.    │   │
+│  │   ●● AC SR    2 members  [Manage] [Invite]       │   │
+│  └──────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -54,79 +63,132 @@ Each team card shows:
 
 | Field | Description |
 |---|---|
-| Colour dot | Team's hex colour |
+| Colour initial | Coloured badge showing first 2 chars of team name |
 | Name | Team display name |
 | Description | Short description string |
-| Members count | Number of active members |
-| Pending invites | Number of outstanding invitations |
-| Actions | View details · Invite to team |
+| Member avatars | Up to 4 stacked avatar circles; overflow shown as +N badge |
+| Members count | Active member count · Pending invite count (amber) |
+| Actions | **Manage** (navigates to `/teams/:id`) · **Invite** (opens TeamInviteModal) |
+
+### Member avatar tooltip
+
+Hovering an avatar shows a tooltip card:
+- Mini avatar + member name
+- Member title (or `—`)
+- "Pending invite" badge in amber if `isPending === true`
 
 ---
 
 ## Create Team Flow
 
-1. User clicks **"New Team"**.
-2. A drawer/modal opens with:
-   - **Team Name** (required, max 60 chars)
+**Route**: `/teams/new`
+
+1. User clicks **"New Team"** → navigates to `/teams/new` (full page, not modal).
+2. Page has two sections:
+
+   **Team Details card**
+   - **Team name** (required, max 60 chars, Formik + Yup validation, inline error on touch)
    - **Description** (optional, max 200 chars)
-   - **Colour** — colour picker (hex value stored)
+   - **Team colour** — 8-swatch colour picker (selected swatch has ring + checkmark)
+
+   **Team Members card**
+   - **Team admin row** — read-only row showing the logged-in user with "Admin" badge + Lock icon. Creator is always admin; cannot be changed here.
+   - **Add members** — React Select multi-select of all workspace members (excluding the logged-in user). Optional.
+   - **Assign roles** — For each selected member, a row appears with their avatar, name, title, a React Select role dropdown (default: Developer), and a remove (×) button.
+
 3. User submits → `POST /api/teams`.
-4. New team card appears in the grid.
-5. Creator is automatically assigned as Admin member of the team.
+4. Navigates back to `/teams`; new team card appears in the list.
+5. Creator is automatically assigned as `admin`.
 
 ---
 
-## Team Detail / Member Management
+## Manage Team Page
 
-Clicking "View" on a team card opens a detail view showing:
+**Route**: `/teams/:id`
+
+Clicking **"Manage"** on a team card navigates to `/teams/:id` (full page, not modal).
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│  ● Taskflow Core                      [Add Member]   │
-│  Description text here                [Invite Email] │
+│  ← Back to Teams                                     │
+│  Taskflow Core                           [Save Changes│
+│  Engineering team building the platform.  / Cancel]  │
 │  ──────────────────────────────────────────────────  │
-│  Avatar  Name         Role     Joined      Actions   │
-│  AC    Arkabrata C.  Admin    3 Jun 2026   [Remove]  │
-│  JD    John Doe      Member   3 Jun 2026   [·]       │
-│  MK    Maya Khan     Member   5 Jun 2026   [·]       │
+│  Team Details card: name, description, colour picker │
+│  ──────────────────────────────────────────────────  │
+│  Members card:                                       │
+│  AC  Arkabrata C.  Engineer    [Admin    ▾]  [🔒]    │
+│  JD  John Doe      Product Mgr [PM       ▾]  [✕]    │
+│  MK  Maya Khan     Designer    [Developer▾]  [✕]    │
+│                                                      │
+│  Add from workspace: [Select member ▾] [Role ▾] Add │
+│  ──────────────────────────────────────────────────  │
+│  Danger Zone: [Delete Team]                          │
 └──────────────────────────────────────────────────────┘
 ```
 
+### Team Details section
+
+- **Team name** — editable, Formik + Yup validation (required, max 60)
+- **Description** — editable, optional, max 200
+- **Team colour** — same 8-swatch colour picker as Create
+
+### Members section
+
+Each member row shows:
+- Avatar, name, title
+- **Role React Select dropdown** (Admin / PM / Team Lead / Developer)
+- **Remove button** (×) — confirm dialog before removing
+
+**Last admin protection**: if `adminCount === 1` and the member is the only admin, both the role dropdown and the Remove button are locked (cannot be changed).
+
 ### Add from Workspace
 
-1. Click **"Add Member"**.
-2. Dropdown shows all workspace members NOT already in this team.
-3. Select a member → `POST /api/teams/:id/members`.
-4. They appear in the member list immediately with role `Member`.
+- React Select dropdown listing workspace members not already on this team
+- Role Select (default Developer)
+- Add button → appends member to the list
+- `POST /api/teams/:id/members`
 
-### Invite by Email
+### Save / Cancel
 
-1. Click **"Invite Email"**.
-2. Enter email address → `POST /api/teams/:id/invite`.
-3. If the email belongs to a workspace member: adds them to the team directly.
-4. If the email is new: sends an invitation email. On acceptance the person joins both the workspace and the team.
-5. Pending invite appears in the list with a `Pending` status badge.
+- **Save Changes** is enabled when name/description/colour has changed OR the member list has changed.
+- Saves → `PATCH /api/teams/:id` (meta changes) + member adds/removes/role changes.
+- Navigates back to `/teams` on success.
 
-### Change Role
+### Danger Zone
 
-- Clicking the role badge cycles between `Member` and `Admin`.
-- `PATCH /api/teams/:id/members/:userId` with `{ "role": "admin" | "member" }`.
-- A team must always have at least one Admin.
+- **Delete Team** button (red border card at bottom)
+- Confirm dialog: "This will permanently delete the team. Tasks will not be deleted."
+- `DELETE /api/teams/:id` → navigates back to `/teams`.
 
-### Remove Member
+---
 
-- Click Remove → confirmation dialog.
-- `DELETE /api/teams/:id/members/:userId`.
-- Their tasks in this team are not deleted — tasks remain unassigned.
+## Invite by Email (Modal)
+
+Clicking **"Invite"** on a team card opens the `TeamInviteModal` (modal, not a page navigation).
+
+**Fields** (Formik + Yup):
+- **Email address** (required, valid email, must not already be a member of this team)
+- **Assign role** — React Select, 4 roles, default: Developer
+- **Also add to workspace** checkbox — opt-in only; if unchecked, invite is scoped to this team only
+
+**Submit** → `POST /api/teams/:id/invite`
+
+**Outcomes**:
+1. If the email belongs to an existing workspace member: adds them to the team directly.
+2. If the email is new: sends an invitation email. On acceptance the person joins the workspace and the team.
+3. Pending member appears on the team card with a dashed avatar ring.
+
+**Success state**: modal body cross-fades to a green checkmark + "Invite sent!" confirmation before closing.
 
 ---
 
 ## Delete Team
 
-- Admin clicks "Delete Team" in the team detail header.
+- Admin clicks "Delete Team" in the Danger Zone card on the Manage Team page.
 - Confirmation dialog: "This will permanently delete the team. Tasks will not be deleted."
 - `DELETE /api/teams/:id`.
-- Team card disappears from the grid.
+- Navigates to `/teams`; team card disappears from the list.
 
 ---
 
@@ -240,7 +302,11 @@ Invite by email. Creates a workspace invitation if the user doesn't exist yet.
 
 **Request**
 ```json
-{ "email": "newperson@example.com" }
+{
+  "email": "newperson@example.com",
+  "role": "developer",
+  "addToWorkspace": false
+}
 ```
 
 ---
@@ -307,19 +373,20 @@ Each `team_member` row carries a **role**. Roles are scoped to one team — a us
 ### Assigning roles
 
 - The creator of a team is automatically `admin`.
-- Admins invite members via email or pick from the workspace. New members default to `developer`.
-- Admin can change any member's role at any time via `PATCH /api/teams/:id/members/:userId` with `{ "role": "admin" | "pm" | "tl" | "developer" }`.
+- Admins add members from workspace or invite by email. New members default to `developer`.
+- Admin can change any member's role at any time using the role dropdown on the Manage Team page → `PATCH /api/teams/:id/members/:userId` with `{ "role": "admin" | "pm" | "tl" | "developer" }`.
+- A team must always have at least one `admin` — the last admin's role dropdown and Remove button are locked.
 
 ---
 
-## Legacy Permissions (kept for reference)
+## Permissions Summary
 
 | Action | Who |
 |---|---|
 | View teams list | Any workspace member |
-| Create team | Any workspace member |
-| Edit team (name/desc/colour) | Team Admin or Workspace Admin |
-| Delete team | Team Owner (creator) or Workspace Admin |
+| Create team (`/teams/new`) | Any workspace member |
+| Manage team (`/teams/:id`) | Team Admin only |
+| Delete team | Team Admin only |
 | Add member from workspace | Team Admin |
 | Invite by email | Team Admin |
 | Remove member | Team Admin |

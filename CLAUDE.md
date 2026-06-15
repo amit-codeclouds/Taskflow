@@ -466,6 +466,16 @@ The rule: **frontend change and doc update ship together.**
 
 ---
 
+## Per-app coding rules
+
+### Shell (`shell/`)
+
+- **Forms**: Always use [Formik](https://formik.org/) for form state and [Yup](https://github.com/jquense/yup) for validation. Every input field must have a `validationSchema`, show inline error text on touch, and use `noValidate` on the `<form>` element.
+- **Select / dropdown**: Always use [React Select](https://react-select.com/) for any dropdown or select control. Use `getSelectStyles(...)` from `@/lib/selectStyles` to apply the dark theme. Inside a modal, always add `menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}` and `menuPosition="fixed"` to prevent dropdown clipping.
+- **PRD reference**: Before implementing any new screen, form, or component in the Shell, read the relevant file in `PRD/` for field names, role values, validation rules, and user stories. Do not invent fields or flows that contradict the PRD.
+
+---
+
 ## What NOT to do
 
 - Do not use `<Link>` for cross-zone navigation — only `<a>` tags
