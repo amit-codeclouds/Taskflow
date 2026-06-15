@@ -162,7 +162,11 @@ interface WorkspaceMember {
 
 ## Team
 
-> Source: `shell/components/teams/TeamsScreen.tsx`
+> Source: `shell/lib/teams.ts`
+
+Two shapes exist: one for the **backend API** (normalised) and one for the **frontend display** (denormalised, used by TeamsScreen, `/teams/new`, `/teams/:id`).
+
+### Backend (API) shape
 
 ```ts
 // Per-team role. See PRD/04-teams.md for the full permission matrix.
@@ -188,11 +192,36 @@ interface Team {
 }
 ```
 
+### Frontend (display) shape
+
+Used client-side in `teamsStore`, the Create Team page, and the Manage Team page.
+Members are denormalised — all display fields are inlined; no separate `user` fetch needed.
+
+```ts
+interface TeamMember {
+  id: string;             // FK → User.id
+  initials: string;       // e.g. "AC" — for avatar display
+  name: string;
+  email: string;
+  title: string;          // job title or "—" if unknown
+  role: TeamRole;
+  isPending: boolean;     // true = email-invited, not yet accepted
+}
+
+interface Team {
+  id: string;
+  name: string;
+  description: string;
+  color: string;          // hex — from TEAM_COLORS preset swatches
+  members: TeamMember[];  // pending count derived via members.filter(m => m.isPending).length
+}
+```
+
 ---
 
 ## Invitation
 
-> Source: `TeamsScreen` — InviteForm sends email to invite a user to a **team**.
+> Source: `shell/components/teams/TeamInviteModal.tsx` — sends email to invite a user to a **team**.
 
 ```ts
 type InvitationStatus = 'pending' | 'accepted' | 'declined' | 'expired';

@@ -410,7 +410,12 @@ The invited person appears in the People list with `status: "pending"` until the
 
 ## Team Service  `/api/teams`
 
-> Drives the **Shell** — `shell/components/teams/TeamsScreen.tsx`.
+> Drives the **Shell** — Teams section.
+> - `shell/components/teams/TeamsScreen.tsx` — list + stats (`/teams`)
+> - `shell/app/(shell)/teams/new/page.tsx` — Create Team page (`/teams/new`)
+> - `shell/app/(shell)/teams/[id]/page.tsx` — Manage Team page (`/teams/:id`)
+> - `shell/components/teams/TeamInviteModal.tsx` — Invite by email (modal)
+>
 > Teams are separate from Projects. A team groups users; a project groups tasks.
 
 | Method | Path | Auth | Description |
@@ -462,41 +467,66 @@ The invited person appears in the People list with `status: "pending"` until the
 ### `POST /api/teams`
 **Request**
 ```json
-{ "name": "Frontend Team", "description": "optional" }
+{ "name": "Frontend Team", "description": "optional", "color": "#6155DD", "memberIds": [{ "userId": "u2", "role": "developer" }] }
 ```
+- `color` — required hex color chosen from the 8-swatch colour picker on the Create Team page (`/teams/new`).
+- `memberIds` — optional array of workspace members to add at creation time (React Select multi-select on the Create Team page), each with an assigned role. Creator is automatically added as `admin` server-side regardless.
+
 **Response `201`** — full Team object. Creator is automatically added as `admin`.
 
+### `PATCH /api/teams/:id`
+**Request** — any subset of `{ name, description, color }`.
+```json
+{ "name": "Core Platform", "color": "#32B173" }
+```
+**Response `200`** — updated Team object.
+`403` if caller is not `admin` on this team.
+
 ### `POST /api/teams/:id/members`
-Adds an existing **workspace member** (already in `/api/people`) to a team.  
-This is used by the "From workspace" tab in the Teams invite form.
+Adds an existing **workspace member** (already in `/api/people`) to a team with a specified role.  
+Used by the "Add from workspace" section on the Manage Team page (`/teams/:id`).
 
 **Request**
 ```json
-{ "userId": "u2" }
+{ "userId": "u2", "role": "developer" }
 ```
 **Response `201`** — new TeamMember object.  
 Returns `409` if the user is already on the team.
 
 ### `POST /api/teams/:id/invite`
-Invites someone **not yet in the workspace** to the workspace AND the team in one step.  
-Used by the "Invite by email" tab in the Teams invite form.
+Invites someone by email into the team. The `addToWorkspace` flag controls whether they are also added to the workspace.  
+Used by the **Invite** button modal (`TeamInviteModal`).
 
 **Request**
 ```json
-{ "email": "colleague@example.com" }
+{ "email": "colleague@example.com", "role": "developer", "addToWorkspace": false }
 ```
+- `addToWorkspace: false` — invite is team-scoped only.
+- `addToWorkspace: true` — also creates a `workspace_invitation`; the invitee joins both on acceptance.
+
 **Response `201`**
 ```json
-{ "id": "uuid", "teamId": "team_1", "email": "colleague@example.com", "status": "pending", "expiresAt": "2026-06-18T00:00:00Z" }
+{ "id": "uuid", "teamId": "team_1", "email": "colleague@example.com", "role": "developer", "status": "pending", "expiresAt": "2026-06-18T00:00:00Z" }
 ```
-Sends an invitation email. Returns `409` if a pending invite already exists for that email + team.
+Returns `409` if a pending invite already exists for that email + team.
 
 ### `PATCH /api/teams/:id/members/:userId`
+Changes a member's role. A team must always have at least one `admin` — returns `422` if attempting to demote the only admin.
+
 **Request**
 ```json
-{ "role": "admin" }
+{ "role": "pm" }
 ```
 **Response `200`** — updated TeamMember object.
+
+### `DELETE /api/teams/:id/members/:userId`
+Removes a member from the team (not the workspace). Their tasks remain but `assignee_id` becomes `null`.  
+Returns `422` if attempting to remove the only `admin`.
+
+**Response `200`**
+```json
+{ "ok": true }
+```
 
 ---
 
@@ -624,9 +654,15 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | WelcomeScreen — Project Timeline phases | static / no API needed |
 | TeamsScreen — 3 stat cards (Total Teams, Total Members, Pending Invites) | `GET /api/teams/stats` |
 | TeamsScreen — team list | `GET /api/teams` |
-| TeamsScreen — "New Team" button + create form | `POST /api/teams` |
-| TeamsScreen — InviteForm "From workspace" tab (pick existing member) | `POST /api/teams/:id/members` |
-| TeamsScreen — InviteForm "Invite by email" tab (new person) | `POST /api/teams/:id/invite` |
+| TeamsScreen — "New Team" button → navigates to `/teams/new` | (navigation only) |
+| `/teams/new` — Create Team page submit (name + desc + color + member multi-select) | `POST /api/teams` (includes `color` + `memberIds[]`) |
+| TeamCard — "Manage" button → navigates to `/teams/:id` | (navigation only) |
+| `/teams/:id` — Manage Team page save (edit name / desc / color) | `PATCH /api/teams/:id` |
+| `/teams/:id` — Add from workspace (member picker + role, Add button) | `POST /api/teams/:id/members` |
+| `/teams/:id` — Change member role dropdown | `PATCH /api/teams/:id/members/:userId` |
+| `/teams/:id` — Remove member button (useConfirm) | `DELETE /api/teams/:id/members/:userId` |
+| `/teams/:id` — Delete Team (danger zone, useConfirm) | `DELETE /api/teams/:id` |
+| TeamCard — "Invite" button → TeamInviteModal (email + role + workspace checkbox) | `POST /api/teams/:id/invite` |
 | PeopleScreen — 4 stat cards (Total, Active, Pending Invites, Teams) | `GET /api/people/stats` |
 | PeopleScreen — member list | `GET /api/people` |
 | PeopleScreen — search filter | `GET /api/people?search=...` |
