@@ -1,0 +1,66 @@
+<aside class="sidebar">
+  <div class="sidebar-accent-bar"></div>
+
+  <div class="sidebar-logo">
+    <div class="logo-icon">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M2 3h10M2 7h6M2 11h8" stroke="white" stroke-width="1.75" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <span class="logo-text">Taskflow</span>
+  </div>
+
+  <div class="sidebar-divider"></div>
+
+  <div class="sidebar-section-label">Workspace</div>
+
+  <nav class="sidebar-nav">
+    <a href="/" class="nav-item">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M2 6.5L8 2l6 4.5V13a1 1 0 01-1 1h-3v-4H6v4H3a1 1 0 01-1-1V6.5z"
+          stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+      </svg>
+      <span>Home</span>
+    </a>
+    <a href="/tasks" class="nav-item">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.3"/>
+        <path d="M5.5 8l1.5 1.5 3.5-3.5" stroke="currentColor" stroke-width="1.3"
+          stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>My Tasks</span>
+    </a>
+    <a href="/board" class="nav-item nav-item--active">
+      <div class="nav-item-indicator"></div>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="2" y="2" width="5" height="12" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+        <rect x="9" y="2" width="5" height="5" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+        <rect x="9" y="9" width="5" height="5" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+      </svg>
+      <span>Kanban Board</span>
+    </a>
+  </nav>
+
+  <div class="sidebar-divider" style="margin: 16px;"></div>
+
+  <div class="sidebar-section-label">Projects</div>
+
+  <div class="sidebar-projects">
+    <div class="project-item" *ngFor="let p of projects">
+      <span class="project-dot" [style.background]="p.color"></span>
+      <span class="project-name">{{ p.name }}</span>
+    </div>
+  </div>
+
+  <div class="sidebar-spacer"></div>
+
+  <div class="sidebar-divider"></div>
+
+  <div class="sidebar-user">
+    <div class="user-avatar">AC</div>
+    <div class="user-info">
+      <span class="user-name">Arkabrata</span>
+      <span class="user-role">Engineer</span>
+    </div>
+  </div>
+</aside>
