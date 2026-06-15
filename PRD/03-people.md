@@ -2,10 +2,10 @@
 
 ## Overview
 
-The People screen is the workspace-level directory. It shows every person who has access to the workspace — both active members and those with pending invitations. Admins can invite new people here before (or instead of) inviting them directly to a specific team.
+The People screen is the workspace-level directory. It shows every person who has access to the workspace — both active members and those with pending invitations. Admins can invite new people, resend pending invites, and remove members.
 
 **Route**: `/people` (Shell, Next.js)  
-**Component**: `shell/src/components/people/PeopleScreen.tsx`
+**Component**: `shell/components/people/PeopleScreen.tsx`
 
 ---
 
@@ -14,103 +14,134 @@ The People screen is the workspace-level directory. It shows every person who ha
 | # | Story |
 |---|---|
 | US-PEOPLE-1 | As an admin I can see all workspace members in a single list |
-| US-PEOPLE-2 | As an admin I can invite someone to the workspace by email |
+| US-PEOPLE-2 | As an admin I can invite someone to the workspace by email via a modal |
 | US-PEOPLE-3 | As an admin I can see whether an invited person has accepted or is still pending |
-| US-PEOPLE-4 | As an admin I can filter the list by status (All / Active / Pending) |
-| US-PEOPLE-5 | As an admin I can remove a member from the workspace |
-| US-PEOPLE-6 | As any member I can see my teammates' names, emails, titles, and team memberships |
+| US-PEOPLE-4 | As an admin I can filter the list by team and by status |
+| US-PEOPLE-5 | As an admin I can search members by name or email |
+| US-PEOPLE-6 | As an admin I can remove an active member or cancel a pending invite |
+| US-PEOPLE-7 | As an admin I can resend an invite to a pending member |
+| US-PEOPLE-8 | As any member I can see teammates' names, emails, titles, and team memberships |
 
 ---
 
 ## Layout
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  People                                [Invite Member]  │
-│  ─────────────────────────────────────────────────────  │
-│  [All]  [Active]  [Pending]                             │
-│                                                         │
-│  ┌──────────────────────────────────────────────────┐   │
-│  │ Avatar  Name           Email         Teams  Status│   │
-│  │  AC   Arkabrata C.  arko@...    [Core][DS]  Active│   │
-│  │  JD   John Doe      john@...    [Core]       Active│   │
-│  │  MK   Maya Khan     maya@...    [Core]       Active│   │
-│  │  SR   Sam Roy       sam@...     [DS]         Active│   │
-│  │  PR   Priya R.      priya@...   —            Pending│  │
-│  └──────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│  People                               [Invite to workspace]      │
+│  ──────────────────────────────────────────────────────────────  │
+│  [Total Members: 5] [Active: 4] [Pending Invites: 1] [Teams: 3] │
+│                                                                  │
+│  [Search by name or email…]  [All teams ▾]  [All status ▾]      │
+│                                                                  │
+│  ┌────────────────────────────────────────────────────────────┐  │
+│  │ Avt  Name          Title         Teams        Status  Acts │  │
+│  │ AC   Arkabrata C.  Engineer      Core · DS    Active  ...  │  │
+│  │ JD   John Doe      Product Mgr   Core         Active  ...  │  │
+│  │ MK   Maya Khan     Designer      Core         Active  ...  │  │
+│  │ SR   Sam Roy       Engineer      DS           Active  ...  │  │
+│  │ PR   Priya R.      —             —            Pending ...  │  │
+│  └────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Member List
+## Stats Row (4 cards)
 
-Each row in the member list shows:
-
-| Field | Description |
+| Card | Value source |
 |---|---|
-| Avatar | Initials-based circle, colored by user |
-| Name | Full display name |
-| Email | Workspace email address |
-| Job title | Role/title string (e.g. "Engineer", "Designer") |
-| Teams | Badges showing which teams they belong to |
-| Status | `Active` (green) or `Pending` (amber) |
-| Actions | (Admin only) Remove button |
+| Total Members | Count of all members (active + pending) — live from local state |
+| Active | Count where `status === 'active'` |
+| Pending Invites | Count where `status === 'pending'` |
+| Teams | Total workspace teams count |
 
 ---
 
-## Filter Tabs
+## Member List Columns
 
-| Tab | Shows |
+| Column | Notes |
 |---|---|
-| All | Every member regardless of status |
-| Active | Only members with status `active` |
-| Pending | Only invited members who have not yet accepted |
-
-The count of each status is shown in the tab label (e.g. "Pending (1)").
-
----
-
-## Invite Member Flow
-
-1. User clicks **"Invite Member"** button (top-right).
-2. A modal/drawer opens with a single field: **Email address**.
-3. User enters the email and submits.
-4. `POST /api/people/invite` is called.
-5. The system sends an invitation email to that address.
-6. The invitee appears in the list immediately with status `Pending`.
-7. When the invitee clicks the link in their email and accepts, their status changes to `Active`.
-
-**Validation**:
-- Email must be a valid email address.
-- Duplicate invite to an email that already has a pending invite → show error "An invitation is already pending for this email."
-- Email already a workspace member → show error "This person is already a member."
+| Avatar | Initials-based circle — accent-tinted for active, dashed-border muted for pending |
+| Name | Display name (derived from email prefix for pending members) |
+| Email | Workspace email |
+| Title | Designation (e.g. "Engineer"). `—` if unknown (pending + not yet completed profile) |
+| Teams | Colored pill badges per team |
+| Status | `Active` (green pill) or `Pending` (amber pill) |
+| Actions | Hover-revealed. See below. |
 
 ---
 
-## Remove Member
+## Row Actions (hover-revealed)
 
-1. Admin clicks the remove action on a member row.
-2. Confirmation dialog: "Remove {name} from the workspace? This will remove them from all teams."
+| Member status | Actions |
+|---|---|
+| Pending | **Resend** (re-sends invitation email) + **Remove** (cancel invite) |
+| Active | **Remove** (remove from workspace) |
+
+Both remove variants open the global `ConfirmationModal` (via `useConfirm()`) with context-appropriate copy:
+- Pending → "Cancel invitation?" / "Cancel the pending invite for {email}?"
+- Active → "Remove member?" / "Remove {name} from this workspace?"
+
+---
+
+## Filters
+
+| Filter | Control | Behaviour |
+|---|---|---|
+| Search | Text input | Client-side substring match on name and email |
+| Team | React Select (`size: 'sm'`, non-searchable) | Options: All teams + each workspace team |
+| Status | React Select (`size: 'sm'`, non-searchable) | Options: All status · Active · Pending |
+
+All three filters compose — only rows matching all active filters are shown.
+
+---
+
+## Invite to Workspace Flow
+
+1. Admin clicks **"Invite to workspace"** button (header, top-right).
+2. `InviteModal` (`components/Modals/InviteModal.tsx`) opens with backdrop.
+3. Single email field — Formik + Yup validation (required, valid email format).
+4. Admin submits → `POST /api/people/invite`.
+5. On success: modal closes, new member added to list with `status: 'pending'`. Name derived from email prefix.
+6. When invitee accepts → their status becomes `active`.
+
+**Validation errors shown inline:**
+- Invalid email format
+- Duplicate pending invite (409 from server)
+- Already an active member (409 from server)
+
+---
+
+## Resend Invite
+
+- Button visible on hover for `status: 'pending'` rows.
+- Calls `POST /api/people/invite` with the same email (server re-sends the email and resets `expires_at`).
+- Returns `200` (not `409`) when re-sending to an existing pending invite.
+
+---
+
+## Remove Member / Cancel Invite
+
+1. Admin clicks **Remove** on any row.
+2. `useConfirm()` dialog opens (global `ConfirmProvider` — no prop drilling).
 3. On confirm → `DELETE /api/people/:userId`.
-4. Member disappears from the list.
-5. They are also removed from all team memberships.
+4. Row animates out of the list (`AnimatePresence` exit animation).
+5. Stats counts update reactively.
 
-**Rules**:
+**Rules:**
 - A user cannot remove themselves.
-- Removing a member does not delete their tasks — tasks remain, assignee becomes empty.
+- Removing an active member also removes them from all teams (`ON DELETE CASCADE` in DB).
+- Removing a pending member cancels the invitation record.
+- Removed members' tasks remain; `assignee_id` becomes `null`.
 
 ---
 
-## Stats Bar (optional, top of screen)
+## Workspace Concept
 
-A compact row of three counts:
+Each workspace is owned by the user who created it. The workspace name is displayed in the Sidebar as `[FirstName]'s Workspace`. Other members who join see the owner's workspace name — this is how they know which workspace they belong to.
 
-| Stat | Value |
-|---|---|
-| Total Members | `GET /api/people/stats` → `totalMembers` |
-| Active | `active` |
-| Pending Invites | `pendingInvites` |
+> Phase 0: workspace name is derived client-side from `taskflow_name` cookie (`user.name.split(' ')[0] + "'s Workspace"`). A real `GET /api/workspaces/current` endpoint will replace this in a future phase.
 
 ---
 
@@ -118,25 +149,15 @@ A compact row of three counts:
 
 ### `GET /api/people`
 
-Returns all workspace members.
-
-**Query params**:
-- `status=active|pending` (optional — omit for all)
+**Query params**: `teamId`, `status`, `search`, `page`, `limit`
 
 **Response (200)**
 ```json
 {
-  "members": [
-    {
-      "id": "u1",
-      "name": "Arkabrata C.",
-      "email": "arko@codeclouds.com",
-      "avatarInitials": "AC",
-      "title": "Engineer",
-      "teamIds": ["team_1", "team_2"],
-      "status": "active"
-    }
-  ]
+  "data": [
+    { "id": "u1", "initials": "AC", "name": "Arkabrata C.", "email": "arko@...", "title": "Engineer", "teamIds": ["team_1"], "status": "active" }
+  ],
+  "total": 5, "page": 1, "limit": 50
 }
 ```
 
@@ -146,64 +167,40 @@ Returns all workspace members.
 
 **Response (200)**
 ```json
-{
-  "totalMembers": 5,
-  "active": 4,
-  "pendingInvites": 1,
-  "totalTeams": 3
-}
+{ "totalMembers": 5, "active": 4, "pendingInvites": 1, "totalTeams": 3 }
 ```
 
 ---
 
 ### `POST /api/people/invite`
 
-**Request**
-```json
-{ "email": "newperson@example.com" }
-```
+**Request**: `{ "email": "colleague@example.com" }`
 
-**Success (201)**
-```json
-{
-  "invitation": {
-    "id": "inv_abc",
-    "email": "newperson@example.com",
-    "status": "pending",
-    "expiresAt": "2026-06-19T00:00:00Z"
-  }
-}
-```
-
-**Error (409)** — duplicate or already a member
-```json
-{ "message": "An invitation is already pending for this email." }
-```
+**Success (201)**: `{ "id": "uuid", "email": "...", "status": "pending", "expiresAt": "..." }`  
+**Re-send (200)**: Same shape — when `email` already has a pending invite, re-sends and resets expiry.  
+**Error (409)**: Already an active member.
 
 ---
 
 ### `DELETE /api/people/:userId`
 
-**Success (200)**
-```json
-{ "ok": true }
-```
+Handles both active members and pending invites (same endpoint, different DB action).
+
+**Success (200)**: `{ "ok": true }`
 
 ---
 
 ## Empty State
 
-When the workspace has only one member (the owner):
-- Show a friendly message: "It's just you here. Invite your team to get started."
-- Show the Invite Member button prominently.
+When the workspace has only one member (the owner): "It's just you here — invite your team to get started." with the invite button.
 
 ---
 
 ## Permissions
 
-| Action | Who can do it |
+| Action | Who |
 |---|---|
 | View member list | Any workspace member |
-| Invite member | Admin only |
-| Remove member | Admin only |
-| View own profile | Any member |
+| Invite member | Workspace admin only |
+| Resend invite | Workspace admin only |
+| Remove member / cancel invite | Workspace admin only |

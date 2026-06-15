@@ -17,7 +17,8 @@ CREATE TABLE users (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name             TEXT        NOT NULL,
   email            TEXT        NOT NULL UNIQUE,
-  avatar_initials  CHAR(2)     NOT NULL,           -- e.g. 'AC'
+  title            TEXT        NOT NULL DEFAULT '',  -- designation e.g. 'Engineer', 'Designer'
+  avatar_initials  CHAR(2)     NOT NULL,             -- e.g. 'AC'
   avatar_url       TEXT,
   password_hash    TEXT        NOT NULL,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -73,6 +74,29 @@ CREATE TABLE team_members (
   CHECK (role IN ('admin', 'pm', 'tl', 'developer'))
 );
 -- Application-level invariant: every team must have at least one row with role = 'admin'.
+```
+
+---
+
+### `workspace_invitations`
+
+> Tracks pending workspace-level invites from `PeopleScreen` → InviteModal.
+> Distinct from `invitations` (team-scoped). Accepting a workspace invite creates a workspace member with no team.
+
+```sql
+CREATE TABLE workspace_invitations (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  invited_by   UUID        NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  email        TEXT        NOT NULL,
+  status       TEXT        NOT NULL DEFAULT 'pending',
+                                               -- 'pending'|'accepted'|'declined'|'expired'
+  expires_at   TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '7 days',
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (email)                               -- only one pending invite per email at a time
+);
+
+CREATE INDEX workspace_invitations_email_idx ON workspace_invitations(email);
 ```
 
 ---

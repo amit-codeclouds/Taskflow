@@ -32,6 +32,7 @@ interface User {
   id: string;           // UUID
   name: string;
   email: string;
+  title: string;        // designation — e.g. "Engineer", "Designer". Empty string if not set.
   avatarInitials: string; // e.g. "AC" — derived from name on creation
   avatarUrl?: string;
   createdAt: string;    // ISO 8601
@@ -191,7 +192,7 @@ interface Team {
 
 ## Invitation
 
-> Source: `TeamsScreen` — InviteForm sends email to invite a user to a team.
+> Source: `TeamsScreen` — InviteForm sends email to invite a user to a **team**.
 
 ```ts
 type InvitationStatus = 'pending' | 'accepted' | 'declined' | 'expired';
@@ -207,6 +208,27 @@ interface Invitation {
   updatedAt: string;
 }
 ```
+
+---
+
+## WorkspaceInvitation
+
+> Source: `PeopleScreen` — InviteModal sends email to invite a user to the **workspace** (not a specific team).
+
+```ts
+interface WorkspaceInvitation {
+  id: string;
+  workspaceId: string;    // FK → Workspace.id (future)
+  invitedBy: string;      // FK → User.id
+  email: string;
+  status: InvitationStatus; // 'pending' | 'accepted' | 'declined' | 'expired'
+  expiresAt: string;      // ISO 8601 — 7 days from creation
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+> **Distinction**: `Invitation` is team-scoped (used by `TeamsScreen`). `WorkspaceInvitation` is workspace-scoped (used by `PeopleScreen`). Accepting a workspace invite makes the user a workspace member with no team; they can be added to teams afterward.
 
 ---
 

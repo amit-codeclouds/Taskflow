@@ -106,9 +106,25 @@ Every endpoint — success or failure — returns this wrapper.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | `/api/auth/login` | Public | Email + password → sets session cookie |
-| POST | `/api/auth/logout` | Auth | Clears session cookie |
+| POST | `/api/auth/signup` | Public | Register — name + email + title + password → sets session cookies |
+| POST | `/api/auth/login` | Public | Email + password → sets session cookies |
+| POST | `/api/auth/logout` | Auth | Clears all session cookies |
 | GET | `/api/auth/me` | Auth | Returns current user |
+
+### `POST /api/auth/signup`
+**Request**
+```json
+{ "name": "string", "email": "string", "password": "string", "title": "string (optional)" }
+```
+`title` is the resolved designation — if the user selected "Other" on the form, the free-text value is sent here, never the string `"Other"`.
+
+**Response `201`**
+```json
+{ "ok": true, "user": { "id": "uuid", "name": "string", "email": "string", "title": "string", "avatarInitials": "AC" } }
+```
+Sets cookies: `taskflow_session` (httpOnly) + `taskflow_name` + `taskflow_email` + `taskflow_title`.
+
+**Error `409`** — email already registered.
 
 ### `POST /api/auth/login`
 **Request**
@@ -117,14 +133,14 @@ Every endpoint — success or failure — returns this wrapper.
 ```
 **Response `200`**
 ```json
-{ "user": { "id": "uuid", "name": "string", "email": "string", "avatarInitials": "AC" } }
+{ "user": { "id": "uuid", "name": "string", "email": "string", "title": "string", "avatarInitials": "AC" } }
 ```
-Sets `Set-Cookie: taskflow_session=<signed>; Path=/; HttpOnly; SameSite=Lax`
+Sets `taskflow_session` (httpOnly) + `taskflow_name` + `taskflow_email` + `taskflow_title`.
 
 ### `GET /api/auth/me`
 **Response `200`**
 ```json
-{ "id": "uuid", "name": "string", "email": "string", "avatarInitials": "AC", "avatarUrl": null }
+{ "id": "uuid", "name": "string", "email": "string", "title": "string", "avatarInitials": "AC", "avatarUrl": null }
 ```
 
 ---
@@ -616,14 +632,19 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | PeopleScreen — search filter | `GET /api/people?search=...` |
 | PeopleScreen — team filter dropdown | `GET /api/people?teamId=...` |
 | PeopleScreen — status filter dropdown | `GET /api/people?status=active\|pending` |
-| PeopleScreen — "Invite to workspace" button + email form | `POST /api/people/invite` |
-| PeopleScreen — "Resend" action (pending member) | `POST /api/people/invite` (re-send to same email) |
-| SettingsScreen — Profile (name, role) read | `GET /api/auth/me` |
+| PeopleScreen — "Invite to workspace" button → InviteModal submit | `POST /api/people/invite` |
+| PeopleScreen — "Resend" action (pending member row) | `POST /api/people/invite` (re-send to same email → 200, resets expiry) |
+| PeopleScreen — "Remove" action (active member) | `DELETE /api/people/:userId` |
+| PeopleScreen — "Remove" action (pending member — cancel invite) | `DELETE /api/people/:userId` |
+| SettingsScreen — Profile (name, title) read | `GET /api/auth/me` |
 | SettingsScreen — Profile save | `PATCH /api/users/:id` |
 | SettingsScreen — Notification toggles save | `PATCH /api/preferences` |
-| Sidebar — user card (name, role, initials) | `GET /api/auth/me` |
-| Topbar — bell icon / notification dot | `GET /api/notifications` |
+| Sidebar — workspace indicator (owner name) | derived from `taskflow_name` cookie — no API call |
+| Sidebar — user card (name, initials) | `GET /api/auth/me` |
+| Topbar — bell icon | _commented out — not yet wired_ |
 | Topbar — avatar | `GET /api/auth/me` |
+| LoginForm — submit | `POST /api/auth/login` |
+| SignupForm — submit | `POST /api/auth/signup` |
 
 ### Task MFE (`mfe-task/`)
 

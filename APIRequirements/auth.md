@@ -10,16 +10,18 @@ All zones (Task MFE, Board MFE) automatically receive it on every request — no
 
 ## Cookie spec
 
-| Field | Value |
-|---|---|
-| Name | `taskflow_session` |
-| Value | Signed JWT or opaque token (Auth Service decides) |
-| Path | `/` |
-| HttpOnly | `true` |
-| SameSite | `Lax` |
-| Secure | `true` in production |
-| Domain | `.taskflow.app` (shared across all subdomains) |
-| Max-Age | `604800` (7 days) |
+Four cookies are set on successful login or signup:
+
+| Cookie | HttpOnly | JS-readable | Purpose |
+|---|---|---|---|
+| `taskflow_session` | `true` | No | Session token — auth gating across all zones |
+| `taskflow_name` | `false` | Yes | Display name — Sidebar workspace indicator + user card |
+| `taskflow_email` | `false` | Yes | Email — Sidebar user card |
+| `taskflow_title` | `false` | Yes | Designation — People listing, Settings profile |
+
+All cookies: `Path=/; SameSite=Lax; Secure=true (production); Domain=.taskflow.app`
+
+`taskflow_session` Max-Age: `604800` (7 days, sliding). Client-readable cookies share the same expiry.
 
 ---
 
@@ -58,10 +60,6 @@ Browser → POST /api/auth/logout
 
 ---
 
-## Current stub (Phase 0)
+## Current Implementation (Phase 0)
 
-`shell/src/app/api/auth/route.ts` returns a hardcoded stub cookie:
-```ts
-'Set-Cookie': 'taskflow_session=stub; Path=/; HttpOnly; SameSite=Lax'
-```
-Replace with real auth when the User Service is built.
+`shell/app/api/auth/login/route.ts` and `shell/app/api/auth/signup/route.ts` validate inputs and set all four cookies with real values (no DB — stub session token). Forms use **Formik + Yup** with field-level inline errors. Replace session token generation and add DB writes when the User Service is built.
