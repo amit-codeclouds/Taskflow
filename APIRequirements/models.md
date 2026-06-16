@@ -25,20 +25,49 @@ type LabelType =
 
 ---
 
+## WorkspaceMembership / TeamMembership
+
+> These two embedded arrays live on every `User` document. They are the DB source of truth for access control.
+> `WorkspaceMember` (People screen) and `Team.members` (Teams screen) are **derived views** built from these arrays.
+
+```ts
+interface WorkspaceMembership {
+  workspaceId: string;       // FK → Workspace.id
+  role: 'owner' | 'admin' | 'member';
+  status: 'active' | 'pending';
+  joinedAt: string;          // ISO 8601 — null if invite not yet accepted
+}
+
+interface TeamMembership {
+  teamId: string;            // FK → Team.id
+  workspaceId: string;       // FK → Workspace.id — scopes team to workspace
+  role: TeamRole;            // 'admin' | 'pm' | 'tl' | 'developer'
+  joinedAt: string;          // ISO 8601
+}
+```
+
+---
+
 ## User
 
 ```ts
 interface User {
-  id: string;           // UUID
+  id: string;                // UUID
   name: string;
   email: string;
-  title: string;        // designation — e.g. "Engineer", "Designer". Empty string if not set.
-  avatarInitials: string; // e.g. "AC" — derived from name on creation
+  title: string;             // designation — e.g. "Engineer", "Designer". Empty string if not set.
+  avatarInitials: string;    // e.g. "AC" — derived from name on creation
   avatarUrl?: string;
-  createdAt: string;    // ISO 8601
+  workspaces: WorkspaceMembership[];  // every workspace this user belongs to (active or pending)
+  teams: TeamMembership[];            // every team membership, across all workspaces
+  createdAt: string;         // ISO 8601
   updatedAt: string;
 }
 ```
+
+> **Derived views from these arrays:**
+> - `WorkspaceMember` (People screen) = `User.workspaces[workspaceId === current]` + `teamIds` = `User.teams[workspaceId === current].map(t => t.teamId)`
+> - `Team.members` (Teams screen) = all Users where `User.teams` contains `{ teamId: team.id, workspaceId: current }`
 
 ---
 
@@ -141,8 +170,8 @@ interface BoardColumn {
 ## WorkspaceMember
 
 > Source: `shell/lib/workspace.ts` — workspace-level people directory.  
-> A WorkspaceMember is any user (active or pending invite) who has access to the workspace,
-> regardless of which teams they belong to. Used by the People screen and the Teams invite form.
+> **Derived view** — not a stored collection. Built by the backend from `User.workspaces` + `User.teams`
+> filtered to the current workspace. Used by the People screen and the Teams invite member-picker.
 
 ```ts
 type MemberStatus = 'active' | 'pending';
@@ -153,8 +182,8 @@ interface WorkspaceMember {
   name: string;
   email: string;
   title: string;          // job title or role description; "—" if unknown
-  teamIds: string[];      // FK → Team.id[] — teams this member belongs to
-  status: MemberStatus;
+  teamIds: string[];      // FK → Team.id[] — derived from User.teams[workspaceId === current]
+  status: MemberStatus;   // derived from User.workspaces[workspaceId === current].status
 }
 ```
 

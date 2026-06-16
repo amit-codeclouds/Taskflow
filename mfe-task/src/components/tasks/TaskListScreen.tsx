@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import Badge from '@/components/ui/Badge';
+import AppSelect, { type SelectOption } from '@/components/ui/AppSelect';
 import {
   TASKS, TEAMS, LABEL_STYLES, PRIORITY_COLORS,
   type Task,
@@ -71,20 +72,25 @@ const STATUS_LABELS: Record<FilterKey, string> = {
   'all': 'All', 'in-progress': 'In Progress', review: 'Review', todo: 'To Do', done: 'Done',
 };
 
+const TEAM_OPTIONS: SelectOption[] = [
+  { value: 'all', label: 'All Teams' },
+  ...TEAMS.map(t => ({ value: t.id, label: t.name })),
+];
+
 export default function TaskListScreen() {
   const [statusFilter, setStatusFilter] = useState<FilterKey>('all');
-  const [teamFilter, setTeamFilter]     = useState<string>('all');
+  const [teamFilter, setTeamFilter]     = useState<SelectOption>(TEAM_OPTIONS[0]);
 
   const filtered = TASKS.filter(t => {
     const matchStatus = statusFilter === 'all' || getFilterKey(t) === statusFilter;
-    const matchTeam   = teamFilter === 'all' || t.teamId === teamFilter;
+    const matchTeam   = teamFilter.value === 'all' || t.teamId === teamFilter.value;
     return matchStatus && matchTeam;
   });
 
   const countFor = (key: FilterKey) =>
     TASKS.filter(t =>
       (key === 'all' || getFilterKey(t) === key) &&
-      (teamFilter === 'all' || t.teamId === teamFilter)
+      (teamFilter.value === 'all' || t.teamId === teamFilter.value)
     ).length;
 
   const STATS = [
@@ -152,27 +158,14 @@ export default function TaskListScreen() {
           ))}
         </motion.div>
 
-        <motion.div className="flex items-center gap-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.12 }}>
-          <span className="text-xs text-text-300">Team:</span>
-          <div className="flex items-center gap-1 bg-bg-800 rounded-lg p-1">
-            <button onClick={() => setTeamFilter('all')}
-              className={`relative px-2.5 py-1 rounded-md text-xs transition-colors ${teamFilter === 'all' ? 'text-text-100' : 'text-text-300 hover:text-text-200'}`}
-            >
-              {teamFilter === 'all' && <motion.span layoutId="teamBg" className="absolute inset-0 bg-bg-600 rounded-md" />}
-              <span className="relative z-10">All</span>
-            </button>
-            {TEAMS.map(t => (
-              <button key={t.id} onClick={() => setTeamFilter(t.id)}
-                className={`relative flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs transition-colors ${teamFilter === t.id ? 'text-text-100' : 'text-text-300 hover:text-text-200'}`}
-              >
-                {teamFilter === t.id && <motion.span layoutId="teamBg" className="absolute inset-0 bg-bg-600 rounded-md" />}
-                <span className="relative z-10 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: t.color }} />
-                  {t.name.split(' ')[0]}
-                </span>
-              </button>
-            ))}
-          </div>
+        <motion.div className="flex items-center gap-2 w-[200px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.12 }}>
+          <AppSelect
+            instanceId="team-filter"
+            options={TEAM_OPTIONS}
+            value={teamFilter}
+            onChange={opt => opt && setTeamFilter(opt as SelectOption)}
+            isSearchable={false}
+          />
         </motion.div>
       </div>
 
@@ -231,7 +224,7 @@ function TaskRow({ task, index, isLast }: { task: Task; index: number; isLast: b
 
       {/* Status badge */}
       <div className="shrink-0 hidden md:block">
-        <Badge label={task.status.name} variant={filterKey === 'in-progress' ? 'in-progress' : filterKey} />
+        <Badge label={task.status.name} variant={filterKey === 'all' ? 'todo' : filterKey} />
       </div>
 
       {/* Due date */}

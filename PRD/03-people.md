@@ -145,6 +145,29 @@ Each workspace is owned by the user who created it. The workspace name is displa
 
 ---
 
+## Data Model Relationship
+
+The People screen is a **derived view** — not a separate database collection. On the backend every `User` document carries two arrays:
+
+```
+User {
+  workspaces: [{ workspaceId, role, status, joinedAt }]   ← workspace memberships
+  teams:      [{ teamId, workspaceId, role, joinedAt }]   ← team memberships
+}
+```
+
+`GET /api/people` builds the `WorkspaceMember` response by:
+1. Selecting all Users where `User.workspaces` contains `{ workspaceId: current }`.
+2. Setting `status` from `User.workspaces[current].status` (`'active'` or `'pending'`).
+3. Deriving `teamIds` from `User.teams` filtered to `workspaceId === current`.
+
+This means:
+- Inviting someone to the workspace = appending a `WorkspaceMembership` entry to their `User` document.
+- Adding someone to a team = appending a `TeamMembership` entry to their `User` document.
+- Removing a workspace member = removing both the `WorkspaceMembership` entry **and** all `TeamMembership` entries where `workspaceId === current` (cascade).
+
+---
+
 ## API Endpoints
 
 ### `GET /api/people`
