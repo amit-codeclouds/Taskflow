@@ -1,8 +1,9 @@
 # Data Models
 
-> Derived from current frontend type definitions across `shell`, `mfe-task`, and `mfe-board`.
-> Kept as TypeScript interfaces so both frontend and backend can share them.
-> Update this file whenever a new frontend screen introduces new fields.
+> PostgreSQL source of truth for the TaskFlow backend.
+> Derived from frontend type definitions and schema design sessions.
+> Update this file whenever a new screen or feature introduces new fields.
+> MongoDB collections (ActivityLog, Notification, UserPreferences) are omitted for v1.
 
 ---
 
@@ -11,9 +12,6 @@
 ```ts
 type Priority = 'high' | 'medium' | 'low';
 
-// Board statuses are now dynamic per team (see BoardStatus below).
-// No global TaskStatus enum exists — a task references a status by id.
-
 type LabelType =
   | 'feature'
   | 'bug'
@@ -21,29 +19,12 @@ type LabelType =
   | 'docs'
   | 'infra'
   | 'refactor';
-```
 
----
+type WorkspaceMemberStatus = 'active' | 'pending';
 
-## WorkspaceMembership / TeamMembership
+type InvitationStatus = 'pending' | 'accepted' | 'declined' | 'expired';
 
-> These two embedded arrays live on every `User` document. They are the DB source of truth for access control.
-> `WorkspaceMember` (People screen) and `Team.members` (Teams screen) are **derived views** built from these arrays.
-
-```ts
-interface WorkspaceMembership {
-  workspaceId: string;       // FK → Workspace.id
-  role: 'owner' | 'admin' | 'member';
-  status: 'active' | 'pending';
-  joinedAt: string;          // ISO 8601 — null if invite not yet accepted
-}
-
-interface TeamMembership {
-  teamId: string;            // FK → Team.id
-  workspaceId: string;       // FK → Workspace.id — scopes team to workspace
-  role: TeamRole;            // 'admin' | 'pm' | 'tl' | 'developer'
-  joinedAt: string;          // ISO 8601
-}
+type TeamRole = 'admin' | 'pm' | 'tl' | 'developer';
 ```
 
 ---
@@ -52,218 +33,50 @@ interface TeamMembership {
 
 ```ts
 interface User {
-  id: string;                // UUID
+  id: string;               // UUID — PK
   name: string;
-  email: string;
-  title: string;             // designation — e.g. "Engineer", "Designer". Empty string if not set.
-  avatarInitials: string;    // e.g. "AC" — derived from name on creation
-  avatarUrl?: string;
-  workspaces: WorkspaceMembership[];  // every workspace this user belongs to (active or pending)
-  teams: TeamMembership[];            // every team membership, across all workspaces
-  createdAt: string;         // ISO 8601
-  updatedAt: string;
+  email: string;            // UNIQUE
+  title: string;            // job title, e.g. "Engineer". Empty string if not set.
+  designation?: string;     // optional designation / seniority label
+  avatar_url?: string;      // Cloudinary secure URL
+  avatar_public_id?: string;// Cloudinary public_id — required to delete the image
+  created_at: string;       // ISO 8601
+  updated_at: string;
 }
 ```
 
-> **Derived views from these arrays:**
-> - `WorkspaceMember` (People screen) = `User.workspaces[workspaceId === current]` + `teamIds` = `User.teams[workspaceId === current].map(t => t.teamId)`
-> - `Team.members` (Teams screen) = all Users where `User.teams` contains `{ teamId: team.id, workspaceId: current }`
+> On user creation, a default **Workspace** is automatically created and assigned to this user as owner.
 
 ---
 
-## Task
-
-> Source: `mfe-task/src/components/tasks/TaskListScreen.tsx`
+## Workspace
 
 ```ts
-interface Task {
-  id: string;                  // e.g. "TF-001"
-  title: string;
-  description?: string;        // rich-text (HTML/markdown)
-  priority: Priority;
-  statusId: string;            // FK → BoardStatus.id (team-scoped, dynamic)
-  status?: BoardStatus;        // populated on fetch
-  label: LabelType;
-  assigneeId: string;          // FK → User.id
-  assignee?: User;
-  teamId: string;              // FK → Team.id — required
-  team?: Team;
-  expectedCompletion?: string; // ISO 8601 date. Renamed from `dueDate`.
-  progress: number;            // integer 0–100, manual, defaults to 0
-  imageUrls: string[];         // Cloudinary secure URLs, multi-upload
-  projectId?: string;
-  sprintId?: string;
-  deletedAt?: string | null;   // soft-delete; set when parent status is deleted
-  createdAt: string;
-  updatedAt: string;
+interface Workspace {
+  id: string;         // UUID — PK
+  name: string;       // e.g. "<User>'s Workspace"
+  owner_id: string;   // FK → User.id — set on creation, auto-assigned
+  created_at: string;
+  updated_at: string;
 }
 ```
 
----
-
-## Project
-
-```ts
-interface Project {
-  id: string;
-  name: string;
-  slug: string;         // e.g. "taskflow" → task IDs prefixed "TF-"
-  ownerId: string;      // FK → User.id
-  members: User[];
-  createdAt: string;
-  updatedAt: string;
-}
-```
-
----
-
-## Sprint
-
-```ts
-interface Sprint {
-  id: string;
-  name: string;         // e.g. "Sprint 1"
-  projectId: string;    // FK → Project.id
-  status: 'planning' | 'active' | 'completed';
-  startDate: string;    // ISO 8601
-  endDate: string;      // ISO 8601
-  createdAt: string;
-  updatedAt: string;
-}
-```
-
----
-
-## BoardStatus
-
-> Statuses are fully dynamic per team. Each team owns its own ordered list of statuses.
-
-```ts
-interface BoardStatus {
-  id: string;           // UUID
-  teamId: string;       // FK → Team.id
-  name: string;         // e.g. "Backlog", "In Progress"
-  description?: string;
-  position: number;     // column order
-  createdAt: string;
-  updatedAt: string;
-}
-```
-
-## BoardColumn (API response shape — not persisted)
-
-`GET /api/board/:teamId` returns columns built from BoardStatus rows plus the first 5 tasks each.
-
-```ts
-interface BoardColumn {
-  id: string;           // BoardStatus.id
-  name: string;
-  description?: string;
-  position: number;
-  totalTasks: number;   // total count in this status
-  tasks: Task[];        // first 5 by default; paginated via "load more"
-}
-```
+> A workspace is auto-created for every new user. Multi-workspace support is a future scope — the table is already structured for it.
 
 ---
 
 ## WorkspaceMember
 
-> Source: `shell/lib/workspace.ts` — workspace-level people directory.  
-> **Derived view** — not a stored collection. Built by the backend from `User.workspaces` + `User.teams`
-> filtered to the current workspace. Used by the People screen and the Teams invite member-picker.
+> Join table tracking which users belong to which workspace.
+> Source of truth for workspace-level access control.
 
 ```ts
-type MemberStatus = 'active' | 'pending';
-
 interface WorkspaceMember {
-  id: string;             // FK → User.id (null if invite not yet accepted)
-  initials: string;       // e.g. "AC" — derived from name
-  name: string;
-  email: string;
-  title: string;          // job title or role description; "—" if unknown
-  teamIds: string[];      // FK → Team.id[] — derived from User.teams[workspaceId === current]
-  status: MemberStatus;   // derived from User.workspaces[workspaceId === current].status
-}
-```
-
----
-
-## Team
-
-> Source: `shell/lib/teams.ts`
-
-Two shapes exist: one for the **backend API** (normalised) and one for the **frontend display** (denormalised, used by TeamsScreen, `/teams/new`, `/teams/:id`).
-
-### Backend (API) shape
-
-```ts
-// Per-team role. See PRD/04-teams.md for the full permission matrix.
-type TeamRole = 'admin' | 'pm' | 'tl' | 'developer';
-
-interface TeamMember {
-  userId: string;         // FK → User.id
-  user?: User;            // populated on fetch
-  role: TeamRole;
-  joinedAt: string;       // ISO 8601
-}
-
-interface Team {
-  id: string;             // e.g. "team_1"
-  name: string;
-  description: string;
-  color: string;          // hex accent — display only, e.g. "#6155DD"
-  ownerId: string;        // FK → User.id (always admin)
-  members: TeamMember[];
-  pendingInvites: number; // count of outstanding invitations
-  createdAt: string;
-  updatedAt: string;
-}
-```
-
-### Frontend (display) shape
-
-Used client-side in `teamsStore`, the Create Team page, and the Manage Team page.
-Members are denormalised — all display fields are inlined; no separate `user` fetch needed.
-
-```ts
-interface TeamMember {
-  id: string;             // FK → User.id
-  initials: string;       // e.g. "AC" — for avatar display
-  name: string;
-  email: string;
-  title: string;          // job title or "—" if unknown
-  role: TeamRole;
-  isPending: boolean;     // true = email-invited, not yet accepted
-}
-
-interface Team {
-  id: string;
-  name: string;
-  description: string;
-  color: string;          // hex — from TEAM_COLORS preset swatches
-  members: TeamMember[];  // pending count derived via members.filter(m => m.isPending).length
-}
-```
-
----
-
-## Invitation
-
-> Source: `shell/components/teams/TeamInviteModal.tsx` — sends email to invite a user to a **team**.
-
-```ts
-type InvitationStatus = 'pending' | 'accepted' | 'declined' | 'expired';
-
-interface Invitation {
-  id: string;
-  teamId: string;         // FK → Team.id
-  invitedBy: string;      // FK → User.id
-  email: string;          // recipient email (may not be a registered user yet)
-  status: InvitationStatus;
-  expiresAt: string;      // ISO 8601 — 7 days from creation
-  createdAt: string;
-  updatedAt: string;
+  id: string;           // UUID — PK
+  workspace_id: string; // FK → Workspace.id
+  user_id: string;      // FK → User.id
+  status: WorkspaceMemberStatus; // 'active' | 'pending'
+  joined_at: string;    // ISO 8601 — null until invite accepted
 }
 ```
 
@@ -271,37 +84,162 @@ interface Invitation {
 
 ## WorkspaceInvitation
 
-> Source: `PeopleScreen` — InviteModal sends email to invite a user to the **workspace** (not a specific team).
+> Sent from the People screen to invite a user to a workspace.
+> On acceptance: inserts a row into WorkspaceMember with status = 'active'.
 
 ```ts
 interface WorkspaceInvitation {
-  id: string;
-  workspaceId: string;    // FK → Workspace.id (future)
-  invitedBy: string;      // FK → User.id
-  email: string;
-  status: InvitationStatus; // 'pending' | 'accepted' | 'declined' | 'expired'
-  expiresAt: string;      // ISO 8601 — 7 days from creation
-  createdAt: string;
-  updatedAt: string;
+  id: string;           // UUID — PK
+  workspace_id: string; // FK → Workspace.id
+  invited_by: string;   // FK → User.id
+  email: string;        // recipient email (may not be a registered user yet)
+  status: InvitationStatus;
+  expires_at: string;   // ISO 8601 — 7 days from creation
+  created_at: string;
+  updated_at: string;
 }
 ```
 
-> **Distinction**: `Invitation` is team-scoped (used by `TeamsScreen`). `WorkspaceInvitation` is workspace-scoped (used by `PeopleScreen`). Accepting a workspace invite makes the user a workspace member with no team; they can be added to teams afterward.
+---
+
+## Role
+
+> Global role definitions — not scoped per workspace.
+> Predefined roles: Admin, PM, TL, Developer.
+> `permissions` is a string array of permission keys, e.g. `["task:create", "task:delete"]`.
+
+```ts
+interface Role {
+  id: string;              // UUID — PK
+  name: string;            // UNIQUE — e.g. 'admin' | 'pm' | 'tl' | 'developer'
+  description?: string;
+  permissions: string[];   // array of permission key strings
+  created_at: string;
+  updated_at: string;
+}
+```
 
 ---
 
-## Dashboard Stats
-
-> Source: `shell/components/home/WelcomeScreen.tsx` — stat cards row.
+## Team
 
 ```ts
-interface DashboardStats {
-  totalTasks: number;     // all tasks visible to current user
-  inProgress: number;     // tasks with status = 'in-progress'
-  completed: number;      // tasks with status = 'done'
-  boardItems: number;     // tasks in the active sprint on the board
-  // trend fields (computed, not stored):
-  completionRate: number; // completed / totalTasks * 100
+interface Team {
+  id: string;           // UUID — PK
+  name: string;
+  description?: string;
+  color: string;        // hex accent — e.g. "#6155DD", from TEAM_COLORS preset
+  workspace_id: string; // FK → Workspace.id
+  admin_id: string;     // FK → User.id — current admin (can change)
+  created_by: string;   // FK → User.id — original creator (immutable)
+  created_at: string;
+  updated_at: string;
+}
+```
+
+> On team creation, three default **BoardStatus** rows are seeded automatically by the backend:
+> - `Backlog` (position 1)
+> - `In Progress` (position 2)
+> - `Done` (position 3)
+
+---
+
+## TeamRoleMapper
+
+> Replaces the former TeamMembership table.
+> Tracks which user belongs to which team and with which role.
+
+```ts
+interface TeamRoleMapper {
+  id: string;      // UUID — PK
+  team_id: string; // FK → Team.id
+  user_id: string; // FK → User.id
+  role_id: string; // FK → Role.id
+  created_at: string;
+}
+```
+
+---
+
+## TeamInvitation
+
+> Sent from the Teams screen to invite a user to a specific team with a pre-assigned role.
+> On acceptance: inserts a row into TeamRoleMapper with the specified role_id.
+
+```ts
+interface TeamInvitation {
+  id: string;         // UUID — PK
+  team_id: string;    // FK → Team.id
+  invited_by: string; // FK → User.id
+  email: string;      // recipient email (may not be a registered user yet)
+  role_id: string;    // FK → Role.id — role to assign on acceptance
+  status: InvitationStatus;
+  expires_at: string; // ISO 8601 — 7 days from creation
+  created_at: string;
+  updated_at: string;
+}
+```
+
+> **Distinction**: `TeamInvitation` is team-scoped (Teams screen). `WorkspaceInvitation` is workspace-scoped (People screen). Accepting a workspace invite adds the user as a workspace member with no team; they can be added to teams separately.
+
+---
+
+## BoardStatus
+
+> Statuses are fully dynamic per team. Each team owns its own ordered list of board columns.
+> Three default statuses (Backlog, In Progress, Done) are seeded on team creation.
+
+```ts
+interface BoardStatus {
+  id: string;           // UUID — PK
+  team_id: string;      // FK → Team.id
+  name: string;         // e.g. "Backlog", "In Progress", "Done"
+  description?: string;
+  position: number;     // column order — integer, 1-indexed
+  created_at: string;
+  updated_at: string;
+}
+```
+
+---
+
+## Task
+
+> No Sprint or Project concept in v1.
+> Assignees are tracked via the TaskAssigneeMapper join table.
+> `description` stores CKEditor HTML output as a string.
+
+```ts
+interface Task {
+  id: string;                   // e.g. "TF-001" — PK
+  title: string;
+  description?: string;         // CKEditor HTML string (may contain embedded images)
+  priority: Priority;           // 'high' | 'medium' | 'low'
+  label: LabelType;             // single label per task
+  status_id: string;            // FK → BoardStatus.id (team-scoped)
+  team_id: string;              // FK → Team.id — required
+  expected_completion?: string; // ISO 8601 date
+  progress: number;             // integer 0–100, manual, defaults to 0
+  deleted_at?: string | null;   // soft-delete timestamp
+  created_at: string;
+  updated_at: string;
+}
+```
+
+---
+
+## TaskAssigneeMapper
+
+> A task can be assigned to multiple users.
+> Replaces the single `assignee_id` field on Task.
+
+```ts
+interface TaskAssigneeMapper {
+  id: string;      // UUID — PK
+  task_id: string; // FK → Task.id
+  user_id: string; // FK → User.id
+  created_at: string;
+  updated_at: string;
 }
 ```
 
@@ -309,73 +247,52 @@ interface DashboardStats {
 
 ## Comment
 
+> Comments on a task. Supports optional image attachments (e.g. screenshots).
+> `image_urls` and `image_public_ids` are parallel arrays — always updated together.
+> `image_public_ids[i]` is the Cloudinary public_id for `image_urls[i]`.
+
 ```ts
 interface Comment {
-  id: string;
-  taskId: string;       // FK → Task.id
-  authorId: string;     // FK → User.id
-  author?: User;
-  body: string;
-  createdAt: string;
-  updatedAt: string;
+  id: string;                  // UUID — PK
+  task_id: string;             // FK → Task.id
+  author_id: string;           // FK → User.id
+  body: string;                // comment text
+  image_urls?: string[];       // Cloudinary secure URLs
+  image_public_ids?: string[]; // Cloudinary public_ids — for deletion
+  created_at: string;
+  updated_at: string;
 }
 ```
 
 ---
 
-## Activity Log (MongoDB)
+## BoardColumn (API response shape — not persisted)
+
+`GET /api/board/:teamId` returns columns built from BoardStatus rows plus paginated tasks.
 
 ```ts
-interface ActivityLog {
-  _id: string;
-  entityType: 'task' | 'project' | 'sprint' | 'comment';
-  entityId: string;
-  actorId: string;      // User.id
-  action: string;       // e.g. "status_changed", "assignee_updated", "comment_added"
-  diff: Record<string, { from: unknown; to: unknown }>;
-  timestamp: string;    // ISO 8601
+interface BoardColumn {
+  id: string;           // BoardStatus.id
+  name: string;
+  description?: string;
+  position: number;
+  total_tasks: number;  // total count in this status
+  tasks: Task[];        // first 5 by default; paginated via "load more"
 }
 ```
 
 ---
 
-## Notification (MongoDB)
+## Removed in v1
 
-```ts
-interface Notification {
-  _id: string;
-  recipientId: string;  // User.id
-  type: 'task_assigned' | 'comment_added' | 'due_soon' | 'status_changed';
-  payload: Record<string, unknown>; // varies by type
-  read: boolean;
-  createdAt: string;
-}
-```
+The following models from the original spec are **intentionally omitted** for v1:
 
----
-
-## UserPreferences (MongoDB)
-
-```ts
-interface UserPreferences {
-  _id: string;          // equals User.id
-  theme: 'dark' | 'light';
-  sidebarCollapsed: boolean;
-  defaultTaskFilter: TaskStatus | 'all';
-  notificationsEnabled: boolean;
-  // extend freely — no migration needed (MongoDB)
-}
-```
-
----
-
-## Session (cookie-based)
-
-```ts
-interface Session {
-  userId: string;
-  email: string;
-  expiresAt: string;    // ISO 8601
-}
-// Stored server-side; client holds only the signed httpOnly cookie "taskflow_session"
-```
+| Model | Reason |
+|---|---|
+| `Sprint` | No sprint concept in v1 |
+| `Project` | No project concept in v1 |
+| `ActivityLog` | MongoDB — deferred |
+| `Notification` | MongoDB — deferred |
+| `UserPreferences` | MongoDB — deferred |
+| `DashboardStats` | Computed at query time, not persisted |
+| `Session` | Cookie-based, managed server-side |
