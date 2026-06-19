@@ -42,6 +42,11 @@ export class BoardComponent implements OnInit {
 
   toggleDropdown(e: Event) { e.stopPropagation(); this.dropdownOpen = !this.dropdownOpen; }
 
+  addTaskUrl(col: Column): string {
+    const params = new URLSearchParams({ teamId: this.selectedTeam.id, statusId: col.statusId });
+    return `/tasks/new?${params.toString()}`;
+  }
+
   selectTeam(team: Team, e: Event) {
     e.stopPropagation();
     this.selectedTeam = team;

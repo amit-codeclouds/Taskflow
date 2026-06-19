@@ -10,6 +10,7 @@ export interface Task {
 
 export interface Column {
   id: string;
+  statusId: string;
   title: string;
   color: string;
   count: number;
