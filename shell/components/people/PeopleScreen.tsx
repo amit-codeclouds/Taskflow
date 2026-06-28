@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserPlus, Search, UserCheck, Clock, Users, Trash2, RefreshCw } from 'lucide-react';
-import { usePeopleList, usePeopleStats, useInvitePerson, useRemovePerson } from '@/lib/hooks/usePeople';
+import { usePeopleList, usePeopleStats, useRemovePerson } from '@/lib/hooks/usePeople';
 import { useTeamsList } from '@/lib/hooks/useTeams';
 import { PeopleSkeleton } from '@/app/(shell)/people/_skeleton';
 import InviteModal from '@/components/Modals/InviteModal';
@@ -133,7 +133,6 @@ export default function PeopleScreen() {
   const { data: people = [], isPending } = usePeopleList();
   const { data: statsData }              = usePeopleStats();
   const { data: allTeams = [] }          = useTeamsList();
-  const inviteMutation                   = useInvitePerson();
   const removeMutation                   = useRemovePerson();
   const confirm                          = useConfirm();
 
@@ -163,11 +162,6 @@ export default function PeopleScreen() {
     const matchStatus = statusFilter === 'all' || m.status === statusFilter;
     return matchSearch && matchTeam && matchStatus;
   });
-
-  function handleInvite(email: string) {
-    inviteMutation.mutate({ email });
-    setShowInvite(false);
-  }
 
   async function handleRemove(id: string) {
     const member    = people.find(m => m.id === id);
@@ -303,7 +297,6 @@ export default function PeopleScreen() {
           <InviteModal
             key="invite-modal"
             onClose={() => setShowInvite(false)}
-            onInvite={handleInvite}
           />
         )}
       </AnimatePresence>

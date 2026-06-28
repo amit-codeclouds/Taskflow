@@ -46,6 +46,18 @@ export function useUpdatePerson() {
   });
 }
 
+export function useEnlistPeople() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (userIds: string[]) => peopleService.enlist(userIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.people.all() });
+      toast.success('Members added to workspace!');
+    },
+    onError: (err) => toast.error(extractErrorMessage(err)),
+  });
+}
+
 export function useRemovePerson() {
   const queryClient = useQueryClient();
   return useMutation({

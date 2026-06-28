@@ -22,6 +22,10 @@ export const peopleService = {
     return data.result;
   },
 
+  async enlist(userIds: string[]): Promise<void> {
+    await apiClient.post('/people/enlist', { userIds });
+  },
+
   async remove(userId: string): Promise<void> {
     await apiClient.delete(`/people/${userId}`);
   },
