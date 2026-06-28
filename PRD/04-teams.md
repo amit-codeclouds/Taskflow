@@ -339,6 +339,24 @@ Change role.
 | Invitations expire | After 7 days |
 | Team name uniqueness | Unique per workspace |
 
+### Data Model
+
+Team membership is stored on the `User` document as a `TeamMembership` entry — not as a join table or a separate collection:
+
+```
+User {
+  teams: [{ teamId, workspaceId, role, joinedAt }]
+}
+```
+
+`Team.members` in the API response is a **derived view** — the backend queries all Users whose `User.teams` array contains `{ teamId: this.id, workspaceId: current }` and inlines their display fields (`name`, `email`, `title`, `avatarInitials`).
+
+Practical consequences:
+- Adding a member = append `TeamMembership` to `User.teams`.
+- Changing a role = update `User.teams[teamId].role`.
+- Removing a member from a team = remove the `TeamMembership` entry from `User.teams` (does **not** remove their workspace membership).
+- Deleting a team = remove all `TeamMembership` entries where `teamId === deleted` from every User.
+
 ---
 
 ## Roles (per team)

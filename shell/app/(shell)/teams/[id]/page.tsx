@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Check, Lock, Trash2, Save } from 'lucide-react';
@@ -9,10 +9,13 @@ import * as Yup from 'yup';
 import Select from 'react-select';
 import { getSelectStyles, type SelectOption } from '@/lib/selectStyles';
 import { useConfirm } from '@/components/Modals/ConfirmProvider';
-import { teamsStore } from '@/lib/teamsStore';
-import { WORKSPACE_MEMBERS } from '@/lib/workspace';
-import type { Team, TeamMember, TeamRole } from '@/lib/teams';
 import { TEAM_COLORS, ROLE_OPTIONS } from '@/lib/teams';
+import type { TeamRole } from '@/lib/teams';
+import { useTeamDetail, useUpdateTeam, useDeleteTeam } from '@/lib/hooks/useTeams';
+import { useUsersList } from '@/lib/hooks/useUsers';
+import type { ApiTeamMember } from '@/lib/types/teams.types';
+import { TeamDetailSkeleton } from './_skeleton';
+import { getInitials } from '@/lib/initials';
 
 // ─── Color picker ─────────────────────────────────────────────────────────────
 
@@ -49,12 +52,12 @@ function MemberRow({
   onRoleChange,
   onRemove,
 }: {
-  member: TeamMember;
+  member: ApiTeamMember;
   isLastAdmin: boolean;
   onRoleChange: (id: string, role: TeamRole) => void;
   onRemove: (id: string) => void;
 }) {
-  const isPending = member.isPending === true;
+  const initials = member.avatarInitials || getInitials(member.name);
 
   return (
     <motion.div
@@ -65,34 +68,18 @@ function MemberRow({
       exit={{ opacity: 0, x: -8 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
     >
-      <div
-        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${
-          isPending
-            ? 'bg-bg-600 text-text-300 border border-dashed border-border-subtle'
-            : 'bg-accent-bg text-accent'
-        }`}
-      >
-        {member.initials}
+      <div className="w-8 h-8 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xs font-semibold shrink-0">
+        {initials}
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <p className="text-sm text-text-100 truncate">{member.name}</p>
-          {isPending && (
-            <span className="text-[10px] text-status-amber bg-amber-bg px-1.5 py-0.5 rounded shrink-0">
-              Pending
-            </span>
-          )}
-        </div>
-        <p className="text-xs text-text-300 truncate">{member.title}</p>
+        <p className="text-sm text-text-100 truncate">{member.name}</p>
+        <p className="text-xs text-text-300 truncate">{member.role}</p>
       </div>
 
       <div className="w-[160px] shrink-0">
         {isLastAdmin ? (
-          <div
-            className="h-9 flex items-center gap-1.5 px-3 bg-bg-600/60 border border-border-subtle rounded-lg cursor-not-allowed"
-            title="Cannot change — only admin"
-          >
+          <div className="h-9 flex items-center gap-1.5 px-3 bg-bg-600/60 border border-border-subtle rounded-lg cursor-not-allowed">
             <Lock size={11} className="text-text-300 shrink-0" />
             <span className="text-xs text-text-300">Admin</span>
           </div>
@@ -100,10 +87,10 @@ function MemberRow({
           <Select
             options={ROLE_OPTIONS}
             value={ROLE_OPTIONS.find(o => o.value === member.role) ?? ROLE_OPTIONS[3]}
-            onChange={opt => opt && onRoleChange(member.id, opt.value as TeamRole)}
+            onChange={opt => opt && onRoleChange(member.userId, opt.value as TeamRole)}
             styles={rowStyles}
             isSearchable={false}
-            instanceId={`role-${member.id}`}
+            instanceId={`role-${member.userId}`}
           />
         )}
       </div>
@@ -112,11 +99,10 @@ function MemberRow({
         {!isLastAdmin && (
           <motion.button
             type="button"
-            onClick={() => onRemove(member.id)}
+            onClick={() => onRemove(member.userId)}
             className="w-8 h-8 flex items-center justify-center rounded-md text-text-300 hover:text-status-red hover:bg-red-bg opacity-0 group-hover/row:opacity-100 transition-all"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            title="Remove from team"
           >
             <Trash2 size={14} />
           </motion.button>
@@ -129,12 +115,9 @@ function MemberRow({
 // ─── Validation ───────────────────────────────────────────────────────────────
 
 const validationSchema = Yup.object({
-  name: Yup.string()
-    .trim()
-    .required('Team name is required')
-    .max(60, 'Max 60 characters'),
+  name:        Yup.string().trim().required('Team name is required').max(60, 'Max 60 characters'),
   description: Yup.string().max(200, 'Max 200 characters'),
-  color: Yup.string().required(),
+  color:       Yup.string().required(),
 });
 
 const addStyles = getSelectStyles({ size: 'sm' });
@@ -144,76 +127,77 @@ const addStyles = getSelectStyles({ size: 'sm' });
 export default function TeamManagePage({ params }: { params: { id: string } }) {
   const router  = useRouter();
   const confirm = useConfirm();
-  const team    = teamsStore.getById(params.id);
 
-  useEffect(() => {
-    if (!team) router.replace('/teams');
-  }, [team, router]);
+  const { data: team, isPending }  = useTeamDetail(params.id);
+  const { data: allUsers = [] }    = useUsersList();
+  const updateTeam                 = useUpdateTeam();
+  const deleteTeam                 = useDeleteTeam();
 
-  const [localMembers, setLocalMembers] = useState<TeamMember[]>(team?.members ?? []);
+  const [localMembers, setLocalMembers] = useState<ApiTeamMember[]>([]);
   const [addMemberSel,  setAddMemberSel]  = useState<SelectOption | null>(null);
   const [addMemberRole, setAddMemberRole] = useState<SelectOption>(ROLE_OPTIONS[3]);
 
+  // Sync localMembers once team loads
+  useMemo(() => {
+    if (team && localMembers.length === 0) setLocalMembers(team.members);
+  }, [team]); // eslint-disable-line
+
   const adminCount = useMemo(
-    () => localMembers.filter(m => m.role === 'admin').length,
+    () => localMembers.filter(m => m.role === 'Admin').length,
     [localMembers],
   );
 
-  const membersDirty = useMemo(
-    () => (team ? JSON.stringify(localMembers) !== JSON.stringify(team.members) : false),
-    [localMembers, team],
-  );
-
   const formik = useFormik({
+    enableReinitialize: true,
     initialValues: {
       name:        team?.name        ?? '',
       description: team?.description ?? '',
       color:       team?.color       ?? TEAM_COLORS[0],
     },
     validationSchema,
-    onSubmit: values => {
+    onSubmit: async (values) => {
       if (!team) return;
-      const updated: Team = {
-        ...team,
+      await updateTeam.mutateAsync({
+        id:          team.id,
         name:        values.name.trim(),
         description: values.description.trim(),
         color:       values.color,
-        members:     localMembers,
-      };
-      teamsStore.update(updated);
+        members:     localMembers.map(m => ({ userId: m.userId, role: m.role as import('@/lib/types/teams.types').TeamRole })),
+      });
       router.push('/teams');
     },
   });
 
-  const handleRoleChange = useCallback((id: string, role: TeamRole) => {
-    setLocalMembers(prev => prev.map(m => (m.id === id ? { ...m, role } : m)));
+  const handleRoleChange = useCallback((userId: string, role: TeamRole) => {
+    setLocalMembers(prev => prev.map(m => (m.userId === userId ? { ...m, role } : m)));
   }, []);
 
-  const handleRemove = useCallback(async (id: string) => {
-    const member = localMembers.find(m => m.id === id);
+  const handleRemove = useCallback(async (userId: string) => {
+    const member = localMembers.find(m => m.userId === userId);
     if (!member) return;
     const ok = await confirm({
-      title:        member.isPending ? 'Remove pending member?' : 'Remove from team?',
-      description:  member.isPending
-        ? `Cancel the invite for ${member.email}?`
-        : `${member.name} will lose access to this team. Their tasks remain unassigned.`,
+      title:        'Remove from team?',
+      description:  `${member.name} will lose access to this team.`,
       confirmLabel: 'Remove',
       danger:       true,
     });
-    if (ok) setLocalMembers(prev => prev.filter(m => m.id !== id));
+    if (ok) setLocalMembers(prev => prev.filter(m => m.userId !== userId));
   }, [confirm, localMembers]);
 
   const handleAddMember = useCallback(() => {
     if (!addMemberSel) return;
-    const wm = WORKSPACE_MEMBERS.find(m => m.id === addMemberSel.value);
-    if (!wm) return;
-    setLocalMembers(prev => [
-      ...prev,
-      { id: wm.id, initials: wm.initials, name: wm.name, email: wm.email, title: wm.title, role: addMemberRole.value as TeamRole, isPending: false },
-    ]);
+    const user = allUsers.find(u => u.id === addMemberSel.value);
+    if (!user) return;
+    const newMember: ApiTeamMember = {
+      userId:         user.id,
+      name:           user.name,
+      role:           addMemberRole.value as TeamRole,
+      avatarInitials: user.avatarInitials,
+    };
+    setLocalMembers(prev => [...prev, newMember]);
     setAddMemberSel(null);
     setAddMemberRole(ROLE_OPTIONS[3]);
-  }, [addMemberSel, addMemberRole]);
+  }, [addMemberSel, addMemberRole, allUsers]);
 
   const handleDeleteTeam = useCallback(async () => {
     if (!team) return;
@@ -224,22 +208,22 @@ export default function TeamManagePage({ params }: { params: { id: string } }) {
       danger:       true,
     });
     if (ok) {
-      teamsStore.remove(team.id);
+      await deleteTeam.mutateAsync(team.id);
       router.push('/teams');
     }
-  }, [confirm, team, router]);
+  }, [confirm, team, deleteTeam, router]);
 
   const availableToAdd = useMemo(
-    () => WORKSPACE_MEMBERS
-      .filter(m => !localMembers.some(lm => lm.email === m.email))
-      .map(m => ({ value: m.id, label: m.name })),
-    [localMembers],
+    () => allUsers
+      .filter(u => !localMembers.some(lm => lm.userId === u.id))
+      .map(u => ({ value: u.id, label: u.name })),
+    [allUsers, localMembers],
   );
 
-  const canSave = formik.dirty || membersDirty;
   const nameError = !!formik.touched.name && !!formik.errors.name;
 
-  if (!team) return null;
+  if (isPending) return <TeamDetailSkeleton />;
+  if (!team)     return null;
 
   return (
     <motion.div
@@ -248,7 +232,6 @@ export default function TeamManagePage({ params }: { params: { id: string } }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
     >
-      {/* Breadcrumb */}
       <button
         onClick={() => router.push('/teams')}
         className="flex items-center gap-1.5 text-sm text-text-300 hover:text-text-100 transition-colors mb-6"
@@ -269,11 +252,10 @@ export default function TeamManagePage({ params }: { params: { id: string } }) {
       <p className="text-sm text-text-300 mb-8">Edit team details and manage membership.</p>
 
       <form onSubmit={formik.handleSubmit} noValidate className="flex flex-col gap-6">
-        {/* ── Team Details card ── */}
+        {/* Team Details */}
         <div className="bg-bg-700 border border-border-subtle rounded-card p-6 flex flex-col gap-5">
           <h2 className="text-xs font-semibold text-text-300 uppercase tracking-widest">Team Details</h2>
 
-          {/* Name */}
           <div>
             <label htmlFor="manage-name" className="text-xs font-medium text-text-200 block mb-1.5">
               Team name <span className="text-status-red">*</span>
@@ -284,17 +266,12 @@ export default function TeamManagePage({ params }: { params: { id: string } }) {
               placeholder="e.g. Frontend Team"
               {...formik.getFieldProps('name')}
               className={`w-full h-10 px-3 bg-bg-600 border rounded-lg text-sm text-text-100 placeholder:text-text-300 focus:outline-none transition-colors ${
-                nameError
-                  ? 'border-status-red focus:border-status-red'
-                  : 'border-border-subtle focus:border-accent'
+                nameError ? 'border-status-red' : 'border-border-subtle focus:border-accent'
               }`}
             />
-            {nameError && (
-              <p className="text-xs text-status-red mt-1.5">{formik.errors.name}</p>
-            )}
+            {nameError && <p className="text-xs text-status-red mt-1.5">{formik.errors.name}</p>}
           </div>
 
-          {/* Description */}
           <div>
             <label htmlFor="manage-desc" className="text-xs font-medium text-text-200 block mb-1.5">
               Description <span className="text-text-300 font-normal">(optional)</span>
@@ -308,26 +285,19 @@ export default function TeamManagePage({ params }: { params: { id: string } }) {
             />
           </div>
 
-          {/* Color */}
           <div>
             <label className="text-xs font-medium text-text-200 block mb-2">Team color</label>
-            <ColorPicker
-              value={formik.values.color}
-              onChange={c => formik.setFieldValue('color', c)}
-            />
+            <ColorPicker value={formik.values.color} onChange={c => formik.setFieldValue('color', c)} />
           </div>
         </div>
 
-        {/* ── Members card ── */}
+        {/* Members */}
         <div className="bg-bg-700 border border-border-subtle rounded-card p-6 flex flex-col gap-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-semibold text-text-300 uppercase tracking-widest">
-              Members
-            </h2>
+            <h2 className="text-xs font-semibold text-text-300 uppercase tracking-widest">Members</h2>
             <span className="text-xs text-text-300">{localMembers.length} total</span>
           </div>
 
-          {/* Column headers */}
           <div className="flex items-center gap-3 pb-1 border-b border-border-subtle">
             <div className="w-8 shrink-0" />
             <p className="flex-1 text-2xs text-text-300 uppercase tracking-wide">Member</p>
@@ -335,13 +305,12 @@ export default function TeamManagePage({ params }: { params: { id: string } }) {
             <div className="w-8 shrink-0" />
           </div>
 
-          {/* Rows */}
           <AnimatePresence mode="popLayout">
             {localMembers.map(member => (
               <MemberRow
-                key={member.id}
+                key={member.userId}
                 member={member}
-                isLastAdmin={adminCount === 1 && member.role === 'admin'}
+                isLastAdmin={adminCount === 1 && member.role === 'Admin'}
                 onRoleChange={handleRoleChange}
                 onRemove={handleRemove}
               />
@@ -352,7 +321,6 @@ export default function TeamManagePage({ params }: { params: { id: string } }) {
             <p className="text-xs text-text-300 py-4 text-center">No members yet.</p>
           )}
 
-          {/* Add from workspace */}
           <div className="pt-2 border-t border-border-subtle">
             <p className="text-xs font-medium text-text-200 mb-2">Add from workspace</p>
             <div className="flex gap-2">
@@ -383,9 +351,7 @@ export default function TeamManagePage({ params }: { params: { id: string } }) {
                 onClick={handleAddMember}
                 disabled={!addMemberSel}
                 className={`h-9 px-4 rounded-lg text-sm font-medium shrink-0 transition-colors ${
-                  addMemberSel
-                    ? 'bg-accent text-white hover:bg-accent-hover'
-                    : 'bg-bg-600 text-text-300 cursor-not-allowed'
+                  addMemberSel ? 'bg-accent text-white hover:bg-accent-hover' : 'bg-bg-600 text-text-300 cursor-not-allowed'
                 }`}
                 whileHover={addMemberSel ? { scale: 1.02 } : {}}
                 whileTap={addMemberSel ? { scale: 0.98 } : {}}
@@ -396,15 +362,13 @@ export default function TeamManagePage({ params }: { params: { id: string } }) {
           </div>
         </div>
 
-        {/* ── Danger zone ── */}
+        {/* Danger zone */}
         <div className="bg-bg-700 border border-red-bg/60 rounded-card p-6">
           <h2 className="text-xs font-semibold text-text-300 uppercase tracking-widest mb-3">Danger Zone</h2>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text-100 font-medium">Delete this team</p>
-              <p className="text-xs text-text-300 mt-0.5">
-                This cannot be undone. Tasks remain but become unassigned.
-              </p>
+              <p className="text-xs text-text-300 mt-0.5">This cannot be undone. Tasks remain but become unassigned.</p>
             </div>
             <motion.button
               type="button"
@@ -430,18 +394,14 @@ export default function TeamManagePage({ params }: { params: { id: string } }) {
           </button>
           <motion.button
             type="submit"
-            disabled={!canSave}
-            className={`flex items-center gap-2 h-10 px-5 rounded-lg text-sm font-medium transition-colors ${
-              canSave
-                ? 'bg-accent text-white hover:bg-accent-hover'
-                : 'bg-accent/40 text-white/50 cursor-not-allowed'
-            }`}
-            whileHover={canSave ? { scale: 1.02 } : {}}
-            whileTap={canSave ? { scale: 0.97 } : {}}
+            disabled={updateTeam.isPending}
+            className="flex items-center gap-2 h-10 px-5 rounded-lg text-sm font-medium bg-accent text-white hover:bg-accent-hover disabled:opacity-50 transition-colors"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
           >
             <Save size={14} />
-            Save Changes
+            {updateTeam.isPending ? 'Saving…' : 'Save Changes'}
           </motion.button>
         </div>
       </form>

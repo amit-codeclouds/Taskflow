@@ -140,8 +140,23 @@ Sets `taskflow_session` (httpOnly) + `taskflow_name` + `taskflow_email` + `taskf
 ### `GET /api/auth/me`
 **Response `200`**
 ```json
-{ "id": "uuid", "name": "string", "email": "string", "title": "string", "avatarInitials": "AC", "avatarUrl": null }
+{
+  "id": "uuid",
+  "name": "string",
+  "email": "string",
+  "title": "string",
+  "avatarInitials": "AC",
+  "avatarUrl": null,
+  "workspaces": [
+    { "workspaceId": "ws_1", "role": "owner", "status": "active", "joinedAt": "2026-06-01T00:00:00Z" }
+  ],
+  "teams": [
+    { "teamId": "team_1", "workspaceId": "ws_1", "role": "admin",     "joinedAt": "2026-06-01T00:00:00Z" },
+    { "teamId": "team_2", "workspaceId": "ws_1", "role": "developer", "joinedAt": "2026-06-05T00:00:00Z" }
+  ]
+}
 ```
+`workspaces[]` and `teams[]` are the authoritative membership arrays on the User. All workspace and team access decisions are derived from these two arrays.
 
 ---
 

@@ -1,37 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
+import axios from 'axios';
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? '';
 
 export async function POST(request: NextRequest) {
-  const { name, email, password, title } = await request.json();
+  const body = await request.json();
 
-  if (!name || !email || !password) {
-    return NextResponse.json({ ok: false, error: 'All fields are required' }, { status: 400 });
+  try {
+    const { data, status } = await axios.post(`${BACKEND_URL}/auth/signup`, body);
+    // Signup returns SignupResponseDto (user info only — no tokens)
+    return NextResponse.json(data, { status });
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response) {
+      return NextResponse.json(err.response.data, { status: err.response.status });
+    }
+    return NextResponse.json({ message: 'Backend unreachable' }, { status: 502 });
   }
-
-  if (password.length < 6) {
-    return NextResponse.json({ ok: false, error: 'Password must be at least 6 characters' }, { status: 400 });
-  }
-
-  const response = NextResponse.json({ ok: true });
-
-  response.cookies.set('taskflow_session', `stub-${Date.now()}`, {
-    httpOnly: true,
-    sameSite: 'lax',
-    path: '/',
-  });
-  response.cookies.set('taskflow_name', name, {
-    sameSite: 'lax',
-    path: '/',
-  });
-  response.cookies.set('taskflow_email', email, {
-    sameSite: 'lax',
-    path: '/',
-  });
-  if (title) {
-    response.cookies.set('taskflow_title', title, {
-      sameSite: 'lax',
-      path: '/',
-    });
-  }
-
-  return response;
 }

@@ -7,11 +7,11 @@ import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import Select from 'react-select';
 import { getSelectStyles } from '@/lib/selectStyles';
-import type { Team, TeamRole } from '@/lib/teams';
+import type { TeamRole } from '@/lib/types/teams.types';
 import { ROLE_OPTIONS } from '@/lib/teams';
 
 interface Props {
-  team: Pick<Team, 'id' | 'name'>;
+  team: { id: string; name: string };
   existingEmails: string[];
   onClose: () => void;
   onInvite: (email: string, role: TeamRole, addToWorkspace: boolean) => void;
@@ -25,7 +25,7 @@ export default function TeamInviteModal({ team, existingEmails, onClose, onInvit
   const formik = useFormik({
     initialValues: {
       email: '',
-      role: 'developer' as TeamRole,
+      role: 'Developer' as TeamRole,
       addToWorkspace: false,
     },
     validationSchema: Yup.object({
@@ -151,7 +151,7 @@ export default function TeamInviteModal({ team, existingEmails, onClose, onInvit
                     instanceId="team-invite-role"
                     options={ROLE_OPTIONS}
                     value={ROLE_OPTIONS.find(o => o.value === formik.values.role) ?? ROLE_OPTIONS[3]}
-                    onChange={opt => formik.setFieldValue('role', opt?.value ?? 'developer')}
+                    onChange={opt => formik.setFieldValue('role', opt?.value ?? 'Developer')}
                     styles={roleStyles}
                     isSearchable={false}
                     menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}

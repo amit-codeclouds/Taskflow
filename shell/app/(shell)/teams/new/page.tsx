@@ -11,10 +11,11 @@ import type { MultiValue } from 'react-select';
 import type { StylesConfig } from 'react-select';
 import { getSelectStyles, type SelectOption } from '@/lib/selectStyles';
 import { useAuth } from '@/lib/useAuth';
-import { teamsStore } from '@/lib/teamsStore';
-import type { TeamRole } from '@/lib/teams';
+import { useUsersList } from '@/lib/hooks/useUsers';
+import { useCreateTeam } from '@/lib/hooks/useTeams';
+import type { TeamRole } from '@/lib/types/teams.types';
 import { TEAM_COLORS, ROLE_OPTIONS } from '@/lib/teams';
-import { WORKSPACE_MEMBERS } from '@/lib/workspace';
+import { getInitials } from '@/lib/initials';
 
 // ─── Color picker ─────────────────────────────────────────────────────────────
 
@@ -44,12 +45,9 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (c: string)
 // ─── Validation ───────────────────────────────────────────────────────────────
 
 const validationSchema = Yup.object({
-  name: Yup.string()
-    .trim()
-    .required('Team name is required')
-    .max(60, 'Max 60 characters'),
+  name:        Yup.string().trim().required('Team name is required').max(60, 'Max 60 characters'),
   description: Yup.string().max(200, 'Max 200 characters'),
-  color: Yup.string().required(),
+  color:       Yup.string().required(),
 });
 
 const rowStyles = getSelectStyles({ size: 'sm' });
@@ -60,13 +58,16 @@ export default function TeamNewPage() {
   const router = useRouter();
   const auth   = useAuth();
 
+  const { data: allUsers = [] } = useUsersList();
+  const createTeam              = useCreateTeam();
+
   const [memberRoles, setMemberRoles] = useState<Map<string, TeamRole>>(new Map());
 
   const handleMultiMemberChange = useCallback((selected: MultiValue<SelectOption>) => {
     const ids = new Set(selected.map(s => s.value));
     setMemberRoles(prev => {
       const next = new Map<string, TeamRole>();
-      ids.forEach(id => { next.set(id, prev.get(id) ?? 'developer'); });
+      ids.forEach(id => { next.set(id, prev.get(id) ?? 'Developer'); });
       return next;
     });
   }, []);
@@ -84,43 +85,27 @@ export default function TeamNewPage() {
   }, []);
 
   const memberOptions: SelectOption[] = useMemo(
-    () => WORKSPACE_MEMBERS
-      .filter(m => m.email !== auth.email)
-      .map(m => ({ value: m.id, label: m.name })),
-    [auth.email],
+    () => allUsers
+      .filter(u => u.email !== auth.email)
+      .map(u => ({ value: u.id, label: u.name })),
+    [allUsers, auth.email],
   );
 
-  const selectedMembers = useMemo(
-    () => WORKSPACE_MEMBERS.filter(m => memberRoles.has(m.id)),
-    [memberRoles],
+  const selectedUsers = useMemo(
+    () => allUsers.filter(u => memberRoles.has(u.id)),
+    [allUsers, memberRoles],
   );
 
   const formik = useFormik({
     initialValues: { name: '', description: '', color: TEAM_COLORS[0] },
     validationSchema,
-    onSubmit: values => {
-      const newTeam = {
-        id: `team_${Date.now()}`,
-        name: values.name.trim(),
+    onSubmit: async (values) => {
+      await createTeam.mutateAsync({
+        name:        values.name.trim(),
         description: values.description.trim(),
-        color: values.color,
-        members: [
-          {
-            id: auth.email || 'u0',
-            initials: auth.initials || 'U',
-            name: auth.name || 'You',
-            email: auth.email || '',
-            title: auth.title || '—',
-            role: 'admin' as TeamRole,
-            isPending: false,
-          },
-          ...Array.from(memberRoles.entries()).map(([mid, role]) => {
-            const wm = WORKSPACE_MEMBERS.find(m => m.id === mid)!;
-            return { id: wm.id, initials: wm.initials, name: wm.name, email: wm.email, title: wm.title, role, isPending: false };
-          }),
-        ],
-      };
-      teamsStore.add(newTeam);
+        color:       values.color,
+        memberIds:   Array.from(memberRoles.entries()).map(([userId, role]) => ({ userId, role })),
+      });
       router.push('/teams');
     },
   });
@@ -230,7 +215,7 @@ export default function TeamNewPage() {
               isMulti
               instanceId="create-members"
               options={memberOptions}
-              value={selectedMembers.map(m => ({ value: m.id, label: m.name }))}
+              value={selectedUsers.map(u => ({ value: u.id, label: u.name }))}
               onChange={handleMultiMemberChange}
               styles={getSelectStyles({ size: 'md' }) as unknown as StylesConfig<SelectOption, true>}
               placeholder="Search and select members…"
@@ -240,7 +225,7 @@ export default function TeamNewPage() {
 
           {/* Role assignment rows */}
           <AnimatePresence>
-            {selectedMembers.length > 0 && (
+            {selectedUsers.length > 0 && (
               <motion.div
                 className="flex flex-col gap-2 pt-1 border-t border-border-subtle"
                 initial={{ opacity: 0, height: 0 }}
@@ -250,42 +235,45 @@ export default function TeamNewPage() {
               >
                 <p className="text-2xs text-text-300 uppercase tracking-wide pt-3">Assign roles</p>
                 <AnimatePresence>
-                  {selectedMembers.map(m => (
-                    <motion.div
-                      key={m.id}
-                      className="flex items-center gap-3"
-                      initial={{ opacity: 0, x: 8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -8 }}
-                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    >
-                      <div className="w-8 h-8 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xs font-semibold shrink-0">
-                        {m.initials}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-text-100 truncate">{m.name}</p>
-                        <p className="text-xs text-text-300 truncate">{m.title}</p>
-                      </div>
-                      <div className="w-[160px] shrink-0">
-                        <Select
-                          options={ROLE_OPTIONS}
-                          value={ROLE_OPTIONS.find(o => o.value === (memberRoles.get(m.id) ?? 'developer')) ?? ROLE_OPTIONS[3]}
-                          onChange={opt => opt && setMemberRole(m.id, opt.value as TeamRole)}
-                          styles={rowStyles}
-                          isSearchable={false}
-                          instanceId={`role-${m.id}`}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => toggleMember(m.id)}
-                        className="w-8 h-8 flex items-center justify-center rounded-md text-text-300 hover:text-status-red hover:bg-red-bg transition-colors shrink-0"
-                        title="Remove"
+                  {selectedUsers.map(u => {
+                    const initials = u.avatarInitials || getInitials(u.name);
+                    return (
+                      <motion.div
+                        key={u.id}
+                        className="flex items-center gap-3"
+                        initial={{ opacity: 0, x: 8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -8 }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                       >
-                        <X size={14} />
-                      </button>
-                    </motion.div>
-                  ))}
+                        <div className="w-8 h-8 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xs font-semibold shrink-0">
+                          {initials}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-text-100 truncate">{u.name}</p>
+                          <p className="text-xs text-text-300 truncate">{u.title || '—'}</p>
+                        </div>
+                        <div className="w-[160px] shrink-0">
+                          <Select
+                            options={ROLE_OPTIONS}
+                            value={ROLE_OPTIONS.find(o => o.value === (memberRoles.get(u.id) ?? 'Developer')) ?? ROLE_OPTIONS[3]}
+                            onChange={opt => opt && setMemberRole(u.id, opt.value as TeamRole)}
+                            styles={rowStyles}
+                            isSearchable={false}
+                            instanceId={`role-${u.id}`}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleMember(u.id)}
+                          className="w-8 h-8 flex items-center justify-center rounded-md text-text-300 hover:text-status-red hover:bg-red-bg transition-colors shrink-0"
+                          title="Remove"
+                        >
+                          <X size={14} />
+                        </button>
+                      </motion.div>
+                    );
+                  })}
                 </AnimatePresence>
               </motion.div>
             )}
@@ -303,13 +291,14 @@ export default function TeamNewPage() {
           </button>
           <motion.button
             type="submit"
-            className="flex items-center gap-2 h-10 px-5 rounded-lg text-sm font-medium bg-accent text-white hover:bg-accent-hover transition-colors"
-            whileHover={{ scale: 1.02, boxShadow: '0 0 16px rgba(97,85,221,0.3)' }}
-            whileTap={{ scale: 0.97 }}
+            disabled={formik.isSubmitting || createTeam.isPending}
+            className="flex items-center gap-2 h-10 px-5 rounded-lg text-sm font-medium bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            whileHover={createTeam.isPending ? undefined : { scale: 1.02, boxShadow: '0 0 16px rgba(97,85,221,0.3)' }}
+            whileTap={createTeam.isPending ? undefined : { scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
           >
             <Plus size={14} />
-            Create Team
+            {createTeam.isPending ? 'Creating…' : 'Create Team'}
           </motion.button>
         </div>
       </form>

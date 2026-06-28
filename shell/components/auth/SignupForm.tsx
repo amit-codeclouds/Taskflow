@@ -34,6 +34,9 @@ const schema = Yup.object({
     otherwise: (s) => s.notRequired(),
   }),
   password: Yup.string().min(6, 'Password must be at least 6 characters').required('Password is required'),
+  confirmPassword: Yup.string()
+    .oneOf([Yup.ref('password')], 'Passwords must match')
+    .required('Confirm your password'),
 });
 
 type FormValues = Yup.InferType<typeof schema>;
@@ -63,10 +66,11 @@ function EyeClosedIcon() {
 
 export default function SignupForm() {
   const router  = useRouter();
-  const [showPw, setShowPw] = useState(false);
+  const [showPw, setShowPw]         = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
 
   const formik = useFormik<FormValues>({
-    initialValues: { name: '', email: '', title: '', customTitle: '', password: '' },
+    initialValues: { name: '', email: '', title: '', customTitle: '', password: '', confirmPassword: '' },
     validationSchema: schema,
     onSubmit: async (values, { setStatus, setSubmitting }) => {
       setStatus(null);
@@ -76,19 +80,20 @@ export default function SignupForm() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name:     values.name,
-            email:    values.email,
-            password: values.password,
-            title:    finalTitle,
+            name:            values.name,
+            email:           values.email,
+            password:        values.password,
+            confirmPassword: values.confirmPassword,
+            title:           finalTitle,
           }),
         });
         const data = await res.json();
         if (!res.ok) {
-          setStatus(data.error || 'Account creation failed. Please try again.');
+          setStatus(data.message || data.error || data.title || 'Account creation failed. Please try again.');
           return;
         }
-        router.push('/');
-        router.refresh();
+        // Signup returns user info only (no tokens) — redirect to login
+        router.push('/login?registered=1');
       } catch {
         setStatus('Network error — please try again.');
       } finally {
@@ -239,6 +244,32 @@ export default function SignupForm() {
               </div>
               {formik.touched.password && formik.errors.password && (
                 <p className="text-xs text-status-red">{formik.errors.password}</p>
+              )}
+            </div>
+
+            {/* Confirm password */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="confirmPassword" className="text-xs font-medium text-text-200">Confirm password</label>
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  type={showConfirmPw ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  placeholder="Re-enter your password"
+                  {...formik.getFieldProps('confirmPassword')}
+                  className={inputClass(!!formik.touched.confirmPassword, formik.errors.confirmPassword) + ' pr-10'}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPw(s => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-300 hover:text-text-200 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showConfirmPw ? <EyeClosedIcon /> : <EyeOpenIcon />}
+                </button>
+              </div>
+              {formik.touched.confirmPassword && formik.errors.confirmPassword && (
+                <p className="text-xs text-status-red">{formik.errors.confirmPassword}</p>
               )}
             </div>
 

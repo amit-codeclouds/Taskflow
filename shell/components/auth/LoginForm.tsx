@@ -52,7 +52,7 @@ export default function LoginForm() {
         });
         const data = await res.json();
         if (!res.ok) {
-          setStatus(data.error || 'Sign in failed. Please try again.');
+          setStatus(data.message || data.error || data.title || 'Sign in failed. Please try again.');
           return;
         }
         router.push('/');

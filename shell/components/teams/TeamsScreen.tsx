@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, UserPlus, Plus, Settings } from 'lucide-react';
-import type { Team, TeamMember, TeamRole } from '@/lib/teams';
-import { teamsStore } from '@/lib/teamsStore';
+import { useTeamsList, useTeamsStats, useInviteTeamMember } from '@/lib/hooks/useTeams';
+import { TeamsSkeleton } from '@/app/(shell)/teams/_skeleton';
+import type { ApiTeam, ApiTeamMember, TeamRole } from '@/lib/types/teams.types';
 import TeamInviteModal from './TeamInviteModal';
+import { getInitials } from '@/lib/initials';
 
 // ─── TeamInitial ──────────────────────────────────────────────────────────────
 
@@ -23,9 +25,9 @@ function TeamInitial({ color, name }: { color: string; name: string }) {
 
 // ─── MemberAvatar (with tooltip) ──────────────────────────────────────────────
 
-function MemberAvatar({ member, size = 'md' }: { member: TeamMember; size?: 'sm' | 'md' }) {
+function MemberAvatar({ member, size = 'md' }: { member: ApiTeamMember; size?: 'sm' | 'md' }) {
   const dim = size === 'sm' ? 'w-7 h-7 text-[10px]' : 'w-9 h-9 text-xs';
-  const isPending = member.isPending === true;
+  const initials = member.avatarInitials || getInitials(member.name);
 
   return (
     <div className="relative group/avatar">
@@ -33,11 +35,10 @@ function MemberAvatar({ member, size = 'md' }: { member: TeamMember; size?: 'sm'
         className={`
           ${dim} rounded-full flex items-center justify-center font-semibold shrink-0
           border-2 border-bg-700 cursor-pointer transition-transform group-hover/avatar:scale-110
-          ${isPending ? 'bg-bg-600 text-text-300' : 'bg-accent-bg text-accent'}
-          ${isPending ? 'border-dashed' : ''}
+          bg-accent-bg text-accent
         `}
       >
-        {member.initials}
+        {initials}
       </div>
 
       {/* Hover tooltip */}
@@ -52,20 +53,13 @@ function MemberAvatar({ member, size = 'md' }: { member: TeamMember; size?: 'sm'
         "
       >
         <div className="bg-bg-600 border border-border-subtle rounded-lg px-3 py-2 shadow-elevated">
-          <div className="flex items-center gap-2 mb-1">
-            <div
-              className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold shrink-0 ${
-                isPending ? 'bg-bg-500 text-text-300' : 'bg-accent-bg text-accent'
-              }`}
-            >
-              {member.initials}
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold shrink-0 bg-accent-bg text-accent">
+              {initials}
             </div>
             <p className="text-xs font-medium text-text-100 whitespace-nowrap">{member.name}</p>
           </div>
-          <p className="text-[11px] text-text-300 whitespace-nowrap">{member.title || '—'}</p>
-          {isPending && (
-            <p className="text-[10px] text-status-amber mt-0.5">Pending invite</p>
-          )}
+          <p className="text-[11px] text-text-300 mt-0.5 whitespace-nowrap">{member.role}</p>
         </div>
         <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-bg-600" />
       </div>
@@ -81,15 +75,15 @@ function TeamCard({
   onManage,
   onInvite,
 }: {
-  team: Team;
+  team: ApiTeam;
   index: number;
-  onManage: (team: Team) => void;
-  onInvite: (team: Team) => void;
+  onManage: (team: ApiTeam) => void;
+  onInvite: (team: ApiTeam) => void;
 }) {
-  const activeCount  = team.members.filter(m => !m.isPending).length;
-  const pendingCount = team.members.filter(m => m.isPending).length;
+  const activeCount    = team.members.length;
+  const pendingCount   = team.pendingInvites;
   const visibleMembers = team.members.slice(0, 4);
-  const overflow = team.members.length - 4;
+  const overflow       = team.members.length - 4;
 
   return (
     <motion.div
@@ -111,7 +105,7 @@ function TeamCard({
             <div className="flex items-center gap-1.5">
               <div className="flex -space-x-1.5">
                 {visibleMembers.map(m => (
-                  <MemberAvatar key={m.email} member={m} size="sm" />
+                  <MemberAvatar key={m.userId} member={m} size="sm" />
                 ))}
                 {overflow > 0 && (
                   <div className="w-7 h-7 rounded-full bg-bg-600 border-2 border-bg-700 flex items-center justify-center text-[10px] text-text-300 font-medium cursor-default">
@@ -159,41 +153,23 @@ function TeamCard({
 
 export default function TeamsScreen() {
   const router = useRouter();
-  const [teams, setTeams]               = useState<Team[]>(() => teamsStore.getAll());
-  const [invitingTeam, setInvitingTeam] = useState<Team | null>(null);
+  const { data: teams = [], isPending }  = useTeamsList();
+  const { data: statsData }             = useTeamsStats();
+  const inviteMutation                  = useInviteTeamMember();
 
-  const stats = useMemo(() => {
-    const uniqueEmails = new Set(teams.flatMap(t => t.members.map(m => m.email)));
-    const pending = teams.reduce(
-      (n, t) => n + t.members.filter(m => m.isPending).length,
-      0,
-    );
-    return [
-      { label: 'Total Teams',     value: teams.length       },
-      { label: 'Total Members',   value: uniqueEmails.size  },
-      { label: 'Pending Invites', value: pending            },
-    ];
-  }, [teams]);
+  const [invitingTeam, setInvitingTeam] = useState<ApiTeam | null>(null);
 
-  function handleInvite(teamId: string, email: string, role: TeamRole, addToWorkspace: boolean) {
-    void addToWorkspace;
-    setTeams(prev =>
-      prev.map(t => {
-        if (t.id !== teamId) return t;
-        const newMember: TeamMember = {
-          id: `invite_${Date.now()}`,
-          initials: email.slice(0, 2).toUpperCase(),
-          name: email.split('@')[0],
-          email,
-          title: '—',
-          role,
-          isPending: true,
-        };
-        const updated = { ...t, members: [...t.members, newMember] };
-        teamsStore.update(updated);
-        return updated;
-      }),
-    );
+  const stats = [
+    { label: 'Total Teams',     value: statsData?.totalTeams    ?? teams.length },
+    { label: 'Total Members',   value: statsData?.totalMembers  ?? 0 },
+    { label: 'Pending Invites', value: statsData?.pendingInvites ?? 0 },
+  ];
+
+  if (isPending) return <TeamsSkeleton />;
+
+  function handleInvite(email: string, role: TeamRole, addToWorkspace: boolean) {
+    if (!invitingTeam) return;
+    inviteMutation.mutate({ teamId: invitingTeam.id, email, role, addToWorkspace });
   }
 
   return (
@@ -269,17 +245,15 @@ export default function TeamsScreen() {
         )}
       </div>
 
-      {/* Invite modal — stays as modal */}
+      {/* Invite modal */}
       <AnimatePresence>
         {invitingTeam && (
           <TeamInviteModal
             key={`invite-${invitingTeam.id}`}
             team={invitingTeam}
-            existingEmails={invitingTeam.members.map(m => m.email)}
+            existingEmails={[]}
             onClose={() => setInvitingTeam(null)}
-            onInvite={(email, role, addToWorkspace) =>
-              handleInvite(invitingTeam.id, email, role, addToWorkspace)
-            }
+            onInvite={handleInvite}
           />
         )}
       </AnimatePresence>
