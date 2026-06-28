@@ -4,21 +4,20 @@ import type { NextRequest } from 'next/server';
 const PUBLIC_PATHS = ['/login', '/signup'];
 
 export function middleware(request: NextRequest) {
-  // Auth guard disabled in development — no backend yet
-  if (process.env.NODE_ENV === 'development') {
-    return NextResponse.next();
-  }
-
-  const session = request.cookies.get('taskflow_session');
   const { pathname } = request.nextUrl;
 
   const isPublic = PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'));
 
-  if (session && isPublic) {
+  // Check for JWT access token (set by /api/auth/login proxy)
+  const accessToken = request.cookies.get('taskflow_access_token')?.value;
+
+  // Already authenticated → don't let them see login/signup
+  if (accessToken && isPublic) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  if (!session && !isPublic) {
+  // Not authenticated → redirect to login
+  if (!accessToken && !isPublic) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 

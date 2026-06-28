@@ -1,18 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserPlus, Search, UserCheck, Clock, Users, Trash2, RefreshCw } from 'lucide-react';
-import { WORKSPACE_MEMBERS, WORKSPACE_TEAMS, type WorkspaceMember } from '@/lib/workspace';
+import { usePeopleList, usePeopleStats, useInvitePerson, useRemovePerson } from '@/lib/hooks/usePeople';
+import { useTeamsList } from '@/lib/hooks/useTeams';
+import { PeopleSkeleton } from '@/app/(shell)/people/_skeleton';
 import InviteModal from '@/components/Modals/InviteModal';
 import { useConfirm } from '@/components/Modals/ConfirmProvider';
 import Select from 'react-select';
 import { getSelectStyles, type SelectOption } from '@/lib/selectStyles';
-
-const TEAM_OPTIONS: SelectOption[] = [
-  { value: 'all', label: 'All teams' },
-  ...WORKSPACE_TEAMS.map(t => ({ value: t.id, label: t.name })),
-];
+import type { Person } from '@/lib/types/people.types';
+import type { ApiTeam } from '@/lib/types/teams.types';
+import { getInitials } from '@/lib/initials';
 
 const STATUS_OPTIONS: SelectOption[] = [
   { value: 'all',     label: 'All status' },
@@ -22,27 +22,24 @@ const STATUS_OPTIONS: SelectOption[] = [
 
 const filterStyles = getSelectStyles({ size: 'sm' });
 
-function getInitials(email: string): string {
-  const prefix = email.split('@')[0].replace(/[._-]/g, ' ');
-  const parts = prefix.trim().split(/\s+/);
-  return parts.length >= 2
-    ? (parts[0][0] + parts[1][0]).toUpperCase()
-    : prefix.slice(0, 2).toUpperCase();
-}
+// ─── MemberRow ────────────────────────────────────────────────────────────────
 
 function MemberRow({
   member,
   index,
+  allTeams,
   onRemove,
   onResend,
 }: {
-  member: WorkspaceMember;
+  member: Person;
   index: number;
+  allTeams: ApiTeam[];
   onRemove: (id: string) => void;
   onResend: (id: string) => void;
 }) {
-  const teams = WORKSPACE_TEAMS.filter(t => member.teamIds.includes(t.id));
+  const teams     = allTeams.filter(t => member.teamIds.includes(t.id));
   const isPending = member.status === 'pending';
+  const initials = member.avatarInitials || getInitials(member.name);
 
   return (
     <motion.div
@@ -61,7 +58,7 @@ function MemberRow({
             : 'bg-accent-bg text-accent'
         }`}
       >
-        {member.initials}
+        {initials}
       </div>
 
       {/* Name + email */}
@@ -130,22 +127,37 @@ function MemberRow({
   );
 }
 
+// ─── PeopleScreen ─────────────────────────────────────────────────────────────
+
 export default function PeopleScreen() {
-  const [members, setMembers]           = useState<WorkspaceMember[]>(WORKSPACE_MEMBERS);
+  const { data: people = [], isPending } = usePeopleList();
+  const { data: statsData }              = usePeopleStats();
+  const { data: allTeams = [] }          = useTeamsList();
+  const inviteMutation                   = useInvitePerson();
+  const removeMutation                   = useRemovePerson();
+  const confirm                          = useConfirm();
+
   const [showInvite, setShowInvite]     = useState(false);
   const [search, setSearch]             = useState('');
   const [teamFilter, setTeamFilter]     = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const confirm                         = useConfirm();
+
+  const teamOptions: SelectOption[] = useMemo(
+    () => [
+      { value: 'all', label: 'All teams' },
+      ...allTeams.map(t => ({ value: t.id, label: t.name })),
+    ],
+    [allTeams],
+  );
 
   const stats = [
-    { label: 'Total Members',   value: members.length,                                      color: 'text-text-100'     },
-    { label: 'Active',          value: members.filter(m => m.status === 'active').length,   color: 'text-status-green' },
-    { label: 'Pending Invites', value: members.filter(m => m.status === 'pending').length,  color: 'text-status-amber' },
-    { label: 'Teams',           value: WORKSPACE_TEAMS.length,                              color: 'text-accent-hover' },
+    { label: 'Total Members',   value: statsData?.totalMembers   ?? people.length,                                     color: 'text-text-100'     },
+    { label: 'Active',          value: statsData?.active         ?? people.filter(m => m.status === 'active').length,  color: 'text-status-green' },
+    { label: 'Pending Invites', value: statsData?.pendingInvites ?? people.filter(m => m.status === 'pending').length, color: 'text-status-amber' },
+    { label: 'Teams',           value: statsData?.totalTeams     ?? allTeams.length,                                   color: 'text-accent-hover' },
   ];
 
-  const filtered = members.filter(m => {
+  const filtered = people.filter(m => {
     const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) || m.email.toLowerCase().includes(search.toLowerCase());
     const matchTeam   = teamFilter === 'all' || m.teamIds.includes(teamFilter);
     const matchStatus = statusFilter === 'all' || m.status === statusFilter;
@@ -153,43 +165,33 @@ export default function PeopleScreen() {
   });
 
   function handleInvite(email: string) {
-    const prefix = email.split('@')[0];
-    const name   = prefix.replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    const newMember: WorkspaceMember = {
-      id:       `u${Date.now()}`,
-      initials: getInitials(email),
-      name,
-      email,
-      title:   '—',
-      teamIds: [],
-      status:  'pending',
-    };
-    setMembers(prev => [...prev, newMember]);
+    inviteMutation.mutate({ email });
+    setShowInvite(false);
   }
 
   async function handleRemove(id: string) {
-    const member = members.find(m => m.id === id);
+    const member    = people.find(m => m.id === id);
     if (!member) return;
 
     const isPending = member.status === 'pending';
     const confirmed = await confirm({
-      title: isPending ? 'Cancel invitation?' : 'Remove member?',
-      description: isPending
+      title:        isPending ? 'Cancel invitation?' : 'Remove member?',
+      description:  isPending
         ? `Cancel the pending invite for ${member.email}? They won't be able to join this workspace.`
         : `Remove ${member.name} from this workspace? They'll lose access immediately.`,
       confirmLabel: isPending ? 'Cancel invite' : 'Remove',
-      danger: true,
+      danger:       true,
     });
 
-    if (confirmed) {
-      setMembers(prev => prev.filter(m => m.id !== id));
-    }
+    if (confirmed) removeMutation.mutate(id);
   }
 
   function handleResend(id: string) {
-    // stub — would trigger a real email API call
+    // stub — no resend endpoint yet
     console.log('Resend invite for', id);
   }
+
+  if (isPending) return <PeopleSkeleton />;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -243,8 +245,8 @@ export default function PeopleScreen() {
         </div>
         <div className="w-44">
           <Select<SelectOption, false>
-            options={TEAM_OPTIONS}
-            value={TEAM_OPTIONS.find(o => o.value === teamFilter) ?? TEAM_OPTIONS[0]}
+            options={teamOptions}
+            value={teamOptions.find(o => o.value === teamFilter) ?? teamOptions[0]}
             onChange={opt => setTeamFilter(opt?.value ?? 'all')}
             styles={filterStyles}
             isSearchable={false}
@@ -281,6 +283,7 @@ export default function PeopleScreen() {
               key={m.id}
               member={m}
               index={i}
+              allTeams={allTeams}
               onRemove={handleRemove}
               onResend={handleResend}
             />

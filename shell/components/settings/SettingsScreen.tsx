@@ -1,8 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Palette, Bell, Shield, Check, Camera } from 'lucide-react';
+import { useMe } from '@/lib/hooks/useMe';
+import { useUpdateUser } from '@/lib/hooks/useUsers';
+import { getInitials } from '@/lib/initials';
+import { SettingsSkeleton } from '@/app/(shell)/settings/_skeleton';
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 
@@ -26,7 +30,6 @@ function Section({
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 280, damping: 28, delay }}
     >
-      {/* Section header */}
       <div className="flex items-start gap-3 px-6 py-5 border-b border-border-subtle">
         <div className="w-8 h-8 rounded-lg bg-bg-600 flex items-center justify-center text-accent shrink-0 mt-0.5">
           {icon}
@@ -134,21 +137,35 @@ function ThemeOption({
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function SettingsScreen() {
-  const [name, setName]         = useState('Arkabrata');
-  const [role, setRole]         = useState('Engineer');
-  const [saved, setSaved]       = useState(false);
+  const { data: me, isPending } = useMe();
+  const updateUser              = useUpdateUser();
+
+  const [name, setName] = useState('');
+  const [role, setRole] = useState('');
+
+  // Pre-fill form once `me` loads
+  useEffect(() => {
+    if (me) {
+      setName(me.name ?? '');
+      setRole(me.title ?? '');
+    }
+  }, [me]);
 
   const [notifs, setNotifs] = useState({
-    taskAssigned:   true,
-    commentAdded:   true,
-    dueSoon:        true,
-    statusChanged:  false,
+    taskAssigned:  true,
+    commentAdded:  true,
+    dueSoon:       true,
+    statusChanged: false,
   });
 
   function handleSave() {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    if (!me) return;
+    updateUser.mutate({ id: me.id, name: name.trim(), title: role.trim() });
   }
+
+  const initials = me?.avatarInitials || getInitials(name);
+
+  if (isPending) return <SettingsSkeleton />;
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-6">
@@ -174,7 +191,7 @@ export default function SettingsScreen() {
         <div className="flex items-center gap-4 px-6 py-5 border-b border-border-subtle">
           <div className="relative group">
             <div className="w-16 h-16 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xl font-semibold">
-              {name.slice(0, 2).toUpperCase()}
+              {initials}
             </div>
             <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
               <Camera size={16} color="white" strokeWidth={1.5} />
@@ -182,7 +199,7 @@ export default function SettingsScreen() {
           </div>
           <div>
             <p className="text-sm font-medium text-text-100">{name || 'Your Name'}</p>
-            <p className="text-xs text-text-300 mt-0.5">amit.roy@codeclouds.com</p>
+            <p className="text-xs text-text-300 mt-0.5">{me?.email}</p>
             <p className="text-xs text-text-300 mt-2 leading-relaxed">
               Click avatar to upload a photo.{' '}
               <span className="text-text-300 bg-bg-600 px-1.5 py-px rounded-full text-2xs">Coming soon</span>
@@ -202,7 +219,7 @@ export default function SettingsScreen() {
         <Field label="Email" hint="Used for notifications and login.">
           <input
             type="email"
-            value="amit.roy@codeclouds.com"
+            value={me?.email ?? ''}
             disabled
             className="w-full h-9 px-3 bg-bg-800 border border-border-subtle rounded-lg text-sm text-text-300 cursor-not-allowed opacity-60"
           />
@@ -217,33 +234,51 @@ export default function SettingsScreen() {
           />
         </Field>
 
+        {/* My Teams */}
+        {me?.teams && me.teams.length > 0 && (
+          <div className="flex items-start justify-between gap-8 py-4 px-6 border-b border-border-subtle">
+            <div className="w-48 shrink-0">
+              <p className="text-sm text-text-100">My Teams</p>
+              <p className="text-xs text-text-300 mt-0.5 leading-relaxed">Teams you belong to in this workspace.</p>
+            </div>
+            <div className="flex-1 flex flex-wrap gap-2 pt-0.5">
+              {me.teams.map(team => (
+                <span
+                  key={team.teamId}
+                  className="text-xs font-medium px-3 py-1 rounded-full bg-accent/10 text-accent border border-accent/20"
+                >
+                  {team.teamName}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Workspace */}
+        {me?.workspaces && me.workspaces.length > 0 && (
+          <div className="flex items-start justify-between gap-8 py-4 px-6 border-b border-border-subtle">
+            <div className="w-48 shrink-0">
+              <p className="text-sm text-text-100">Workspace</p>
+            </div>
+            <div className="flex-1">
+              <span className="text-sm text-text-200">{me.workspaces[0].name}</span>
+            </div>
+          </div>
+        )}
+
         {/* Save button */}
         <div className="flex items-center justify-end gap-3 px-6 py-4">
           <AnimatePresence mode="wait">
-            {saved ? (
-              <motion.div
-                key="saved"
-                className="flex items-center gap-1.5 text-sm text-status-green"
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-              >
-                <Check size={14} />
-                Saved
-              </motion.div>
-            ) : (
-              <motion.button
-                key="save"
-                onClick={handleSave}
-                className="flex items-center gap-2 h-9 px-5 rounded-lg bg-accent text-white text-sm font-medium"
-                whileHover={{ scale: 1.02, boxShadow: '0 0 16px rgba(97,85,221,0.35)' }}
-                whileTap={{ scale: 0.98 }}
-                initial={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                Save changes
-              </motion.button>
-            )}
+            <motion.button
+              key="save"
+              onClick={handleSave}
+              disabled={updateUser.isPending}
+              className="flex items-center gap-2 h-9 px-5 rounded-lg bg-accent text-white text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+              whileHover={updateUser.isPending ? undefined : { scale: 1.02, boxShadow: '0 0 16px rgba(97,85,221,0.35)' }}
+              whileTap={updateUser.isPending ? undefined : { scale: 0.98 }}
+            >
+              {updateUser.isPending ? 'Saving…' : 'Save changes'}
+            </motion.button>
           </AnimatePresence>
         </div>
       </Section>
@@ -293,10 +328,10 @@ export default function SettingsScreen() {
       >
         {(
           [
-            { key: 'taskAssigned',  label: 'Task assigned to you',    hint: 'When someone assigns a task to you.' },
-            { key: 'commentAdded',  label: 'Comment on your task',     hint: 'When someone comments on a task you own.' },
-            { key: 'dueSoon',       label: 'Due date reminder',        hint: '24 hours before a task is due.' },
-            { key: 'statusChanged', label: 'Status changes',           hint: 'When a task you follow changes status.' },
+            { key: 'taskAssigned',  label: 'Task assigned to you',  hint: 'When someone assigns a task to you.'          },
+            { key: 'commentAdded',  label: 'Comment on your task',  hint: 'When someone comments on a task you own.'     },
+            { key: 'dueSoon',       label: 'Due date reminder',     hint: '24 hours before a task is due.'               },
+            { key: 'statusChanged', label: 'Status changes',        hint: 'When a task you follow changes status.'       },
           ] as const
         ).map(({ key, label, hint }) => (
           <Field key={key} label={label} hint={hint}>

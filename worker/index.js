@@ -5,9 +5,7 @@ export default {
 
     let upstream;
 
-    if (path.startsWith('/api/')) {
-      upstream = env.GATEWAY_URL || 'http://localhost:8080';
-    } else if (path.startsWith('/board')) {
+    if (path.startsWith('/board')) {
       upstream = env.BOARD_MFE_URL || 'http://localhost:4200';
     } else if (path.startsWith('/tasks')) {
       upstream = env.TASK_MFE_URL || 'http://localhost:3003';
