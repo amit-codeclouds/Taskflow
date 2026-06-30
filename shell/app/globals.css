@@ -18,3 +18,8 @@ html { scroll-behavior: smooth; }
   background: rgba(97, 85, 221, 0.3);
   color: #F4F3F0;
 }
+
+@keyframes slide-progress {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}

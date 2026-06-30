@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Lock, X, Check, Plus } from 'lucide-react';
+import { ChevronLeft, Lock, X, Check, Plus, Building2 } from 'lucide-react';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import Select from 'react-select';
@@ -55,10 +55,14 @@ const rowStyles = getSelectStyles({ size: 'sm' });
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function TeamNewPage() {
-  const router = useRouter();
-  const auth   = useAuth();
+  const router       = useRouter();
+  const searchParams = useSearchParams();
+  const auth         = useAuth();
 
-  const { data: allUsers = [] } = useUsersList();
+  const workspaceId   = searchParams.get('workspaceId') || auth.workspaceId;
+  const workspaceName = auth.workspaceName;
+
+  const { data: allUsers = [] } = useUsersList({ workspaceId });
   const createTeam              = useCreateTeam();
 
   const [memberRoles, setMemberRoles] = useState<Map<string, TeamRole>>(new Map());
@@ -129,6 +133,12 @@ export default function TeamNewPage() {
       </button>
 
       <h1 className="text-2xl font-semibold text-text-100 mb-1">Create New Team</h1>
+      <div className="flex items-center gap-2 mb-2">
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-accent/10 text-accent border border-accent/20">
+          <Building2 size={11} />
+          {workspaceName || workspaceId || 'Workspace'}
+        </span>
+      </div>
       <p className="text-sm text-text-300 mb-8">Set up a team and invite members to collaborate.</p>
 
       <form onSubmit={formik.handleSubmit} noValidate className="flex flex-col gap-6">

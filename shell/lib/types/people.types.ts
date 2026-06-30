@@ -1,3 +1,10 @@
+export interface PaginatedPeople {
+  data: Person[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 // Matches PeopleListItemDto
 export interface Person {
   id: string;

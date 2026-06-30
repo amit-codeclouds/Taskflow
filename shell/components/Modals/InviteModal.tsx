@@ -8,8 +8,7 @@ import * as Yup from 'yup';
 import Select from 'react-select';
 import type { MultiValue } from 'react-select';
 import { getSelectStyles, type SelectOption } from '@/lib/selectStyles';
-import { useInvitePerson, useEnlistPeople } from '@/lib/hooks/usePeople';
-import { usePeopleList } from '@/lib/hooks/usePeople';
+import { useInvitePerson, useEnlistPeople, usePeopleList } from '@/lib/hooks/usePeople';
 import { useUsersList } from '@/lib/hooks/useUsers';
 
 type Tab = 'email' | 'platform';
@@ -30,17 +29,23 @@ export default function InviteModal({ onClose }: Props) {
   const [platformSuccess, setPlatformSuccess] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<MultiValue<SelectOption>>([]);
 
-  const inviteMutation  = useInvitePerson();
-  const enlistMutation  = useEnlistPeople();
-  const { data: people  = [] } = usePeopleList();
-  const { data: allUsers = [] } = useUsersList();
+  const inviteMutation              = useInvitePerson();
+  const enlistMutation              = useEnlistPeople();
+  const { data: allUsers = [] }     = useUsersList();
+  const { data: pageResult }        = usePeopleList();
 
-  // Users not already in the workspace
-  const memberIds = useMemo(() => new Set(people.map(p => p.id)), [people]);
-  const platformOptions: SelectOption[] = useMemo(
-    () => allUsers
-      .filter(u => !memberIds.has(u.id))
-      .map(u => ({ value: u.id, label: u.name })),
+  const memberIds = useMemo(
+    () => new Set((pageResult?.data ?? []).map(p => p.id)),
+    [pageResult],
+  );
+
+  const platformOptions = useMemo(
+    () => allUsers.map(u => ({
+      value:       u.id,
+      label:       u.name,
+      description: u.email,
+      isDisabled:  memberIds.has(u.id),
+    })),
     [allUsers, memberIds],
   );
 
@@ -251,11 +256,24 @@ export default function InviteModal({ onClose }: Props) {
                       onChange={setSelectedUsers}
                       styles={multiStyles as never}
                       placeholder="Search users…"
-                      noOptionsMessage={() =>
-                        platformOptions.length === 0
-                          ? 'All platform users are already members'
-                          : 'No users found'
-                      }
+                      isOptionDisabled={opt => !!(opt as typeof platformOptions[number]).isDisabled}
+                      formatOptionLabel={(opt) => {
+                        const o = opt as typeof platformOptions[number];
+                        return (
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm text-text-100 truncate">{o.label}</p>
+                              <p className="text-xs text-text-300 truncate">{o.description}</p>
+                            </div>
+                            {o.isDisabled && (
+                              <span className="shrink-0 text-2xs font-medium px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20 whitespace-nowrap">
+                                In workspace
+                              </span>
+                            )}
+                          </div>
+                        );
+                      }}
+                      noOptionsMessage={() => 'No users found'}
                       menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
                       menuPosition="fixed"
                     />

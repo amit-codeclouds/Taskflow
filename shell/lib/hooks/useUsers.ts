@@ -7,10 +7,12 @@ import { queryKeys } from '@/lib/queryKeys';
 import { extractErrorMessage } from '@/lib/http/extractError';
 import type { UpdateUserPayload } from '@/lib/types/users.types';
 
-export function useUsersList() {
+export function useUsersList(params?: { workspaceId?: string }) {
   return useQuery({
-    queryKey: queryKeys.users.list(),
-    queryFn: () => usersService.list(),
+    queryKey: queryKeys.users.list(params),
+    queryFn: () => usersService.list(params),
+    // Only block fetching when params are explicitly passed with an empty workspaceId
+    enabled: !params || !!params.workspaceId,
   });
 }
 

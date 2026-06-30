@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, UserPlus, Plus, Settings } from 'lucide-react';
 import { useTeamsList, useTeamsStats, useInviteTeamMember } from '@/lib/hooks/useTeams';
+import { useAuth } from '@/lib/useAuth';
 import { TeamsSkeleton } from '@/app/(shell)/teams/_skeleton';
 import type { ApiTeam, ApiTeamMember, TeamRole } from '@/lib/types/teams.types';
 import TeamInviteModal from './TeamInviteModal';
@@ -153,6 +154,7 @@ function TeamCard({
 
 export default function TeamsScreen() {
   const router = useRouter();
+  const auth   = useAuth();
   const { data: teams = [], isPending }  = useTeamsList();
   const { data: statsData }             = useTeamsStats();
   const inviteMutation                  = useInviteTeamMember();
@@ -188,7 +190,7 @@ export default function TeamsScreen() {
           </p>
         </div>
         <motion.button
-          onClick={() => router.push('/teams/new')}
+          onClick={() => router.push(`/teams/new?workspaceId=${auth.workspaceId}`)}
           className="flex items-center gap-2 bg-accent text-white text-sm font-medium px-4 py-2 rounded-lg"
           whileHover={{ scale: 1.02, boxShadow: '0 0 16px rgba(97,85,221,0.3)' }}
           whileTap={{ scale: 0.97 }}
