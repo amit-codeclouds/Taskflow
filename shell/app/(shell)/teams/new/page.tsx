@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Lock, X, Check, Plus, Building2 } from 'lucide-react';
@@ -54,7 +54,7 @@ const rowStyles = getSelectStyles({ size: 'sm' });
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function TeamNewPage() {
+function TeamNewPageContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const auth         = useAuth();
@@ -313,5 +313,13 @@ export default function TeamNewPage() {
         </div>
       </form>
     </motion.div>
+  );
+}
+
+export default function TeamNewPage() {
+  return (
+    <Suspense>
+      <TeamNewPageContent />
+    </Suspense>
   );
 }
