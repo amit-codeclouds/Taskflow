@@ -4,7 +4,8 @@ export const queryKeys = {
   },
   people: {
     all: () => ['people'] as const,
-    list: () => ['people', 'list'] as const,
+    list: (params?: { search?: string; teamId?: string; page?: number }) =>
+      ['people', 'list', params] as const,
     stats: () => ['people', 'stats'] as const,
   },
   teams: {
@@ -15,7 +16,7 @@ export const queryKeys = {
   },
   users: {
     all: () => ['users'] as const,
-    list: () => ['users', 'list'] as const,
+    list: (params?: { workspaceId?: string }) => ['users', 'list', params] as const,
     detail: (id: string) => ['users', 'detail', id] as const,
   },
 } as const;

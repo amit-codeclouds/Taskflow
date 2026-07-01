@@ -1,18 +1,23 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { peopleService } from '@/lib/services/people.service';
 import { queryKeys } from '@/lib/queryKeys';
 import { extractErrorMessage } from '@/lib/http/extractError';
 import type { InvitePayload, UpdatePersonPayload } from '@/lib/types/people.types';
 
-export function usePeopleList() {
+const PAGE_LIMIT = 10;
+
+export function usePeopleList(params?: { search?: string; teamId?: string; page?: number }) {
   return useQuery({
-    queryKey: queryKeys.people.list(),
-    queryFn: () => peopleService.list(),
+    queryKey: queryKeys.people.list(params),
+    queryFn: () => peopleService.list({ ...params, limit: PAGE_LIMIT }),
+    placeholderData: keepPreviousData,
   });
 }
+
+export { PAGE_LIMIT as PEOPLE_PAGE_LIMIT };
 
 export function usePeopleStats() {
   return useQuery({

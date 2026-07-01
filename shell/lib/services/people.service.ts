@@ -1,10 +1,16 @@
 import apiClient from '@/lib/http/client';
-import type { Person, PeopleStats, InvitePayload, UpdatePersonPayload, InvitationResult } from '@/lib/types/people.types';
+import type { Person, PaginatedPeople, PeopleStats, InvitePayload, UpdatePersonPayload, InvitationResult } from '@/lib/types/people.types';
 
 export const peopleService = {
-  async list(params?: { search?: string; status?: string; teamId?: string; page?: number; limit?: number }): Promise<Person[]> {
-    const { data } = await apiClient.get<{ result: { data: Person[] } }>('/people', { params });
-    return data.result?.data ?? [];
+  async list(params?: { search?: string; teamId?: string; page?: number; limit?: number }): Promise<PaginatedPeople> {
+    const { data } = await apiClient.get<{ result: PaginatedPeople }>('/people', { params });
+    const result = data.result;
+    return {
+      data:  result?.data  ?? [],
+      total: result?.total ?? 0,
+      page:  result?.page  ?? 1,
+      limit: result?.limit ?? 10,
+    };
   },
 
   async stats(): Promise<PeopleStats> {

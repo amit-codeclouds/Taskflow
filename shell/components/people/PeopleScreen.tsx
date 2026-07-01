@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserPlus, Search, UserCheck, Clock, Users, Trash2, RefreshCw } from 'lucide-react';
-import { usePeopleList, usePeopleStats, useRemovePerson } from '@/lib/hooks/usePeople';
+import { UserPlus, Search, UserCheck, Clock, Users, Trash2, RefreshCw, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { usePeopleList, usePeopleStats, useRemovePerson, PEOPLE_PAGE_LIMIT } from '@/lib/hooks/usePeople';
 import { useTeamsList } from '@/lib/hooks/useTeams';
 import { PeopleSkeleton } from '@/app/(shell)/people/_skeleton';
 import InviteModal from '@/components/Modals/InviteModal';
@@ -14,11 +14,6 @@ import type { Person } from '@/lib/types/people.types';
 import type { ApiTeam } from '@/lib/types/teams.types';
 import { getInitials } from '@/lib/initials';
 
-const STATUS_OPTIONS: SelectOption[] = [
-  { value: 'all',     label: 'All status' },
-  { value: 'active',  label: 'Active'     },
-  { value: 'pending', label: 'Pending'    },
-];
 
 const filterStyles = getSelectStyles({ size: 'sm' });
 
@@ -130,16 +125,34 @@ function MemberRow({
 // ─── PeopleScreen ─────────────────────────────────────────────────────────────
 
 export default function PeopleScreen() {
-  const { data: people = [], isPending } = usePeopleList();
-  const { data: statsData }              = usePeopleStats();
-  const { data: allTeams = [] }          = useTeamsList();
-  const removeMutation                   = useRemovePerson();
-  const confirm                          = useConfirm();
+  const [showInvite, setShowInvite]           = useState(false);
+  const [search, setSearch]                   = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [teamFilter, setTeamFilter]           = useState('all');
+  const [page, setPage]                       = useState(1);
 
-  const [showInvite, setShowInvite]     = useState(false);
-  const [search, setSearch]             = useState('');
-  const [teamFilter, setTeamFilter]     = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => { setPage(1); }, [debouncedSearch, teamFilter]);
+
+  const { data: pageResult, isPending, isFetching, refetch } = usePeopleList({
+    search: debouncedSearch || undefined,
+    teamId: teamFilter !== 'all' ? teamFilter : undefined,
+    page,
+  });
+
+  const people     = pageResult?.data  ?? [];
+  const total      = pageResult?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PEOPLE_PAGE_LIMIT));
+
+  const { data: statsData }     = usePeopleStats();
+  const { data: allTeams = [] } = useTeamsList();
+  const removeMutation          = useRemovePerson();
+  const confirm                 = useConfirm();
 
   const teamOptions: SelectOption[] = useMemo(
     () => [
@@ -150,21 +163,21 @@ export default function PeopleScreen() {
   );
 
   const stats = [
-    { label: 'Total Members',   value: statsData?.totalMembers   ?? people.length,                                     color: 'text-text-100'     },
-    { label: 'Active',          value: statsData?.active         ?? people.filter(m => m.status === 'active').length,  color: 'text-status-green' },
-    { label: 'Pending Invites', value: statsData?.pendingInvites ?? people.filter(m => m.status === 'pending').length, color: 'text-status-amber' },
-    { label: 'Teams',           value: statsData?.totalTeams     ?? allTeams.length,                                   color: 'text-accent-hover' },
+    { label: 'Total Members',   value: statsData?.totalMembers   ?? total,          color: 'text-text-100'     },
+    { label: 'Active',          value: statsData?.active         ?? 0,              color: 'text-status-green' },
+    { label: 'Pending Invites', value: statsData?.pendingInvites ?? 0,              color: 'text-status-amber' },
+    { label: 'Teams',           value: statsData?.totalTeams     ?? allTeams.length, color: 'text-accent-hover' },
   ];
 
-  const filtered = people.filter(m => {
-    const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) || m.email.toLowerCase().includes(search.toLowerCase());
-    const matchTeam   = teamFilter === 'all' || m.teamIds.includes(teamFilter);
-    const matchStatus = statusFilter === 'all' || m.status === statusFilter;
-    return matchSearch && matchTeam && matchStatus;
-  });
+  function buildPageNumbers(): (number | '…')[] {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    if (page <= 4) return [1, 2, 3, 4, 5, '…', totalPages];
+    if (page >= totalPages - 3) return [1, '…', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    return [1, '…', page - 1, page, page + 1, '…', totalPages];
+  }
 
   async function handleRemove(id: string) {
-    const member    = people.find(m => m.id === id);
+    const member = people.find(m => m.id === id);
     if (!member) return;
 
     const isPending = member.status === 'pending';
@@ -228,7 +241,21 @@ export default function PeopleScreen() {
 
       {/* Filters */}
       <div className="flex items-center gap-3 mb-4">
-        <div className="relative flex-1 max-w-xs">
+        {/* Refresh */}
+        <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          title="Refresh"
+          className="w-9 h-9 shrink-0 flex items-center justify-center rounded-lg bg-bg-700 border border-border-subtle text-text-300 hover:text-text-100 hover:bg-bg-600 transition-colors disabled:opacity-50"
+        >
+          {isFetching && !isPending
+            ? <Loader2 size={14} className="animate-spin" />
+            : <RefreshCw size={14} />
+          }
+        </button>
+
+        {/* Search */}
+        <div className="relative flex-1 w-full">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-300" />
           <input
             value={search}
@@ -237,6 +264,8 @@ export default function PeopleScreen() {
             className="w-full h-9 pl-8 pr-3 bg-bg-700 border border-border-subtle rounded-lg text-sm text-text-100 placeholder:text-text-300 focus:outline-none focus:border-accent transition-colors"
           />
         </div>
+
+        {/* Team filter */}
         <div className="w-44">
           <Select<SelectOption, false>
             options={teamOptions}
@@ -247,16 +276,18 @@ export default function PeopleScreen() {
             instanceId="team-filter"
           />
         </div>
-        <div className="w-36">
-          <Select<SelectOption, false>
-            options={STATUS_OPTIONS}
-            value={STATUS_OPTIONS.find(o => o.value === statusFilter) ?? STATUS_OPTIONS[0]}
-            onChange={opt => setStatusFilter(opt?.value ?? 'all')}
-            styles={filterStyles}
-            isSearchable={false}
-            instanceId="status-filter"
-          />
-        </div>
+      </div>
+
+      {/* Fetch progress bar */}
+      <div className="h-0.5 rounded-full overflow-hidden mb-3 bg-transparent">
+        {isFetching && !isPending && (
+          <div className="h-full w-full bg-accent/20 relative overflow-hidden rounded-full">
+            <div
+              className="absolute inset-y-0 left-0 w-1/4 bg-accent rounded-full"
+              style={{ animation: 'slide-progress 1.1s ease-in-out infinite' }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Table header */}
@@ -270,9 +301,9 @@ export default function PeopleScreen() {
       </div>
 
       {/* Member rows */}
-      <div className="bg-bg-700 rounded-card border border-border-subtle overflow-hidden">
+      <div className={`bg-bg-700 rounded-card border border-border-subtle overflow-hidden transition-opacity duration-200 ${isFetching && !isPending ? 'opacity-60' : 'opacity-100'}`}>
         <AnimatePresence initial={false}>
-          {filtered.map((m, i) => (
+          {people.map((m, i) => (
             <MemberRow
               key={m.id}
               member={m}
@@ -283,13 +314,69 @@ export default function PeopleScreen() {
             />
           ))}
         </AnimatePresence>
-        {filtered.length === 0 && (
+        {people.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16">
             <Users size={24} className="text-text-300 mb-2" strokeWidth={1.3} />
             <p className="text-sm text-text-300">No members match your filters.</p>
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4 px-1">
+          <p className="text-xs text-text-300">
+            {total === 0 ? '0 members' : (
+              <>
+                Showing{' '}
+                <span className="text-text-200 font-medium">
+                  {(page - 1) * PEOPLE_PAGE_LIMIT + 1}–{Math.min(page * PEOPLE_PAGE_LIMIT, total)}
+                </span>
+                {' '}of{' '}
+                <span className="text-text-200 font-medium">{total}</span>
+                {' '}members
+              </>
+            )}
+          </p>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1 || isFetching}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-text-300 hover:text-text-100 hover:bg-bg-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft size={15} />
+            </button>
+
+            {buildPageNumbers().map((p, i) =>
+              p === '…' ? (
+                <span key={`ellipsis-${i}`} className="w-8 h-8 flex items-center justify-center text-xs text-text-300">…</span>
+              ) : (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  disabled={isFetching}
+                  className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-medium transition-colors disabled:cursor-not-allowed ${
+                    p === page
+                      ? 'bg-accent text-white'
+                      : 'text-text-300 hover:text-text-100 hover:bg-bg-700'
+                  }`}
+                >
+                  {p}
+                </button>
+              )
+            )}
+
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages || isFetching}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-text-300 hover:text-text-100 hover:bg-bg-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronRight size={15} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Invite modal */}
       <AnimatePresence>

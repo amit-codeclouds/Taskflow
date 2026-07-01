@@ -13,6 +13,7 @@ import { TEAM_COLORS, ROLE_OPTIONS } from '@/lib/teams';
 import type { TeamRole } from '@/lib/teams';
 import { useTeamDetail, useUpdateTeam, useDeleteTeam } from '@/lib/hooks/useTeams';
 import { useUsersList } from '@/lib/hooks/useUsers';
+import { useAuth } from '@/lib/useAuth';
 import type { ApiTeamMember } from '@/lib/types/teams.types';
 import { TeamDetailSkeleton } from './_skeleton';
 import { getInitials } from '@/lib/initials';
@@ -128,8 +129,9 @@ export default function TeamManagePage({ params }: { params: { id: string } }) {
   const router  = useRouter();
   const confirm = useConfirm();
 
+  const auth                       = useAuth();
   const { data: team, isPending }  = useTeamDetail(params.id);
-  const { data: allUsers = [] }    = useUsersList();
+  const { data: allUsers = [] }    = useUsersList({ workspaceId: auth.workspaceId });
   const updateTeam                 = useUpdateTeam();
   const deleteTeam                 = useDeleteTeam();
 
