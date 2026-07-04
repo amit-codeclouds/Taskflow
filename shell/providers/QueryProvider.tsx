@@ -8,8 +8,8 @@ function makeQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 60 * 1000,
-        gcTime: 5 * 60 * 1000,
+        staleTime: 60 * 1000, // 1 minute
+        gcTime: 5 * 60 * 1000, // 5 minutes
         refetchOnWindowFocus: true,
         retry: 1,
       },
@@ -37,7 +37,7 @@ export default function QueryProvider({ children }: { children: React.ReactNode 
     <QueryClientProvider client={queryClient}>
       {children}
       {process.env.NODE_ENV === 'development' && (
-        <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
+        <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-right" />
       )}
     </QueryClientProvider>
   );
