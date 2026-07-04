@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Users, UserCircle2, Settings, KanbanSquare } from 'lucide-react';
+import { LayoutDashboard, Users, UserCircle2, Settings, KanbanSquare, User } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
 import { useAuth } from '@/lib/useAuth';
 
@@ -16,7 +16,8 @@ const WORKSPACE_ITEMS: NavItem[] = [
 ];
 
 const TOOLS_ITEMS: NavItem[] = [
-  { label: 'Board', href: '/board', icon: <KanbanSquare size={16} strokeWidth={1.5} />, external: true },
+  { label: 'Task Board', href: '/board', icon: <KanbanSquare size={16} strokeWidth={1.5} />, external: true },
+  { label: 'My Tasks', href: '/tasks', icon: <KanbanSquare size={16} strokeWidth={1.5} />, external: true },
 ];
 
 function NavLink({ label, href, icon, isActive, index, external }: NavItem & { isActive: boolean; index: number }) {
@@ -105,13 +106,22 @@ export default function Sidebar() {
       <div className="shrink-0">
         <div className="mx-4 h-px bg-border-subtle" />
         <div className="mx-2 my-1.5">
+          <Link href="/profile" className="block">
+            <span className={`relative flex items-center gap-3 h-10 px-4 rounded-lg text-sm transition-colors ${
+              pathname.startsWith('/profile') ? 'bg-accent-bg text-accent-hover font-medium' : 'text-text-200 hover:bg-bg-700 hover:text-text-100'
+            }`}>
+              {pathname.startsWith('/profile') && <motion.span layoutId="activeNav" className="absolute left-0 top-[14%] h-[72%] w-[3px] bg-accent rounded-r-full" />}
+              <User size={16} strokeWidth={1.5} className="shrink-0" />
+              <span>My Profile</span>
+            </span>
+          </Link>
           <Link href="/settings" className="block">
             <span className={`relative flex items-center gap-3 h-10 px-4 rounded-lg text-sm transition-colors ${
               pathname.startsWith('/settings') ? 'bg-accent-bg text-accent-hover font-medium' : 'text-text-200 hover:bg-bg-700 hover:text-text-100'
             }`}>
               {pathname.startsWith('/settings') && <motion.span layoutId="activeNav" className="absolute left-0 top-[14%] h-[72%] w-[3px] bg-accent rounded-r-full" />}
               <Settings size={16} strokeWidth={1.5} className="shrink-0" />
-              <span>Settings</span>
+              <span>Manage Settings</span>
             </span>
           </Link>
         </div>

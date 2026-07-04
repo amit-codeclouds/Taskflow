@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/useAuth';
+import { SettingsIcon } from 'lucide-react';
 
 function getPageInfo(pathname: string): { title: string; subtitle: string } {
   if (pathname.startsWith('/tasks'))    return { title: 'Tasks',    subtitle: 'Manage your work' };
@@ -12,6 +13,7 @@ function getPageInfo(pathname: string): { title: string; subtitle: string } {
   if (pathname.startsWith('/teams'))    return { title: 'Teams',    subtitle: 'Your team members' };
   if (pathname.startsWith('/people'))   return { title: 'People',   subtitle: 'Contacts and roles' };
   if (pathname.startsWith('/settings')) return { title: 'Settings', subtitle: 'Preferences' };
+  if (pathname.startsWith('/profile'))  return { title: 'My Profile', subtitle: 'View and manage your personal information and roles' };
   return { title: 'Home', subtitle: 'Your workspace at a glance' };
 }
 
@@ -81,7 +83,7 @@ export default function Topbar() {
     }
   }
 
-  const initials = user.initials || '??';
+  const initials = user.initials || 'U';
 
   return (
     <motion.header
@@ -152,12 +154,23 @@ export default function Topbar() {
                 {/* Menu items */}
                 <div className="py-1">
                   <Link
-                    href="/settings"
+                    href="/profile"
                     onClick={() => setOpen(false)}
                     className="flex items-center gap-3 px-4 py-2.5 text-sm text-text-200 hover:bg-bg-700 hover:text-text-100 transition-colors"
                   >
                     <ProfileIcon />
                     Profile
+                  </Link>
+
+                  <div className="mx-3 my-1 h-px bg-border-subtle" />
+
+                  <Link
+                    href="/settings"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-text-200 hover:bg-bg-700 hover:text-text-100 transition-colors"
+                  >
+                    <SettingsIcon size={16} />
+                    Settings
                   </Link>
 
                   <div className="mx-3 my-1 h-px bg-border-subtle" />
