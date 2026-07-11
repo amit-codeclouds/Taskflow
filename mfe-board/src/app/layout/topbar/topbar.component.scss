@@ -42,51 +42,19 @@
   gap: 12px;
 }
 
-.search-pill {
+.profile-dropdown {
+  position: relative;
+}
+
+.profile-trigger {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: #2C2C32;
-  border-radius: 999px;
-  height: 34px;
-  padding: 0 16px;
-  width: 220px;
-  font-size: 14px;
-  color: #6E6C6A;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 8px;
   transition: background 0.15s;
 
-  &:hover { background: #393940; }
-}
-
-.icon-btn {
-  position: relative;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: #2C2C32;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #ABAAA5;
-  transition: background 0.15s, transform 0.15s;
-
-  &:hover { background: #393940; transform: scale(1.05); }
-}
-
-.notification-dot {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #6155DD;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.2); }
+  &:hover { background: #222227; }
 }
 
 .avatar {
@@ -100,8 +68,81 @@
   color: #6155DD;
   font-size: 12px;
   font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.15s;
+  flex-shrink: 0;
+}
 
-  &:hover { transform: scale(1.05); }
+.chevron {
+  color: #6E6C6A;
+  transition: transform 0.2s ease;
+
+  &--open { transform: rotate(180deg); }
+}
+
+.profile-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 220px;
+  background: #1A1A1E;
+  border: 1px solid #2C2C32;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  z-index: 50;
+  overflow: hidden;
+}
+
+.profile-menu-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #2C2C32;
+}
+
+.profile-menu-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #F4F3F0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: capitalize;
+}
+
+.profile-menu-email {
+  font-size: 11px;
+  color: #6E6C6A;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-menu-items {
+  padding: 4px 0;
+}
+
+.profile-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  font-size: 14px;
+  color: #ABAAA5;
+  transition: background 0.15s, color 0.15s;
+  text-align: left;
+
+  &:hover { background: #222227; color: #F4F3F0; }
+
+  &--danger {
+    color: #DC4949;
+
+    &:hover { background: rgba(220, 73, 73, 0.1); color: #DC4949; }
+  }
+
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+}
+
+.profile-menu-divider {
+  height: 1px;
+  background: #2C2C32;
+  margin: 4px 12px;
 }
