@@ -32,6 +32,15 @@ function ProfileIcon() {
   );
 }
 
+function SettingsIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M7 1.5v1.4M7 11.1v1.4M12.5 7h-1.4M2.9 7H1.5M10.7 3.3l-1 1M4.3 9.7l-1 1M10.7 10.7l-1-1M4.3 4.3l-1-1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function LogoutIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -119,15 +128,26 @@ export default function Topbar() {
                   </p>
                 </div>
 
-                {/* Menu items */}
+                {/* Menu items — Profile and Settings are owned by the shell zone */}
                 <div className="py-1">
                   <a
-                    href="/settings"
+                    href="/profile"
                     onClick={() => setOpen(false)}
                     className="flex items-center gap-3 px-4 py-2.5 text-sm text-text-200 hover:bg-bg-700 hover:text-text-100 transition-colors"
                   >
                     <ProfileIcon />
                     Profile
+                  </a>
+
+                  <div className="mx-3 my-1 h-px bg-border-subtle" />
+
+                  <a
+                    href="/settings"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-text-200 hover:bg-bg-700 hover:text-text-100 transition-colors"
+                  >
+                    <SettingsIcon />
+                    Settings
                   </a>
 
                   <div className="mx-3 my-1 h-px bg-border-subtle" />

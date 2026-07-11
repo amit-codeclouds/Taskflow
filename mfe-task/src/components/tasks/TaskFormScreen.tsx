@@ -1,13 +1,19 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Formik, Form, Field, ErrorMessage, type FieldProps } from 'formik';
 import * as Yup from 'yup';
 import { motion } from 'framer-motion';
+import Skeleton from 'react-loading-skeleton';
 import AppSelect, { type SelectOption } from '@/components/ui/AppSelect';
 import RichTextEditor from '@/components/ui/RichTextEditor';
-import { TEAMS, TEAM_STATUSES, PEOPLE, type Task, type LabelType, type Priority } from '@/lib/taskData';
+import { useTaskDetail, useCreateTask, useUpdateTask } from '@/lib/hooks/useTasks';
+import { useTeamsList } from '@/lib/hooks/useTeams';
+import { useBoardStatuses } from '@/lib/hooks/useBoardStatuses';
+import { usePeopleOptions } from '@/lib/hooks/usePeople';
+import type { Priority, LabelType, CreateTaskPayload } from '@/lib/types/tasks.types';
 
 // ── Yup schema ────────────────────────────────────────────────────────────────
 
@@ -15,12 +21,12 @@ const validationSchema = Yup.object({
   title: Yup.string()
     .trim()
     .required('Title is required')
-    .max(200, 'Title must be 200 characters or fewer'),
+    .max(500, 'Title must be 500 characters or fewer'),
   description: Yup.string(),
   teamId:   Yup.string().required('Please select a team'),
   statusId: Yup.string().required('Please select a status'),
-  priority: Yup.string().oneOf(['high', 'medium', 'low'] as const).required(),
-  label:    Yup.string().oneOf(['', 'feature', 'bug', 'design', 'docs', 'infra', 'refactor'] as const),
+  priority: Yup.string().oneOf(['High', 'Medium', 'Low'] as const).required(),
+  label:    Yup.string().oneOf(['', 'Feature', 'Bug', 'Design', 'Docs', 'Infra', 'Refactor'] as const),
   assigneeIds:        Yup.array().of(Yup.string()),
   expectedCompletion: Yup.string(),
   progress: Yup.number()
@@ -43,39 +49,31 @@ type FormValues = {
 
 // ── Static option lists ───────────────────────────────────────────────────────
 
-const TEAM_OPTIONS: SelectOption[] = TEAMS.map(t => ({
-  value: t.id,
-  label: t.name,
-  color: t.color,
-}));
-
 const PRIORITY_OPTIONS: SelectOption[] = [
-  { value: 'high',   label: 'High',   color: '#DC4949' },
-  { value: 'medium', label: 'Medium', color: '#E09D34' },
-  { value: 'low',    label: 'Low',    color: '#32B173' },
+  { value: 'High',   label: 'High',   color: '#DC4949' },
+  { value: 'Medium', label: 'Medium', color: '#E09D34' },
+  { value: 'Low',    label: 'Low',    color: '#32B173' },
 ];
 
 const LABEL_OPTIONS: SelectOption[] = [
-  { value: 'feature',  label: 'Feature'  },
-  { value: 'bug',      label: 'Bug'      },
-  { value: 'design',   label: 'Design'   },
-  { value: 'docs',     label: 'Docs'     },
-  { value: 'infra',    label: 'Infra'    },
-  { value: 'refactor', label: 'Refactor' },
+  { value: 'Feature',  label: 'Feature'  },
+  { value: 'Bug',      label: 'Bug'      },
+  { value: 'Design',   label: 'Design'   },
+  { value: 'Docs',     label: 'Docs'     },
+  { value: 'Infra',    label: 'Infra'    },
+  { value: 'Refactor', label: 'Refactor' },
 ];
 
 interface PersonOption extends SelectOption { initials: string; email: string; title: string; }
-const PERSON_OPTIONS: PersonOption[] = PEOPLE.map(p => ({
-  value:    p.id,
-  label:    p.name,
-  initials: p.initials,
-  email:    p.email,
-  title:    p.title,
-}));
+
+function initialsFromName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
 
 // ── Custom option renderers ───────────────────────────────────────────────────
 
-// Chip shown for each selected person in multi-select: [initials] Name · Role
 function PersonMultiValueLabel({ data }: { data: PersonOption }) {
   return (
     <div className="flex items-center gap-1.5">
@@ -141,12 +139,52 @@ const labelClass = 'block text-xs font-medium text-text-200 mb-1.5';
 const inputClass = 'w-full h-10 px-3 rounded-lg bg-bg-700 border border-border-subtle text-sm text-text-100 placeholder:text-text-300 focus:outline-none focus:border-accent transition-colors';
 const sectionHeading = 'text-xs font-semibold text-text-300 uppercase tracking-wider pb-1 border-b border-border-subtle';
 
+function NotFoundView({ taskId }: { taskId: string }) {
+  return (
+    <div className="max-w-5xl mx-auto flex flex-col items-center justify-center py-24 text-center">
+      <p className="text-text-300 text-sm">Task <span className="font-mono text-text-200">{taskId}</span> was not found.</p>
+      <Link href="/" className="mt-4 text-sm text-accent hover:text-accent-hover transition-colors">
+        ← Back to tasks
+      </Link>
+    </div>
+  );
+}
+
 // ── Main form ─────────────────────────────────────────────────────────────────
 
-export default function TaskFormScreen({ editTask }: { editTask?: Task | null }) {
+export default function TaskFormScreen({ taskId }: { taskId?: string }) {
   const router       = useRouter();
   const searchParams = useSearchParams();
-  const isEdit       = !!editTask;
+  const isEdit        = !!taskId;
+
+  const { data: editTask, isPending: taskPending, isError: taskError } = useTaskDetail(taskId ?? '');
+  const { data: teams = [], isPending: teamsPending } = useTeamsList();
+  const createTask = useCreateTask();
+  const updateTask = useUpdateTask();
+
+  const [selectedTeamId, setSelectedTeamId] = useState(() => searchParams.get('teamId') ?? '');
+  const { data: teamStatuses = [], isPending: statusesPending } = useBoardStatuses(selectedTeamId);
+  // Assignees are team-scoped — only people on the selected team can be assigned.
+  const { data: peopleResult, isPending: peoplePending } = usePeopleOptions(selectedTeamId);
+  const people = peopleResult?.data ?? [];
+
+  // Once the task being edited loads, sync the team-scoped status query to it.
+  useEffect(() => {
+    if (editTask) setSelectedTeamId(editTask.teamId);
+  }, [editTask]);
+
+  if (isEdit && taskPending) return <FormSkeleton />;
+  if (isEdit && (taskError || !editTask)) return <NotFoundView taskId={taskId!} />;
+
+  const TEAM_OPTIONS: SelectOption[] = teams.map(t => ({ value: t.id, label: t.name, color: t.color }));
+  const STATUS_OPTIONS: SelectOption[] = teamStatuses.map(s => ({ value: s.statusId, label: s.statusName }));
+  const PERSON_OPTIONS: PersonOption[] = people.map(p => ({
+    value:    p.id,
+    label:    p.name,
+    initials: p.avatarInitials || initialsFromName(p.name),
+    email:    p.email ?? '',
+    title:    p.title ?? '',
+  }));
 
   const initialValues: FormValues = isEdit
     ? {
@@ -155,17 +193,17 @@ export default function TaskFormScreen({ editTask }: { editTask?: Task | null })
         teamId:             editTask!.teamId,
         statusId:           editTask!.statusId,
         priority:           editTask!.priority,
-        label:              editTask!.label,
-        assigneeIds:        PEOPLE.filter(p => p.initials === editTask!.assignee).map(p => p.id),
-        expectedCompletion: editTask!.expectedCompletion ?? '',
+        label:              editTask!.label ?? '',
+        assigneeIds:        editTask!.assignees.map(a => a.userId),
+        expectedCompletion: editTask!.expectedCompletion?.slice(0, 10) ?? '',
         progress:           editTask!.progress,
       }
     : {
         title:              '',
         description:        '',
         teamId:             searchParams.get('teamId')   ?? '',
-        statusId:           searchParams.get('statusId') ?? '',
-        priority:           'medium',
+        statusId:           '',
+        priority:           'Medium',
         label:              '',
         assigneeIds:        [],
         expectedCompletion: '',
@@ -173,9 +211,28 @@ export default function TaskFormScreen({ editTask }: { editTask?: Task | null })
       };
 
   async function handleSubmit(values: FormValues, { setSubmitting }: { setSubmitting: (b: boolean) => void }) {
+    const basePayload: CreateTaskPayload = {
+      title: values.title.trim(),
+      description: values.description || undefined,
+      priority: values.priority,
+      label: values.label || undefined,
+      statusId: values.statusId,
+      teamId: values.teamId,
+      assigneeIds: values.assigneeIds,
+      expectedCompletion: values.expectedCompletion || null,
+      progress: values.progress,
+    };
+
     try {
-      await new Promise(r => setTimeout(r, 600));
-      router.push(isEdit ? `/${editTask!.id}` : `/TF-${String(Math.floor(Math.random() * 900) + 100)}`);
+      if (isEdit) {
+        // UpdateTaskRequestDto has no teamId — a task's team cannot change after creation.
+        const { teamId: _teamId, ...updatePayload } = basePayload;
+        const updated = await updateTask.mutateAsync({ id: editTask!.id, ...updatePayload });
+        router.push(`/${updated.id}`);
+      } else {
+        await createTask.mutateAsync(basePayload);
+        router.push('/');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -199,7 +256,7 @@ export default function TaskFormScreen({ editTask }: { editTask?: Task | null })
           <>
             <span className="text-border-subtle">/</span>
             <Link href={`/${editTask!.id}`} className="text-sm font-mono text-text-300 hover:text-text-100 transition-colors">
-              {editTask!.id}
+              #{editTask!.taskNumber}
             </Link>
           </>
         )}
@@ -207,14 +264,8 @@ export default function TaskFormScreen({ editTask }: { editTask?: Task | null })
         <span className="text-sm text-text-100 font-medium">{isEdit ? 'Edit' : 'New Task'}</span>
       </motion.div>
 
-      <Formik initialValues={initialValues} validationSchema={validationSchema} onSubmit={handleSubmit}>
-        {({ values, setFieldValue, isSubmitting, touched, errors }) => {
-          const statusOptions: SelectOption[] = (TEAM_STATUSES[values.teamId] ?? []).map(s => ({
-            value: s.id,
-            label: s.name,
-          }));
-
-          return (
+      <Formik initialValues={initialValues} validationSchema={validationSchema} onSubmit={handleSubmit} enableReinitialize>
+        {({ values, setFieldValue, isSubmitting, touched, errors }) => (
             <Form>
               <div className="flex flex-col gap-6">
 
@@ -237,18 +288,18 @@ export default function TaskFormScreen({ editTask }: { editTask?: Task | null })
                           {...field}
                           type="text"
                           placeholder="What needs to be done?"
-                          maxLength={200}
+                          maxLength={500}
                           className={`${inputClass} ${touched.title && errors.title ? 'border-status-red' : ''}`}
                         />
                       )}
                     </Field>
                     <div className="flex items-center justify-between">
                       <FieldErr name="title" />
-                      <p className="text-2xs text-text-300 mt-1 ml-auto">{values.title.length}/200</p>
+                      <p className="text-2xs text-text-300 mt-1 ml-auto">{values.title.length}/500</p>
                     </div>
                   </div>
 
-                  {/* Description — CKEditor (white bg, black text) */}
+                  {/* Description — Tiptap rich-text editor */}
                   <div>
                     <label className={labelClass}>Description</label>
                     <Field name="description">
@@ -276,30 +327,46 @@ export default function TaskFormScreen({ editTask }: { editTask?: Task | null })
                   <div className="grid grid-cols-3 gap-4">
                     <div>
                       <label className={labelClass}>Team <span className="text-status-red">*</span></label>
-                      <AppSelect
-                        options={TEAM_OPTIONS}
-                        value={TEAM_OPTIONS.find(o => o.value === values.teamId) ?? null}
-                        onChange={opt => {
-                          setFieldValue('teamId', opt?.value ?? '');
-                          setFieldValue('statusId', '');
-                        }}
-                        placeholder="Select team…"
-                        formatOptionLabel={TeamOptionLabel as any}
-                        hasError={!!(touched.teamId && errors.teamId)}
-                      />
+                      {teamsPending ? (
+                        <Skeleton height={40} borderRadius={8} baseColor="#222227" highlightColor="#2C2C32" />
+                      ) : (
+                        <div
+                          data-tooltip={isEdit ? "A task's team can't be changed after creation" : undefined}
+                          className={isEdit ? 'cursor-not-allowed' : undefined}
+                        >
+                          <AppSelect
+                            options={TEAM_OPTIONS}
+                            value={TEAM_OPTIONS.find(o => o.value === values.teamId) ?? null}
+                            onChange={opt => {
+                              setFieldValue('teamId', opt?.value ?? '');
+                              setFieldValue('statusId', '');
+                              setFieldValue('assigneeIds', []);
+                              setSelectedTeamId(opt?.value ?? '');
+                            }}
+                            placeholder="Select team…"
+                            formatOptionLabel={TeamOptionLabel as any}
+                            hasError={!!(touched.teamId && errors.teamId)}
+                            isDisabled={isEdit}
+                          />
+                        </div>
+                      )}
                       <FieldErr name="teamId" />
                     </div>
 
                     <div>
                       <label className={labelClass}>Status <span className="text-status-red">*</span></label>
-                      <AppSelect
-                        options={statusOptions}
-                        value={statusOptions.find(o => o.value === values.statusId) ?? null}
-                        onChange={opt => setFieldValue('statusId', opt?.value ?? '')}
-                        placeholder={values.teamId ? 'Select status…' : 'Select a team first'}
-                        isDisabled={!values.teamId}
-                        hasError={!!(touched.statusId && errors.statusId)}
-                      />
+                      {statusesPending && values.teamId ? (
+                        <Skeleton height={40} borderRadius={8} baseColor="#222227" highlightColor="#2C2C32" />
+                      ) : (
+                        <AppSelect
+                          options={STATUS_OPTIONS}
+                          value={STATUS_OPTIONS.find(o => o.value === values.statusId) ?? null}
+                          onChange={opt => setFieldValue('statusId', opt?.value ?? '')}
+                          placeholder={values.teamId ? 'Select status…' : 'Select a team first'}
+                          isDisabled={!values.teamId}
+                          hasError={!!(touched.statusId && errors.statusId)}
+                        />
+                      )}
                       <FieldErr name="statusId" />
                     </div>
 
@@ -308,7 +375,7 @@ export default function TaskFormScreen({ editTask }: { editTask?: Task | null })
                       <AppSelect
                         options={PRIORITY_OPTIONS}
                         value={PRIORITY_OPTIONS.find(o => o.value === values.priority) ?? null}
-                        onChange={opt => setFieldValue('priority', opt?.value ?? 'medium')}
+                        onChange={opt => setFieldValue('priority', opt?.value ?? 'Medium')}
                         formatOptionLabel={PriorityOptionLabel as any}
                         isSearchable={false}
                       />
@@ -396,18 +463,23 @@ export default function TaskFormScreen({ editTask }: { editTask?: Task | null })
                   {/* Row 3: Assignees — full width, multi-select */}
                   <div>
                     <label className={labelClass}>Assignees</label>
-                    <AppSelect
-                      isMulti
-                      options={PERSON_OPTIONS}
-                      value={PERSON_OPTIONS.filter(o => values.assigneeIds.includes(o.value))}
-                      onChange={opts =>
-                        setFieldValue('assigneeIds', opts ? (opts as PersonOption[]).map(o => o.value) : [])
-                      }
-                      placeholder="Assign to one or more people…"
-                      formatOptionLabel={PersonOptionLabel as any}
-                      maxMenuHeight={340}
-                      components={{ MultiValueLabel: PersonMultiValueLabel as any }}
-                    />
+                    {peoplePending && values.teamId ? (
+                      <Skeleton height={40} borderRadius={8} baseColor="#222227" highlightColor="#2C2C32" />
+                    ) : (
+                      <AppSelect
+                        isMulti
+                        options={PERSON_OPTIONS}
+                        value={PERSON_OPTIONS.filter(o => values.assigneeIds.includes(o.value))}
+                        onChange={opts =>
+                          setFieldValue('assigneeIds', opts ? (opts as PersonOption[]).map(o => o.value) : [])
+                        }
+                        placeholder={values.teamId ? 'Assign to one or more people…' : 'Select a team first'}
+                        isDisabled={!values.teamId}
+                        formatOptionLabel={PersonOptionLabel as any}
+                        maxMenuHeight={340}
+                        components={{ MultiValueLabel: PersonMultiValueLabel as any }}
+                      />
+                    )}
                   </div>
                 </motion.div>
 
@@ -438,9 +510,31 @@ export default function TaskFormScreen({ editTask }: { editTask?: Task | null })
                 </motion.div>
               </div>
             </Form>
-          );
-        }}
+          )}
       </Formik>
+    </div>
+  );
+}
+
+// ── Component-level skeleton — shown only while the task being edited loads ──
+
+function FormSkeleton() {
+  const theme = { baseColor: '#222227', highlightColor: '#2C2C32' };
+  return (
+    <div className="max-w-5xl mx-auto flex flex-col gap-6">
+      <div className="bg-bg-800 rounded-xl border border-border-subtle p-6 flex flex-col gap-5">
+        <Skeleton width={70} height={11} {...theme} />
+        <Skeleton height={40} borderRadius={8} {...theme} />
+        <Skeleton height={200} borderRadius={8} {...theme} />
+      </div>
+      <div className="bg-bg-800 rounded-xl border border-border-subtle p-6 flex flex-col gap-5">
+        <Skeleton width={100} height={11} {...theme} />
+        <div className="grid grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} height={40} borderRadius={8} {...theme} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

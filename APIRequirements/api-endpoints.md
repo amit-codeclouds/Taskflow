@@ -162,67 +162,57 @@ Sets `taskflow_session` (httpOnly) + `taskflow_name` + `taskflow_email` + `taskf
 
 ## Task Service  `/api/tasks`
 
-> Drives the **Task MFE** (`mfe-task`) — list view, stats, filters.
+> Drives the **Task MFE** (`mfe-task`) — list view, detail, create/edit form.
+> Confirmed against the live swagger; supersedes the earlier plan below it in this
+> section, which used a different path/field shape (kept struck through for history —
+> see the actual implementation in `mfe-task/src/lib/services/tasks.service.ts`).
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/api/tasks` | Auth | List tasks (filterable) |
+| GET | `/api/tasks` | Auth | List tasks (filterable by `search`, `teamId`, `assigneeId`) |
+| GET | `/api/tasks/my` | Auth | List the current user's tasks — powers the "My Tasks" screen |
 | POST | `/api/tasks` | Auth | Create a task |
 | GET | `/api/tasks/:id` | Auth | Get single task |
-| PATCH | `/api/tasks/:id` | Auth | Update task fields |
+| PUT | `/api/tasks/:id` | Auth | Update task fields (full `UpdateTaskRequestDto` — no `teamId`, team is immutable) |
 | DELETE | `/api/tasks/:id` | Auth | Delete task |
-| GET | `/api/tasks/stats` | Auth | Aggregate counts by status |
+| PATCH | `/api/tasks/:id/status` | Auth | Change only the task's status (drag-drop / quick move) |
+| GET | `/api/board-statuses/team/:teamId` | Auth | Team's status catalog — `{ statusId, statusName }[]`, powers the status dropdown + per-team status tabs |
 
-### `GET /api/tasks`
+### `GET /api/tasks/my`
 **Query params**
 ```
-statusId=stat_1                       (optional — only meaningful with teamId)
-priority=high|medium|low              (optional)
-teamId=team_1|team_2|...              (optional — omit for "My Tasks" view)
-assigneeId=uuid                       (optional)
-projectId=uuid                        (optional)
-sprintId=uuid                         (optional)
-page=1&limit=20
+search=string          (optional)
+teamId=uuid             (optional — omit for all teams)
+page=1&limit=10
 ```
-Soft-deleted tasks (`deleted_at IS NOT NULL`) are excluded.
 **Response `200`**
 ```json
 {
   "data": [
     {
-      "id": "TF-001",
+      "id": "3f2b6c1a-...",
+      "taskNumber": 1,
       "title": "Implement authentication flow",
-      "priority": "high",
-      "statusId": "stat_2",
-      "status": { "id": "stat_2", "name": "In Progress" },
-      "label": "feature",
-      "assignee": { "id": "uuid", "name": "Alice Chen", "avatarInitials": "AC" },
-      "team": { "id": "team_1", "name": "Taskflow Core", "color": "#6155DD" },
-      "expectedCompletion": "2026-06-12",
+      "priority": "High",
+      "statusId": "b2a1...",
+      "label": "Feature",
+      "teamId": "team-uuid",
+      "assignees": [ { "userId": "uuid", "name": "Alice Chen", "avatarInitials": "AC" } ],
+      "expectedCompletion": "2026-06-12T00:00:00Z",
       "progress": 35,
-      "imageUrls": [],
+      "createdBy": "uuid",
       "createdAt": "2026-06-01T00:00:00Z",
       "updatedAt": "2026-06-10T00:00:00Z"
     }
   ],
   "total": 7,
   "page": 1,
-  "limit": 20
+  "limit": 10,
+  "totalPages": 1
 }
 ```
-
-### `GET /api/tasks/stats`
-**Response `200`**
-```json
-{
-  "total": 7,
-  "todo": 2,
-  "inProgress": 2,
-  "review": 2,
-  "done": 1
-}
-```
-> This feeds the stats row in the Task MFE (Total / In Progress / In Review / Done cards).
+Note: status *names* are not embedded on the task — resolve `statusId` against
+`GET /api/board-statuses/team/:teamId` for the task's team.
 
 ### `POST /api/tasks`
 **Request**
@@ -230,27 +220,39 @@ Soft-deleted tasks (`deleted_at IS NOT NULL`) are excluded.
 {
   "title": "string",
   "description": "<p>rich-text body</p>",
-  "priority": "high",
-  "statusId": "stat_1",
-  "label": "feature",
-  "assigneeId": "uuid",
-  "teamId": "team_1",
-  "expectedCompletion": "2026-06-20",
-  "progress": 0,
-  "imageUrls": ["https://res.cloudinary.com/..."],
-  "projectId": "uuid (optional)",
-  "sprintId": "uuid (optional)"
+  "priority": "High",
+  "label": "Feature",
+  "statusId": "uuid",
+  "teamId": "uuid",
+  "assigneeIds": ["uuid", "uuid"],
+  "expectedCompletion": "2026-06-20T00:00:00Z",
+  "progress": 0
 }
 ```
-**Response `201`** — full Task object.
-> Image upload itself happens client → Cloudinary (signed upload). Returned secure URLs are passed in `imageUrls`.
+**Response `200`** — full Task object (see `ApiTask` in `models.md`).
 
-### `PATCH /api/tasks/:id`
-**Request** — any subset of Task fields
+### `PUT /api/tasks/:id`
+**Request** — any subset of the create fields, **except `teamId`** (a task's team cannot be changed after creation).
 ```json
-{ "statusId": "stat_3", "progress": 80 }
+{ "statusId": "uuid", "progress": 80 }
 ```
-**Response `200`** — updated Task object
+**Response `200`** — updated Task object.
+
+### `PATCH /api/tasks/:id/status`
+**Request**
+```json
+{ "statusId": "uuid" }
+```
+**Response `200`** — updated Task object.
+
+<details>
+<summary>Superseded plan (kept for history — not the live contract)</summary>
+
+The endpoints below were the original v1 plan (`/api/tasks/stats`, single `assigneeId`,
+lowercase enums, embedded `status`/`team` objects, `imageUrls`). The live backend does not
+implement them this way — see the confirmed shapes above instead.
+
+</details>
 
 ---
 
@@ -701,23 +703,26 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 
 | Frontend element | Endpoint |
 |---|---|
-| Task list (all teams — "My Tasks" view) | `GET /api/tasks` |
-| Stats row (Total / In Progress / In Review / Done) | `GET /api/tasks/stats` |
-| Status filter tabs (All / In Progress / Review / To Do / Done) | `GET /api/tasks?status=...` |
-| Team filter bar (All / Taskflow Core / Design System / API Gateway) | `GET /api/tasks?teamId=...` |
-| Team badge on each task row | populated from `task.team` in response |
-| "New Task" button | navigates to `/tasks/new` |
-| Task row ↗ redirect icon | navigates to `/tasks/:id` (client-side — no API) |
-| Task row click (title) | navigates to `/tasks/:id` (client-side — no API) |
-| Task row checkbox (mark done) | `PATCH /api/tasks/:id` `{ statusId: <done-status-id> }` |
-| TaskFormScreen — Team dropdown | `GET /api/teams` |
-| TaskFormScreen — Status dropdown (per team) | `GET /api/board/:teamId/statuses` |
-| TaskFormScreen — submit | `POST /api/tasks` |
+| TaskListScreen — task list ("My Tasks") | `GET /api/tasks/my` |
+| TaskListScreen — search box | `GET /api/tasks/my?search=...` |
+| TaskListScreen — team filter dropdown | `GET /api/teams` (options), `GET /api/tasks/my?teamId=...` (filter) |
+| TaskListScreen — dynamic status tabs (shown once a single team is selected) | `GET /api/board-statuses/team/:teamId`; tab click filters the fetched page client-side by `statusId` |
+| TaskListScreen — status badge on each row | resolved via `GET /api/board-statuses/team/:teamId` for the row's team (batched across the page's unique teams with `useBoardStatusesMap`) |
+| TaskListScreen — pagination (Previous/Next) | `GET /api/tasks/my?page=...` |
+| "New Task" button | navigates to `/new` (`?teamId=...` preserved if a team is selected) |
+| Task row edit (✎) / open (↗) icons | navigate to `/:id/edit` and `/:id` (client-side — no API) |
+| TaskFormScreen — Team dropdown | `GET /api/teams`; disabled when editing (team is immutable post-creation) |
+| TaskFormScreen — Status dropdown (per team) | `GET /api/board-statuses/team/:teamId` |
+| TaskFormScreen — Assignees multi-select | `GET /api/people` |
+| TaskFormScreen — submit (create) | `POST /api/tasks` |
+| TaskFormScreen — submit (edit) | `PUT /api/tasks/:id` (no `teamId` sent) |
 | TaskDetailScreen — task data | `GET /api/tasks/:id` |
-| TaskDetailScreen — activity timeline | `GET /api/activity/tasks/:taskId` |
-| TaskDetailScreen — Edit Task button | navigates to `/tasks/new?edit=:id` |
-| Sidebar — user card | `GET /api/auth/me` |
-| Topbar — notification bell | `GET /api/notifications` |
+| TaskDetailScreen — status name, team name/color | `GET /api/board-statuses/team/:teamId`, `GET /api/teams` |
+| TaskDetailScreen — Edit Task button | navigates to `/:id/edit` |
+| TaskDetailScreen — Delete Task button (ConfirmProvider modal) | `DELETE /api/tasks/:id` |
+| Sidebar / Topbar — user card | derived from `taskflow_name`/`taskflow_email` cookies — no API call yet (`GET /api/auth/me` not wired in Task MFE) |
+
+> Not yet wired in this pass (no UI surface added for them): `GET /api/tasks` (all-teams/assignee-filtered view), `PATCH /api/tasks/:id/status` (drag-drop — Board MFE concern), `GET /api/notifications`.
 
 ### Board MFE (`mfe-board/`)
 

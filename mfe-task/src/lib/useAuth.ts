@@ -1,34 +1,36 @@
 'use client';
-import { useState, useEffect } from 'react';
+
+import { useMe } from '@/lib/hooks/useMe';
+import { getInitials } from '@/lib/initials';
 
 export interface AuthUser {
+  id: string;
   name: string;
   email: string;
   title: string;
   initials: string;
-}
-
-function getCookie(name: string): string {
-  if (typeof document === 'undefined') return '';
-  const match = document.cookie.match(new RegExp('(?:^|;)\\s*' + name + '=([^;]+)'));
-  return match ? decodeURIComponent(match[1]) : '';
+  workspaceId: string;
+  workspaceName: string;
+  isPending: boolean;
 }
 
 export function useAuth(): AuthUser {
-  const [user, setUser] = useState<AuthUser>({ name: '', email: '', title: '', initials: '' });
+  const { data, isPending } = useMe();
 
-  useEffect(() => {
-    const email = getCookie('taskflow_email');
-    const rawName = getCookie('taskflow_name') || email.split('@')[0] || 'User';
-    const name = rawName.replace(/\+/g, ' ');
-    const parts = name.trim().split(/\s+/);
-    const initials =
-      parts.length >= 2
-        ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-        : name.slice(0, 2).toUpperCase();
-    const title = getCookie('taskflow_title');
-    setUser({ name, email, title, initials });
-  }, []);
+  if (!data) {
+    return { id: '', name: '', email: '', title: '', initials: '??', workspaceId: '', workspaceName: '', isPending };
+  }
 
-  return user;
+  const name = data.name ?? '';
+  const workspace = data.workspaces?.[0];
+  return {
+    id: data.id,
+    name,
+    email: data.email ?? '',
+    title: data.title ?? '',
+    initials: data.avatarInitials || getInitials(name),
+    workspaceId: workspace?.workspaceId ?? '',
+    workspaceName: workspace?.name ?? '',
+    isPending,
+  };
 }

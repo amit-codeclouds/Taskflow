@@ -10,15 +10,17 @@
 ## Core Enums
 
 ```ts
-type Priority = 'high' | 'medium' | 'low';
+// Backend enums are PascalCase (confirmed against the live swagger — see
+// mfe-task/src/lib/types/tasks.types.ts).
+type Priority = 'High' | 'Medium' | 'Low';
 
 type LabelType =
-  | 'feature'
-  | 'bug'
-  | 'design'
-  | 'docs'
-  | 'infra'
-  | 'refactor';
+  | 'Feature'
+  | 'Bug'
+  | 'Design'
+  | 'Docs'
+  | 'Infra'
+  | 'Refactor';
 
 type WorkspaceMemberStatus = 'active' | 'pending';
 
@@ -201,28 +203,47 @@ interface BoardStatus {
 }
 ```
 
+> `GET /api/board-statuses/team/:teamId` (used by the Task MFE to populate the status
+> dropdown and per-team status tabs) returns a lean catalog projection, not the full row:
+> `{ statusId: string; statusName: string }[]`. See `mfe-task/src/lib/types/boardStatus.types.ts`.
+
 ---
 
 ## Task
 
 > No Sprint or Project concept in v1.
-> Assignees are tracked via the TaskAssigneeMapper join table.
 > `description` stores CKEditor HTML output as a string.
+>
+> Source: `mfe-task/src/lib/types/tasks.types.ts` (`ApiTask`) — matches the live
+> `TaskResponseDto` swagger contract, which differs from the earlier plan below in a
+> few ways: `id` is a UUID (not a friendly code) with a separate numeric `taskNumber`
+> for display, `label` is optional, and assignees come back inline as
+> `assignees: AssigneeSummary[]` rather than requiring a join-table fetch.
 
 ```ts
 interface Task {
-  id: string;                   // e.g. "TF-001" — PK
+  id: string;                   // UUID — PK
+  taskNumber: number;           // sequential, human-friendly display id (e.g. "#42")
   title: string;
   description?: string;         // CKEditor HTML string (may contain embedded images)
-  priority: Priority;           // 'high' | 'medium' | 'low'
-  label: LabelType;             // single label per task
-  status_id: string;            // FK → BoardStatus.id (team-scoped)
-  team_id: string;              // FK → Team.id — required
-  expected_completion?: string; // ISO 8601 date
+  priority: Priority;           // 'High' | 'Medium' | 'Low'
+  label?: LabelType;            // single label per task, optional
+  statusId: string;             // FK → BoardStatus.statusId (team-scoped)
+  teamId: string;                // FK → Team.id — required, immutable after creation
+                                 // (UpdateTaskRequestDto has no teamId field)
+  assignees: AssigneeSummary[]; // returned inline — no separate fetch needed
+  expectedCompletion?: string;  // ISO 8601 date
   progress: number;             // integer 0–100, manual, defaults to 0
-  deleted_at?: string | null;   // soft-delete timestamp
-  created_at: string;
-  updated_at: string;
+  createdBy: string;            // FK → User.id
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface AssigneeSummary {
+  userId: string;
+  name?: string;
+  avatarInitials?: string;
+  avatarUrl?: string;
 }
 ```
 
