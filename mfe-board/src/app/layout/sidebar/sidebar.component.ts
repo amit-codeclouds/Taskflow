@@ -1,17 +1,22 @@
 import { Component } from '@angular/core';
-import { NgFor } from '@angular/common';
+import { AuthService } from '../../core/auth.service';
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [NgFor],
+  imports: [],
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss'
 })
 export class SidebarComponent {
-  projects = [
-    { name: 'Taskflow App',  color: '#6155DD' },
-    { name: 'Design System', color: '#32B173' },
-    { name: 'API Gateway',   color: '#E09D34' },
-  ];
+  constructor(public auth: AuthService) {
+    this.auth.ensureLoaded();
+  }
+
+  // Matches shell/mfe-task's own Sidebar label exactly — derived from first name,
+  // not the real workspace name (both apps do this the same way).
+  get workspaceLabel(): string {
+    const name = this.auth.user().name;
+    return name ? `${name.split(' ')[0]}'s Workspace` : 'My Workspace';
+  }
 }
