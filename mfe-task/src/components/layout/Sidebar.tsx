@@ -1,40 +1,21 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import Link from 'next/link';
+import { LayoutDashboard, KanbanSquare, User, Settings } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
 import { useAuth } from '@/lib/useAuth';
 
-function HomeIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M2 6.5L8 2l6 4.5V13a1 1 0 01-1 1h-3v-4H6v4H3a1 1 0 01-1-1V6.5z"
-        stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function KanbanIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <rect x="2" y="2" width="4" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
-      <rect x="8" y="2" width="4" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
-      <rect x="8" y="10" width="4" height="4" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
-    </svg>
-  );
-}
-
-type NavItem = { label: string; href: string; icon: React.ReactNode; crossZone?: boolean };
+type NavItem = { label: string; href: string; icon: React.ReactNode };
 
 const WORKSPACE_ITEMS: NavItem[] = [
-  { label: 'Home', href: '/', icon: <HomeIcon />, crossZone: true },
+  { label: 'Dashboard', href: '/', icon: <LayoutDashboard size={16} strokeWidth={1.5} /> },
 ];
 
 const TOOLS_ITEMS: NavItem[] = [
-  { label: 'Board', href: '/board', icon: <KanbanIcon />, crossZone: true },
+  { label: 'Task Board', href: '/board', icon: <KanbanSquare size={16} strokeWidth={1.5} /> },
 ];
 
-function NavLink({ label, href, icon, isActive, index, crossZone }: NavItem & { isActive: boolean; index: number }) {
+function NavLink({ label, href, icon, isActive, index }: NavItem & { isActive: boolean; index: number }) {
   const inner = (
     <span className={`relative flex items-center gap-3 h-11 px-4 rounded-lg text-sm transition-colors ${
       isActive ? 'bg-accent-bg text-accent-hover font-medium' : 'text-text-200 hover:bg-bg-700 hover:text-text-100'
@@ -55,11 +36,7 @@ function NavLink({ label, href, icon, isActive, index, crossZone }: NavItem & { 
       transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0.05 + index * 0.04 }}
       whileHover={isActive ? undefined : { x: 4 }}
     >
-      {crossZone ? (
-        <a href={href} className="block">{inner}</a>
-      ) : (
-        <Link href={href} className="block">{inner}</Link>
-      )}
+      <a href={href} className="block">{inner}</a>
     </motion.div>
   );
 }
@@ -116,25 +93,38 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Bottom user card */}
+      {/* Bottom — My Profile / Settings (owned by the shell zone) */}
       <div className="shrink-0">
         <div className="mx-4 h-px bg-border-subtle" />
-        <motion.div
-          className="h-[68px] flex items-center gap-3 px-4 cursor-default"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-        >
-          <div className="w-8 h-8 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xs font-semibold shrink-0 select-none">
-            {user.initials || '??'}
-          </div>
-          <div className="flex flex-col min-w-0 flex-1">
-            <span className="text-sm font-medium text-text-100 truncate capitalize">
-              {user.name || 'User'}
+        <div className="mx-2 my-1.5">
+          <a href="/profile" className="block">
+            <span className="relative flex items-center gap-3 h-10 px-4 rounded-lg text-sm text-text-200 hover:bg-bg-700 hover:text-text-100 transition-colors">
+              <User size={16} strokeWidth={1.5} className="shrink-0" />
+              <span>My Profile</span>
             </span>
-            <span className="text-2xs text-text-300 truncate">{user.email || ''}</span>
-          </div>
-        </motion.div>
+          </a>
+          <a href="/settings" className="block">
+            <span className="relative flex items-center gap-3 h-10 px-4 rounded-lg text-sm text-text-200 hover:bg-bg-700 hover:text-text-100 transition-colors">
+              <Settings size={16} strokeWidth={1.5} className="shrink-0" />
+              <span>Settings</span>
+            </span>
+          </a>
+        </div>
+        <div className="mx-4 h-px bg-border-subtle" />
+        <a href="/settings" className="block">
+          <motion.div className="h-[68px] flex items-center gap-3 px-4 cursor-pointer hover:bg-bg-700 transition-colors" whileHover={{ x: 2 }}>
+            <div className="w-8 h-8 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xs font-semibold shrink-0 select-none">
+              {user.initials || '??'}
+            </div>
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="text-sm font-medium text-text-100 truncate capitalize">
+                {user.name || 'User'}
+              </span>
+              <span className="text-2xs text-text-300 truncate">{user.email || ''}</span>
+            </div>
+            <Settings size={13} className="text-text-300 shrink-0" strokeWidth={1.5} />
+          </motion.div>
+        </a>
       </div>
     </motion.aside>
   );

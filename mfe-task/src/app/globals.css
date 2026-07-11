@@ -63,9 +63,10 @@ html { scroll-behavior: smooth; }
   color: #F4F3F0;
 }
 
-/* ── Rendered CKEditor content (task detail view) ────────────────────────── */
+/* ── Rendered rich-text content (task detail view) ───────────────────────── */
 .task-description-content { font-size: 14px; line-height: 1.75; color: #CBCAC6; }
 .task-description-content p  { margin: 0 0 8px; color: #CBCAC6; }
+.task-description-content h1 { font-size: 1.5em; font-weight: 700; color: #F4F3F0; margin: 18px 0 8px; }
 .task-description-content h2 { font-size: 1.2em; font-weight: 700; color: #F4F3F0; margin: 16px 0 6px; }
 .task-description-content h3 { font-size: 1.05em; font-weight: 600; color: #F4F3F0; margin: 14px 0 4px; }
 .task-description-content strong { font-weight: 600; color: #F4F3F0; }
@@ -101,156 +102,103 @@ html { scroll-behavior: smooth; }
 .task-description-content figure.image img { display: inline-block; max-height: 400px; object-fit: contain; }
 .task-description-content figcaption { font-size: 12px; color: #6E6C6A; margin-top: 4px; }
 
-/* ── CKEditor 5 dark theme ──────────────────────────────────────────────── */
-/* NOTE: the editable area class is `.ck-editor__editable_inline`, NOT `_theme_classic` */
+/* ── Tiptap editor — dark theme ───────────────────────────────────────────── */
 
-.ck-editor-wrapper { position: relative; }
-.ck.ck-editor { border-radius: 8px !important; overflow: visible; }
+.tf-editor-wrapper { position: relative; }
 
-/* ── Toolbar ── */
-.ck.ck-toolbar {
-  background: #1A1A1E !important;
-  border: 1px solid #2C2C32 !important;
-  border-bottom: 1px solid #2C2C32 !important;
-  border-radius: 8px 8px 0 0 !important;
-  padding: 6px !important;
-  flex-wrap: wrap !important;
-}
-.ck.ck-toolbar .ck.ck-button {
-  color: #ABAAA5 !important;
-  border-radius: 5px !important;
-  background: transparent !important;
-  min-width: 28px !important;
-}
-.ck.ck-toolbar .ck.ck-button:hover,
-.ck.ck-toolbar .ck.ck-button.ck-on {
-  background: #2C2C32 !important;
-  color: #F4F3F0 !important;
-}
-.ck.ck-toolbar__separator { background: #3a3a42 !important; width: 1px !important; margin: 2px 4px !important; }
-
-/* ── Editable content area ── */
-.ck.ck-editor__editable_inline {
-  background: #1c1c21 !important;
-  border: 1px solid #2C2C32 !important;
-  border-top: none !important;
-  border-radius: 0 0 8px 8px !important;
-  color: #E5E4E0 !important;
-  min-height: var(--ck-min-height, 500px) !important;
-  font-size: 14.5px !important;
-  line-height: 1.8 !important;
-  padding: 20px 24px !important;
+.tf-editor-content {
+  background: #1c1c21;
+  color: #E5E4E0;
+  font-size: 14.5px;
+  line-height: 1.8;
+  padding: 20px 24px;
+  min-height: var(--tf-editor-min-height, 180px);
   caret-color: #766Be8;
-}
-.ck.ck-editor__editable_inline.ck-focused {
-  border-color: #6155DD !important;
-  box-shadow: 0 0 0 2px rgba(97,85,221,0.15) !important;
-  outline: none !important;
+  outline: none;
 }
 
-/* ── Content: text ── */
-.ck.ck-editor__editable_inline p    { color: #E5E4E0 !important; margin: 2px 0; }
-.ck.ck-editor__editable_inline h2   { color: #F4F3F0 !important; font-size: 1.4em !important; font-weight: 700; margin: 12px 0 4px; }
-.ck.ck-editor__editable_inline h3   { color: #F4F3F0 !important; font-size: 1.15em !important; font-weight: 600; margin: 10px 0 4px; }
-.ck.ck-editor__editable_inline a    { color: #766Be8 !important; text-decoration: underline; }
-.ck.ck-editor__editable_inline strong { color: #F4F3F0 !important; }
+.tf-editor-content p    { color: #E5E4E0; margin: 2px 0; }
+.tf-editor-content h1   { color: #F4F3F0; font-size: 1.7em; font-weight: 700; margin: 14px 0 6px; }
+.tf-editor-content h2   { color: #F4F3F0; font-size: 1.4em; font-weight: 700; margin: 12px 0 4px; }
+.tf-editor-content h3   { color: #F4F3F0; font-size: 1.15em; font-weight: 600; margin: 10px 0 4px; }
+.tf-editor-content a    { color: #766Be8; text-decoration: underline; cursor: pointer; }
+.tf-editor-content strong { color: #F4F3F0; }
 
-.ck.ck-editor__editable_inline blockquote {
-  border-left: 3px solid #6155DD !important;
-  padding-left: 1rem !important;
-  margin: 8px 0 !important;
-  color: #ABAAA5 !important;
+.tf-editor-content blockquote {
+  border-left: 3px solid #6155DD;
+  padding-left: 1rem;
+  margin: 8px 0;
+  color: #ABAAA5;
 }
-.ck.ck-editor__editable_inline code {
-  background: #2C2C32 !important;
-  color: #32B173 !important;
+.tf-editor-content code {
+  background: #2C2C32;
+  color: #32B173;
   border-radius: 4px;
   padding: 2px 6px;
   font-size: 0.88em;
 }
-.ck.ck-editor__editable_inline pre {
-  background: #2C2C32 !important;
+.tf-editor-content pre {
+  background: #2C2C32;
   border-radius: 6px;
-  padding: 12px 16px !important;
+  padding: 12px 16px;
   overflow-x: auto;
 }
-.ck.ck-editor__editable_inline pre code {
-  background: transparent !important;
-  padding: 0;
-}
+.tf-editor-content pre code { background: transparent; padding: 0; }
 
-/* ── Lists — restored after Tailwind base reset ── */
-.ck.ck-editor__editable_inline ul {
-  list-style-type: disc !important;
-  padding-left: 1.75rem !important;
-  margin: 4px 0 !important;
-}
-.ck.ck-editor__editable_inline ol {
-  list-style-type: decimal !important;
-  padding-left: 1.75rem !important;
-  margin: 4px 0 !important;
-}
-.ck.ck-editor__editable_inline li {
-  display: list-item !important;
-  color: #E5E4E0 !important;
-  padding: 1px 0;
-}
-.ck.ck-editor__editable_inline ul ul { list-style-type: circle !important; }
-.ck.ck-editor__editable_inline ul ul ul { list-style-type: square !important; }
+/* ── Lists ── */
+.tf-editor-content ul { list-style-type: disc; padding-left: 1.75rem; margin: 4px 0; }
+.tf-editor-content ol { list-style-type: decimal; padding-left: 1.75rem; margin: 4px 0; }
+.tf-editor-content li { display: list-item; color: #E5E4E0; padding: 1px 0; }
+.tf-editor-content ul ul { list-style-type: circle; }
+.tf-editor-content ul ul ul { list-style-type: square; }
 
-/* ── Images — cap height so text still has space ── */
-.ck.ck-editor__editable_inline .image {
-  margin: 12px auto !important;
-  max-width: 100% !important;
-}
-.ck.ck-editor__editable_inline .image img {
-  max-height: 380px !important;
-  object-fit: contain !important;
-  border-radius: 6px !important;
+/* ── Images — resizable + alignable, see ResizableImage NodeView ─────────── */
+.tf-editor-content img {
+  max-width: 100%;
+  border-radius: 6px;
   display: block;
 }
-/* Side-floated image lets text wrap beside it */
-.ck.ck-editor__editable_inline .image-style-side {
-  float: right !important;
-  max-width: 42% !important;
-  margin: 4px 0 12px 16px !important;
+/* `wrapper` spans the full column (mirrors the exported <img>'s own block box) */
+.tf-image-wrapper {
+  display: block;
+  width: 100%;
+  margin: 12px 0;
 }
-.ck.ck-editor__editable_inline .image-style-side img {
-  max-height: 260px !important;
+/* `imgBox` shrink-wraps the image — this is what actually carries the align
+   margins, and what the resize handle is anchored to, so the handle always
+   sits at the image's own corner regardless of alignment. */
+.tf-image-box {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+.tf-image-resize-handle {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  width: 13px;
+  height: 13px;
+  border-radius: 4px;
+  background: #6155DD;
+  border: 2px solid #1c1c21;
+  cursor: nwse-resize;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.tf-image-box:hover .tf-image-resize-handle,
+.tf-image-wrapper.ProseMirror-selectednode .tf-image-resize-handle {
+  opacity: 1;
+}
+.tf-image-wrapper.ProseMirror-selectednode img {
+  outline: 2px solid #6155DD;
+  outline-offset: 2px;
 }
 
 /* ── Placeholder ── */
-.ck.ck-editor__editable_inline > .ck-placeholder::before { color: #6E6C6A !important; }
-
-/* ── Dropdown panels ── */
-.ck.ck-dropdown__panel {
-  background: #1A1A1E !important;
-  border: 1px solid #2C2C32 !important;
-  border-radius: 8px !important;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.6) !important;
+.tf-editor-content p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #6E6C6A;
+  pointer-events: none;
+  height: 0;
 }
-.ck.ck-list { background: transparent !important; }
-.ck.ck-list__item .ck-button          { color: #ABAAA5 !important; background: transparent !important; border-radius: 5px !important; }
-.ck.ck-list__item .ck-button:hover    { background: #2C2C32 !important; color: #F4F3F0 !important; }
-.ck.ck-list__item .ck-button.ck-on    { background: #261F42 !important; color: #766Be8 !important; }
-
-/* ── Balloon (link / image toolbar) ── */
-.ck.ck-balloon-panel {
-  background: #1A1A1E !important;
-  border: 1px solid #2C2C32 !important;
-  border-radius: 8px !important;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.5) !important;
-}
-.ck.ck-input-text {
-  background: #222227 !important;
-  border: 1px solid #2C2C32 !important;
-  border-radius: 6px !important;
-  color: #F4F3F0 !important;
-  font-size: 13px !important;
-}
-.ck.ck-input-text:focus { border-color: #6155DD !important; box-shadow: none !important; }
-.ck.ck-label { color: #6E6C6A !important; font-size: 12px !important; }
-
-/* ── Image widget selection ring ── */
-.ck.ck-widget.ck-widget_selected { outline: 2px solid #6155DD !important; }
-.ck.ck-image-upload-progress { color: #6155DD !important; }

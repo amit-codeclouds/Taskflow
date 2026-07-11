@@ -1,11 +1,16 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import {
-  TASKS, LABEL_STYLES, PRIORITY_COLORS, PRIORITY_TEXT,
-  type Task,
-} from '@/lib/taskData';
+import { Trash2 } from 'lucide-react';
+import { LABEL_STYLES, PRIORITY_COLORS, PRIORITY_TEXT } from '@/lib/taskData';
+import { useTaskDetail, useDeleteTask } from '@/lib/hooks/useTasks';
+import { useTeamsList } from '@/lib/hooks/useTeams';
+import { useBoardStatuses } from '@/lib/hooks/useBoardStatuses';
+import { useConfirm } from '@/components/Modals/ConfirmProvider';
+import { TaskDetailSkeleton } from '@/app/[id]/_skeleton';
+import type { AssigneeSummary } from '@/lib/types/tasks.types';
 
 function ProgressBar({ value }: { value: number }) {
   return (
@@ -21,36 +26,46 @@ function ProgressBar({ value }: { value: number }) {
 }
 
 function StatusBadge({ name }: { name: string }) {
-  const lower = name.toLowerCase();
-  const styles: Record<string, string> = {
-    'in progress': 'bg-accent-bg text-accent-hover',
-    'review':      'bg-amber-bg text-status-amber',
-    'done':        'bg-green-bg text-status-green',
-    'backlog':     'bg-bg-600 text-text-300',
-    'in design':   'bg-[#1a2038] text-[#6a9eef]',
-    'development': 'bg-[#1a2a20] text-status-green',
-    'testing':     'bg-amber-bg text-status-amber',
-    'to do':       'bg-bg-600 text-text-300',
-  };
-  const cls = styles[lower] ?? 'bg-bg-600 text-text-300';
   return (
-    <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${cls}`}>{name}</span>
+    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-bg-600 text-text-300">{name}</span>
+  );
+}
+
+function initialsFor(a: AssigneeSummary): string {
+  if (a.avatarInitials) return a.avatarInitials;
+  const parts = (a.name ?? '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return (a.name ?? '?').slice(0, 2).toUpperCase();
+}
+
+function Breadcrumb({ taskNumber }: { taskNumber?: number }) {
+  return (
+    <motion.div
+      className="flex items-center gap-3 mb-8"
+      initial={{ opacity: 0, y: -12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+    >
+      <Link href="/" data-tooltip="Back to tasks" className="text-text-300 hover:text-text-100 transition-colors flex items-center gap-1.5 text-sm">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M8.5 3L4.5 7l4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        Tasks
+      </Link>
+      {taskNumber !== undefined && (
+        <>
+          <span className="text-border-subtle">/</span>
+          <span className="text-sm font-mono text-text-300">#{taskNumber}</span>
+        </>
+      )}
+    </motion.div>
   );
 }
 
 function NotFoundView({ taskId }: { taskId: string }) {
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="flex items-center gap-3 mb-8">
-        <Link href="/" data-tooltip="Back to tasks" className="text-text-300 hover:text-text-100 transition-colors flex items-center gap-1.5 text-sm">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M8.5 3L4.5 7l4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Tasks
-        </Link>
-        <span className="text-border-subtle">/</span>
-        <span className="text-sm text-text-300">{taskId}</span>
-      </div>
+      <Breadcrumb />
       <div className="flex flex-col items-center justify-center py-24 text-center">
         <p className="text-text-300 text-sm">Task <span className="font-mono text-text-200">{taskId}</span> was not found.</p>
         <Link href="/" className="mt-4 text-sm text-accent hover:text-accent-hover transition-colors">
@@ -62,28 +77,34 @@ function NotFoundView({ taskId }: { taskId: string }) {
 }
 
 export default function TaskDetailScreen({ taskId }: { taskId: string }) {
-  const task: Task | undefined = TASKS.find(t => t.id === taskId);
-  if (!task) return <NotFoundView taskId={taskId} />;
+  const router = useRouter();
+  const confirm = useConfirm();
+  const { data: task, isPending, isError } = useTaskDetail(taskId);
+  const { data: teams = [] } = useTeamsList();
+  const { data: teamStatuses = [] } = useBoardStatuses(task?.teamId ?? '');
+  const deleteTask = useDeleteTask();
+
+  if (isPending) return <TaskDetailSkeleton />;
+  if (isError || !task) return <NotFoundView taskId={taskId} />;
+
+  const team = teams.find((t) => t.id === task.teamId);
+  const statusName = teamStatuses.find((s) => s.statusId === task.statusId)?.statusName ?? '—';
+
+  async function handleDelete() {
+    const ok = await confirm({
+      title: 'Delete this task?',
+      description: `Permanently delete "${task!.title}". This action cannot be undone.`,
+      confirmLabel: 'Delete Task',
+      danger: true,
+    });
+    if (!ok) return;
+    await deleteTask.mutateAsync(task!.id);
+    router.push('/');
+  }
 
   return (
     <div className="max-w-4xl mx-auto">
-
-      {/* Breadcrumb */}
-      <motion.div
-        className="flex items-center gap-3 mb-8"
-        initial={{ opacity: 0, y: -12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      >
-        <Link href="/" data-tooltip="Back to tasks" className="text-text-300 hover:text-text-100 transition-colors flex items-center gap-1.5 text-sm">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M8.5 3L4.5 7l4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Tasks
-        </Link>
-        <span className="text-border-subtle">/</span>
-        <span className="text-sm font-mono text-text-300">{task.id}</span>
-      </motion.div>
+      <Breadcrumb taskNumber={task.taskNumber} />
 
       <div className="grid grid-cols-[1fr_280px] gap-6">
 
@@ -100,12 +121,14 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
             {/* ID + badges row */}
             <div className="flex items-center gap-2 mb-3 flex-wrap">
               <span className="text-2xs font-mono text-text-300 bg-bg-600 px-2 py-0.5 rounded">
-                {task.id}
+                #{task.taskNumber}
               </span>
-              <StatusBadge name={task.status.name} />
-              <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${LABEL_STYLES[task.label] ?? 'bg-bg-600 text-text-300'}`}>
-                {task.label}
-              </span>
+              <StatusBadge name={statusName} />
+              {task.label && (
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${LABEL_STYLES[task.label] ?? 'bg-bg-600 text-text-300'}`}>
+                  {task.label}
+                </span>
+              )}
             </div>
 
             <h1 className="text-xl font-semibold text-text-100 leading-snug mb-4">
@@ -115,7 +138,7 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
             {/* Priority row */}
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${PRIORITY_COLORS[task.priority]}`} />
-              <span className={`text-xs font-medium capitalize ${PRIORITY_TEXT[task.priority]}`}>
+              <span className={`text-xs font-medium ${PRIORITY_TEXT[task.priority]}`}>
                 {task.priority} priority
               </span>
             </div>
@@ -139,32 +162,28 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
             )}
           </motion.div>
 
-          {/* Activity placeholder */}
+          {/* Assignees */}
           <motion.div
             className="bg-bg-800 rounded-xl border border-border-subtle p-6"
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ type: 'spring', stiffness: 260, damping: 28, delay: 0.15 }}
           >
-            <p className="text-2xs text-text-300 uppercase tracking-widest mb-4">Activity</p>
-            <div className="flex flex-col gap-3">
-              {[
-                { action: 'created this task',                  time: '2 days ago' },
-                { action: 'changed status to In Progress',      time: '1 day ago'  },
-                { action: 'updated progress to ' + task.progress + '%', time: '3 hours ago' },
-              ].map((entry, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-accent-bg flex items-center justify-center text-accent text-2xs font-semibold shrink-0 mt-0.5">
-                    {task.assignee}
+            <p className="text-2xs text-text-300 uppercase tracking-widest mb-4">Assignees</p>
+            {task.assignees.length === 0 ? (
+              <p className="text-sm text-text-300 italic">Unassigned.</p>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                {task.assignees.map((a) => (
+                  <div key={a.userId} className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-accent-bg flex items-center justify-center text-accent text-2xs font-semibold shrink-0">
+                      {initialsFor(a)}
+                    </div>
+                    <span className="text-xs text-text-200">{a.name ?? 'Unknown'}</span>
                   </div>
-                  <div>
-                    <span className="text-xs text-text-200">{task.assignee} </span>
-                    <span className="text-xs text-text-300">{entry.action}</span>
-                    <p className="text-2xs text-text-300 mt-0.5">{entry.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </motion.div>
         </div>
 
@@ -179,21 +198,16 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
             <p className="text-2xs text-text-300 uppercase tracking-widest">Details</p>
 
             <DetailRow label="Team">
-              <span
-                className="text-xs font-medium px-2 py-0.5 rounded-full"
-                style={{ background: task.team.color + '22', color: task.team.color }}
-              >
-                {task.team.name}
-              </span>
-            </DetailRow>
-
-            <DetailRow label="Assignee">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-accent-bg flex items-center justify-center text-accent text-2xs font-semibold">
-                  {task.assignee}
-                </div>
-                <span className="text-xs text-text-200">{task.assignee}</span>
-              </div>
+              {team ? (
+                <span
+                  className="text-xs font-medium px-2 py-0.5 rounded-full"
+                  style={{ background: team.color + '22', color: team.color }}
+                >
+                  {team.name}
+                </span>
+              ) : (
+                <span className="text-xs text-text-300">—</span>
+              )}
             </DetailRow>
 
             <DetailRow label="Expected Completion">
@@ -213,7 +227,9 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
             </div>
 
             <DetailRow label="Created">
-              <span className="text-xs text-text-200">Jun 1, 2026</span>
+              <span className="text-xs text-text-200">
+                {new Date(task.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
             </DetailRow>
           </div>
 
@@ -232,6 +248,21 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
               Edit Task
             </motion.button>
           </Link>
+
+          {/* Delete button */}
+          <motion.button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleteTask.isPending}
+            data-tooltip="Delete this task"
+            className="w-full h-10 rounded-lg border border-border-subtle text-sm text-status-red hover:bg-red-bg transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            whileHover={deleteTask.isPending ? undefined : { scale: 1.01 }}
+            whileTap={deleteTask.isPending ? undefined : { scale: 0.99 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+          >
+            <Trash2 size={13} strokeWidth={1.5} />
+            {deleteTask.isPending ? 'Deleting…' : 'Delete Task'}
+          </motion.button>
         </motion.div>
       </div>
     </div>
