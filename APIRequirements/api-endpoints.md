@@ -262,7 +262,8 @@ implement them this way — see the confirmed shapes above instead.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/api/board/:teamId` | Auth | Team's statuses + first 5 tasks per status |
+| GET | `/api/tasks/team/:teamId/board` | Auth | Team's board — statuses + tasks. ✅ confirmed live path (returns 401 unauth). Consumed by `TeamService.getTeamBoard()` in mfe-board. The `/api/board/:teamId` path below is **not** live (404) — kept for history |
+| GET | `/api/board/:teamId` | Auth | ⚠️ 404 on the live backend — superseded by `/api/tasks/team/:teamId/board` above |
 | GET | `/api/board/:teamId/status/:statusId/tasks` | Auth | Load more tasks for one status |
 | POST | `/api/board/:teamId/statuses` | Auth | Create a status (admin / pm) |
 | PATCH | `/api/board/:teamId/statuses/:statusId` | Auth | Edit a status (admin / pm / tl) |
@@ -728,9 +729,9 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 
 | Frontend element | Endpoint |
 |---|---|
-| Teams list landing at `/board` | `GET /api/teams` |
+| DashboardComponent (`/board` landing) — "My Boards" team cards | `GET /api/teams` via `BoardService.getTeams()` — returns `ApiTeam[]`. Card assignees come from `members[].avatarInitials`; the To Do / In Progress / Done counts and total come from each team's `statusTaskCounts`. No static data |
 | Topbar team-switcher dropdown (Board MFE only) | `GET /api/teams` |
-| Kanban columns + first 5 tasks each | `GET /api/board/:teamId` |
+| Kanban columns + tasks (BoardComponent) | `GET /api/tasks/team/:teamId/board` via `TeamService.getTeamBoard()` — response mapped to columns/tasks in the component; no static data |
 | Column "Load more" tasks | `GET /api/board/:teamId/status/:statusId/tasks?page&limit` |
 | "+ Add Status" modal submit | `POST /api/board/:teamId/statuses` |
 | Edit status (✎) modal submit | `PATCH /api/board/:teamId/statuses/:statusId` |
@@ -740,3 +741,9 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | Task card "↗" open icon | navigates to `/tasks/:id` |
 | Sidebar — user card | `GET /api/auth/me` |
 | Topbar — notification bell | `GET /api/notifications` |
+
+> **CORS / same-origin proxy**: the Board MFE calls all backend endpoints as relative `/api/*`
+> paths (never the absolute backend origin), so requests stay same-origin and never trigger CORS.
+> In `ng serve` the Angular dev proxy (`mfe-board/proxy.conf.json`) forwards `/api` →
+> `https://taskflowbackend-50mh.onrender.com`; in the worker path, the Cloudflare Worker routes
+> `/api/*` → `GATEWAY_URL`. Point `GATEWAY_URL` at the real backend origin for the worker path.

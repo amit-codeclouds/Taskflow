@@ -112,3 +112,41 @@
 .empty-state {
   padding: 80px 0; text-align: center; color: #6E6C6A; font-size: 13px;
 }
+
+/* Skeleton loading — matches the react-loading-skeleton theme used in the other
+   apps: base #222227, highlight #2C2C32, 1.5s shimmer sweep. */
+.board-card--skeleton {
+  cursor: default;
+  animation: none;               // no per-card enter animation while loading
+  &:hover { border-color: #2C2C32; background: #222227; } // disable hover
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: #222227;
+  border-radius: 4px;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, #2C2C32, transparent);
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  }
+}
+
+.skeleton-initial { width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0; }
+
+.skeleton-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  margin-left: -6px;
+  &:first-child { margin-left: 0; }
+}
+
+.skeleton-pill { width: 72px; height: 24px; border-radius: 999px; }
+
+@keyframes skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
