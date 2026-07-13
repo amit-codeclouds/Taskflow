@@ -91,9 +91,16 @@
                 </svg>{{ task.due }}
               </span>
             </div>
-            <div class="task-assignee">{{ task.assignee }}</div>
+            <div class="task-assignees">
+              <div class="task-assignee" *ngFor="let a of task.assignees.slice(0, 3)">{{ a }}</div>
+              <div class="task-assignee task-assignee--overflow" *ngIf="task.assignees.length > 3">
+                +{{ task.assignees.length - 3 }}
+              </div>
+            </div>
           </div>
         </div>
+
+        <p class="column-empty" *ngIf="col.tasks.length === 0">No task available</p>
       </div>
     </div>
   </div>

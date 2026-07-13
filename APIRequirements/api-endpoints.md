@@ -736,7 +736,7 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | "+ Add Status" modal submit | `POST /api/board/:teamId/statuses` |
 | Edit status (✎) modal submit | `PATCH /api/board/:teamId/statuses/:statusId` |
 | Delete status (🗑) | `DELETE /api/board/:teamId/statuses/:statusId` |
-| Drag task to another column | `PATCH /api/tasks/:id/status` |
+| Drag task to another column | `PATCH /api/tasks/:id/status` via `TeamService.updateTaskStatus(taskId, statusId)` — body `{ statusId }`. ✅ confirmed live (PATCH → 401 unauth; PUT/POST → 405) |
 | "+ Add Task" button per column | navigates to `/tasks/new?teamId=&statusId=` → `POST /api/tasks` |
 | Task card "↗" open icon | navigates to `/tasks/:id` |
 | Sidebar — user card | `GET /api/auth/me` |

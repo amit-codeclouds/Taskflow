@@ -1,10 +1,11 @@
 export interface Task {
-  id: string;
+  id: string;         // display id, e.g. "#42"
+  taskId: string;     // real backend UUID — used for API calls (status update)
   title: string;
   priority: 'high' | 'medium' | 'low';
   label: string;
   labelColor: string;
-  assignee: string;
+  assignees: string[];
   due: string;
 }
 

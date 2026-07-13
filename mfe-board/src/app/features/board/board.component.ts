@@ -110,15 +110,17 @@ export class BoardComponent implements OnInit {
   }
 
   private toTask(task: ApiBoardTask): Task {
-    const first = task.assignees?.[0];
     const num = task.taskNumber ?? task.number;
     return {
       id: num != null ? `#${num}` : task.id,
+      taskId: task.id,
       title: task.title,
       priority: (task.priority?.toLowerCase() as Task['priority']) ?? 'medium',
       label: task.label ?? '',
       labelColor: LABEL_COLORS[(task.label ?? '').toLowerCase()] ?? '#766Be8',
-      assignee: first?.avatarInitials || initialsFromName(first?.name),
+      assignees: (task.assignees ?? [])
+        .map(a => a.avatarInitials?.trim() || initialsFromName(a.name))
+        .filter(Boolean),
       due: this.formatDue(task.expectedCompletion ?? task.dueDate ?? task.due),
     };
   }
@@ -147,19 +149,38 @@ export class BoardComponent implements OnInit {
   }
 
   onTaskDropped(event: CdkDragDrop<Task[]>, target: Column) {
+    // Reorder within the same column — purely local, no status change.
     if (event.previousContainer === event.container) {
       moveItemInArray(target.tasks, event.previousIndex, event.currentIndex);
-    } else {
-      const source = this.columns.find(c => c.id === event.previousContainer.id);
-      transferArrayItem(
-        event.previousContainer.data,
-        event.container.data,
-        event.previousIndex,
-        event.currentIndex,
-      );
-      if (source) source.count = source.tasks.length;
-      target.count = target.tasks.length;
+      return;
     }
+
+    const source = this.columns.find(c => c.id === event.previousContainer.id);
+    const task = event.previousContainer.data[event.previousIndex];
+
+    // Optimistically move the card, then persist the new status.
+    transferArrayItem(
+      event.previousContainer.data,
+      event.container.data,
+      event.previousIndex,
+      event.currentIndex,
+    );
+    if (source) source.count = source.tasks.length;
+    target.count = target.tasks.length;
+
+    this.teamService.updateTaskStatus(task.taskId, target.statusId).subscribe({
+      error: () => {
+        // Revert the optimistic move if the backend rejects it.
+        transferArrayItem(
+          event.container.data,
+          event.previousContainer.data,
+          event.currentIndex,
+          event.previousIndex,
+        );
+        if (source) source.count = source.tasks.length;
+        target.count = target.tasks.length;
+      },
+    });
   }
 
   @HostListener('document:click')
