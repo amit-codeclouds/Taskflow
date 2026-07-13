@@ -1,14 +1,18 @@
 <div class="dashboard-container">
   <!-- Header -->
   <div class="dashboard-header">
-    <div>
+    <div *ngIf="!loading">
       <h1 class="dashboard-title">My Boards</h1>
       <p class="dashboard-subtitle">{{ totalBoards }} board{{ totalBoards === 1 ? '' : 's' }} across your teams</p>
+    </div>
+    <div *ngIf="loading">
+      <div class="skeleton" style="width:120px;height:24px"></div>
+      <div class="skeleton" style="width:180px;height:13px;margin-top:8px"></div>
     </div>
   </div>
 
   <!-- Stats -->
-  <div class="stats-grid">
+  <div class="stats-grid" *ngIf="!loading">
     <div class="stat-card">
       <p class="stat-label">Total Boards</p>
       <p class="stat-value">{{ totalBoards }}</p>
@@ -23,8 +27,41 @@
     </div>
   </div>
 
+  <!-- Stats skeleton -->
+  <div class="stats-grid" *ngIf="loading">
+    <div class="stat-card" *ngFor="let s of [0,1,2]">
+      <div class="skeleton" style="width:70px;height:11px;margin-bottom:10px"></div>
+      <div class="skeleton" style="width:44px;height:24px"></div>
+    </div>
+  </div>
+
   <!-- Board list -->
   <div class="board-list">
+    <!-- Skeleton loading state — mirrors the board-card layout -->
+    <ng-container *ngIf="loading">
+    <div class="board-card board-card--skeleton" *ngFor="let s of skeletonCards">
+      <div class="board-card-top">
+        <div class="skeleton skeleton-initial"></div>
+        <div class="board-info" style="flex:1">
+          <div class="skeleton" style="width:40%;height:14px"></div>
+          <div class="skeleton" style="width:60%;height:11px;margin-top:8px"></div>
+        </div>
+      </div>
+      <div class="board-card-bottom">
+        <div class="assignees">
+          <div class="skeleton skeleton-avatar" *ngFor="let a of [0,1,2]"></div>
+        </div>
+        <div class="board-actions">
+          <div class="skeleton skeleton-pill" *ngFor="let p of [0,1,2]"></div>
+        </div>
+      </div>
+    </div>
+    </ng-container>
+
+    <div class="empty-state" *ngIf="!loading && error">
+      <p>Couldn't load boards. Please try again.</p>
+    </div>
+
     <a class="board-card" *ngFor="let b of boards; let i = index" [routerLink]="['/', b.team.id]" [style.animation-delay]="(i * 0.07) + 's'">
       <div class="board-card-top">
         <div class="board-initial" [style.background]="b.team.color + '33'" [style.color]="b.team.color">
@@ -43,15 +80,15 @@
         </div>
 
         <div class="board-actions">
-          <span class="column-pill"><span class="dot dot-todo"></span>{{ b.todo }} To Do</span>
-          <span class="column-pill"><span class="dot dot-progress"></span>{{ b.inProgress }} In Progress</span>
-          <span class="column-pill"><span class="dot dot-done"></span>{{ b.done }} Done</span>
+          <span class="column-pill" *ngFor="let s of b.statuses">
+            <span class="dot" [style.background]="s.color"></span>{{ s.count }} {{ s.label }}
+          </span>
           <span class="open-btn">Open</span>
         </div>
       </div>
     </a>
 
-    <div class="empty-state" *ngIf="boards.length === 0">
+    <div class="empty-state" *ngIf="!loading && !error && boards.length === 0">
       <p>No boards yet.</p>
     </div>
   </div>

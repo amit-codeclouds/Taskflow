@@ -5,7 +5,17 @@ export default {
 
     let upstream;
 
-    if (path.startsWith('/board')) {
+    if (path.startsWith('/api/auth/')) {
+      // The Shell owns the auth proxy routes (/api/auth/login, /logout, /refresh,
+      // /signup). They run in Next.js and set the taskflow_access_token cookie —
+      // they must reach the Shell, NOT the gateway, or the cookie is never set and
+      // login can't redirect (middleware bounces back to /login).
+      upstream = env.SHELL_URL || 'http://localhost:3002';
+    } else if (path.startsWith('/api/')) {
+      // Every other /api/* call is backend data — same-origin proxy so browser
+      // calls never hit CORS. GATEWAY_URL is the real backend origin (no /api suffix).
+      upstream = env.GATEWAY_URL || 'http://localhost:8080';
+    } else if (path.startsWith('/board')) {
       upstream = env.BOARD_MFE_URL || 'http://localhost:4200';
     } else if (path.startsWith('/tasks')) {
       upstream = env.TASK_MFE_URL || 'http://localhost:3003';
