@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Formik, Form, Field, ErrorMessage, type FieldProps } from 'formik';
 import * as Yup from 'yup';
 import { motion } from 'framer-motion';
@@ -64,7 +65,7 @@ const LABEL_OPTIONS: SelectOption[] = [
   { value: 'Refactor', label: 'Refactor' },
 ];
 
-interface PersonOption extends SelectOption { initials: string; email: string; title: string; }
+interface PersonOption extends SelectOption { initials: string; avatarUrl?: string; email: string; title: string; }
 
 function initialsFromName(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -77,12 +78,22 @@ function initialsFromName(name: string): string {
 function PersonMultiValueLabel({ data }: { data: PersonOption }) {
   return (
     <div className="flex items-center gap-1.5">
-      <div
-        className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
-        style={{ background: 'rgba(97,85,221,0.3)', color: '#766Be8', fontSize: '9px', fontWeight: 700 }}
-      >
-        {data.initials}
-      </div>
+      {data.avatarUrl ? (
+        <Image
+          src={data.avatarUrl}
+          alt={data.label}
+          width={16}
+          height={16}
+          className="w-4 h-4 rounded-full object-cover shrink-0"
+        />
+      ) : (
+        <div
+          className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
+          style={{ background: 'rgba(97,85,221,0.3)', color: '#766Be8', fontSize: '9px', fontWeight: 700 }}
+        >
+          {data.initials}
+        </div>
+      )}
       <span style={{ color: '#766Be8', fontSize: '12px', fontWeight: 500 }}>{data.label}</span>
       <span style={{ color: '#6E6C6A', fontSize: '11px' }}>{data.title}</span>
     </div>
@@ -92,9 +103,19 @@ function PersonMultiValueLabel({ data }: { data: PersonOption }) {
 function PersonOptionLabel(opt: PersonOption) {
   return (
     <div className="flex items-center gap-2.5 py-0.5">
-      <div className="w-7 h-7 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xs font-semibold shrink-0">
-        {opt.initials}
-      </div>
+      {opt.avatarUrl ? (
+        <Image
+          src={opt.avatarUrl}
+          alt={opt.label}
+          width={28}
+          height={28}
+          className="w-7 h-7 rounded-full object-cover shrink-0"
+        />
+      ) : (
+        <div className="w-7 h-7 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xs font-semibold shrink-0">
+          {opt.initials}
+        </div>
+      )}
       <div className="min-w-0">
         <p className="text-sm text-text-100 leading-tight truncate">{opt.label}</p>
         <p className="text-2xs text-text-300 truncate">{opt.title}</p>
@@ -179,11 +200,12 @@ export default function TaskFormScreen({ taskId }: { taskId?: string }) {
   const TEAM_OPTIONS: SelectOption[] = teams.map(t => ({ value: t.id, label: t.name, color: t.color }));
   const STATUS_OPTIONS: SelectOption[] = teamStatuses.map(s => ({ value: s.statusId, label: s.statusName }));
   const PERSON_OPTIONS: PersonOption[] = people.map(p => ({
-    value:    p.id,
-    label:    p.name,
-    initials: p.avatarInitials || initialsFromName(p.name),
-    email:    p.email ?? '',
-    title:    p.title ?? '',
+    value:     p.id,
+    label:     p.name,
+    initials:  p.avatarInitials || initialsFromName(p.name),
+    avatarUrl: p.avatarUrl,
+    email:     p.email ?? '',
+    title:     p.title ?? '',
   }));
 
   const initialValues: FormValues = isEdit

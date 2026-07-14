@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/useAuth';
+import Avatar from '@/components/ui/Avatar';
 
 function getPageInfo(pathname: string): { title: string; subtitle: string } {
   if (pathname.startsWith('/new'))  return { title: 'New Task',     subtitle: 'Create a task'         };
@@ -101,9 +102,7 @@ export default function Topbar() {
             whileHover={{ scale: 1.01 }}
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
           >
-            <div className="w-8 h-8 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xs font-semibold select-none">
-              {user.initials || '??'}
-            </div>
+            <Avatar initials={user.initials || '??'} avatarUrl={user.avatarUrl} name={user.name} size="sm" />
             <span className="text-text-300">
               <ChevronDownIcon open={open} />
             </span>

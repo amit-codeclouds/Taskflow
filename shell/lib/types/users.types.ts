@@ -19,3 +19,9 @@ export interface UpdateUserPayload {
   avatarUrl?: string;
   avatarPublicId?: string;
 }
+
+// Matches AvatarResponseDto — POST /users/avatar
+export interface AvatarUploadResponse {
+  avatarUrl: string;
+  avatarPublicId: string;
+}

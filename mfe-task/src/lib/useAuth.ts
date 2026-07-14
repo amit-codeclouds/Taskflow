@@ -9,6 +9,7 @@ export interface AuthUser {
   email: string;
   title: string;
   initials: string;
+  avatarUrl?: string;
   workspaceId: string;
   workspaceName: string;
   isPending: boolean;
@@ -29,6 +30,7 @@ export function useAuth(): AuthUser {
     email: data.email ?? '',
     title: data.title ?? '',
     initials: data.avatarInitials || getInitials(name),
+    avatarUrl: data.avatarUrl,
     workspaceId: workspace?.workspaceId ?? '',
     workspaceName: workspace?.name ?? '',
     isPending,

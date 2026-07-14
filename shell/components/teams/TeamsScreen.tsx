@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, UserPlus, Plus, Settings } from 'lucide-react';
 import { useTeamsList, useTeamsStats, useInviteTeamMember } from '@/lib/hooks/useTeams';
@@ -28,19 +29,30 @@ function TeamInitial({ color, name }: { color: string; name: string }) {
 
 function MemberAvatar({ member, size = 'md' }: { member: ApiTeamMember; size?: 'sm' | 'md' }) {
   const dim = size === 'sm' ? 'w-7 h-7 text-[10px]' : 'w-9 h-9 text-xs';
+  const px = size === 'sm' ? 28 : 36;
   const initials = member.avatarInitials || getInitials(member.name);
 
   return (
     <div className="relative group/avatar">
-      <div
-        className={`
-          ${dim} rounded-full flex items-center justify-center font-semibold shrink-0
-          border-2 border-bg-700 cursor-pointer transition-transform group-hover/avatar:scale-110
-          bg-accent-bg text-accent
-        `}
-      >
-        {initials}
-      </div>
+      {member.avatarUrl ? (
+        <Image
+          src={member.avatarUrl}
+          alt={member.name}
+          width={px}
+          height={px}
+          className={`${dim} rounded-full object-cover shrink-0 border-2 border-bg-700 cursor-pointer transition-transform group-hover/avatar:scale-110`}
+        />
+      ) : (
+        <div
+          className={`
+            ${dim} rounded-full flex items-center justify-center font-semibold shrink-0
+            border-2 border-bg-700 cursor-pointer transition-transform group-hover/avatar:scale-110
+            bg-accent-bg text-accent
+          `}
+        >
+          {initials}
+        </div>
+      )}
 
       {/* Hover tooltip */}
       <div
@@ -55,9 +67,19 @@ function MemberAvatar({ member, size = 'md' }: { member: ApiTeamMember; size?: '
       >
         <div className="bg-bg-600 border border-border-subtle rounded-lg px-3 py-2 shadow-elevated">
           <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold shrink-0 bg-accent-bg text-accent">
-              {initials}
-            </div>
+            {member.avatarUrl ? (
+              <Image
+                src={member.avatarUrl}
+                alt={member.name}
+                width={20}
+                height={20}
+                className="w-5 h-5 rounded-full object-cover shrink-0"
+              />
+            ) : (
+              <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold shrink-0 bg-accent-bg text-accent">
+                {initials}
+              </div>
+            )}
             <p className="text-xs font-medium text-text-100 whitespace-nowrap">{member.name}</p>
           </div>
           <p className="text-[11px] text-text-300 mt-0.5 whitespace-nowrap">{member.role}</p>
