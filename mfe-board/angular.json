@@ -76,7 +76,8 @@
 					"defaultConfiguration": "development",
 					"options": {
 						"port": 4200,
-						"servePath": "/board/"
+						"servePath": "/board/",
+						"proxyConfig": "proxy.conf.json"
 					}
 				},
 				"extract-i18n": {
