@@ -6,6 +6,11 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: '*.supabase.co', pathname: '/storage/v1/object/**' },
+    ],
+  },
   async rewrites() {
     if (process.env.NODE_ENV === 'development') {
       return [

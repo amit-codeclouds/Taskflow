@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserPlus, Search, UserCheck, Clock, Users, Trash2, RefreshCw, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { usePeopleList, usePeopleStats, useRemovePerson, PEOPLE_PAGE_LIMIT } from '@/lib/hooks/usePeople';
@@ -46,15 +47,25 @@ function MemberRow({
       layout
     >
       {/* Avatar */}
-      <div
-        className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${
-          isPending
-            ? 'bg-bg-600 text-text-300 border border-dashed border-bg-500'
-            : 'bg-accent-bg text-accent'
-        }`}
-      >
-        {initials}
-      </div>
+      {member.avatarUrl ? (
+        <Image
+          src={member.avatarUrl}
+          alt={member.name}
+          width={36}
+          height={36}
+          className="w-9 h-9 rounded-full object-cover shrink-0"
+        />
+      ) : (
+        <div
+          className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${
+            isPending
+              ? 'bg-bg-600 text-text-300 border border-dashed border-bg-500'
+              : 'bg-accent-bg text-accent'
+          }`}
+        >
+          {initials}
+        </div>
+      )}
 
       {/* Name + email */}
       <div className="w-44 shrink-0">

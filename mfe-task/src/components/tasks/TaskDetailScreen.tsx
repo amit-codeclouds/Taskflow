@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Trash2 } from 'lucide-react';
 import { LABEL_STYLES, PRIORITY_COLORS, PRIORITY_TEXT } from '@/lib/taskData';
@@ -176,9 +177,19 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
               <div className="flex flex-wrap gap-3">
                 {task.assignees.map((a) => (
                   <div key={a.userId} className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-accent-bg flex items-center justify-center text-accent text-2xs font-semibold shrink-0">
-                      {initialsFor(a)}
-                    </div>
+                    {a.avatarUrl ? (
+                      <Image
+                        src={a.avatarUrl}
+                        alt={a.name ?? 'Assignee'}
+                        width={28}
+                        height={28}
+                        className="w-7 h-7 rounded-full object-cover shrink-0"
+                      />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full bg-accent-bg flex items-center justify-center text-accent text-2xs font-semibold shrink-0">
+                        {initialsFor(a)}
+                      </div>
+                    )}
                     <span className="text-xs text-text-200">{a.name ?? 'Unknown'}</span>
                   </div>
                 ))}

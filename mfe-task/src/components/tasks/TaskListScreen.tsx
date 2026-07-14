@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import AppSelect, { type SelectOption } from '@/components/ui/AppSelect';
 import { useConfirm } from '@/components/Modals/ConfirmProvider';
@@ -87,6 +88,7 @@ function deadlineChipClass(dateStr: string): string {
 
 function AssigneeStack({ assignees, size = 'md' }: { assignees: AssigneeSummary[]; size?: 'sm' | 'md' }) {
   const dim = size === 'sm' ? 'w-5 h-5 text-[9px]' : 'w-7 h-7 text-2xs';
+  const px = size === 'sm' ? 20 : 28;
   const visible = assignees.slice(0, 2);
   const overflow = assignees.length - visible.length;
   if (assignees.length === 0) {
@@ -95,13 +97,29 @@ function AssigneeStack({ assignees, size = 'md' }: { assignees: AssigneeSummary[
   return (
     <div className="flex items-center -space-x-1.5 shrink-0">
       {visible.map((a) => (
-        <div
-          key={a.userId}
-          data-tooltip={a.name ?? 'Assignee'}
-          className={`${dim} rounded-full bg-accent-bg border-2 border-bg-700 flex items-center justify-center text-accent font-semibold`}
-        >
-          {initialsFor(a)}
-        </div>
+        a.avatarUrl ? (
+          <span
+            key={a.userId}
+            data-tooltip={a.name ?? 'Assignee'}
+            className={`${dim} rounded-full shrink-0 block`}
+          >
+            <Image
+              src={a.avatarUrl}
+              alt={a.name ?? 'Assignee'}
+              width={px}
+              height={px}
+              className={`${dim} rounded-full object-cover border-2 border-bg-700`}
+            />
+          </span>
+        ) : (
+          <div
+            key={a.userId}
+            data-tooltip={a.name ?? 'Assignee'}
+            className={`${dim} rounded-full bg-accent-bg border-2 border-bg-700 flex items-center justify-center text-accent font-semibold`}
+          >
+            {initialsFor(a)}
+          </div>
+        )
       ))}
       {overflow > 0 && (
         <div className={`${dim} rounded-full bg-bg-600 border-2 border-bg-700 flex items-center justify-center text-text-300 font-medium`}>

@@ -1,13 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, Palette, Bell, Shield, Check, Camera,
-  Building2, Users, Crown, Clock,
+  Building2, Users, Crown, Clock, Loader2, Trash2,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useMe } from '@/lib/hooks/useMe';
-import { useUpdateUser } from '@/lib/hooks/useUsers';
+import {
+  useUpdateUser, useUploadAvatar, useDeleteAvatar,
+  AVATAR_MAX_SIZE_BYTES, AVATAR_ALLOWED_TYPES,
+} from '@/lib/hooks/useUsers';
 import { SettingsSkeleton } from '@/app/(shell)/settings/_skeleton';
 import { getInitials } from '@/lib/initials';
 
@@ -91,6 +96,39 @@ function ProfileCard({ me }: { me: ReturnType<typeof useMe>['data'] }) {
   const initials = me?.avatarInitials || getInitials(me?.name);
   const workspace = me?.workspaces?.[0];
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadAvatar = useUploadAvatar();
+  const deleteAvatar = useDeleteAvatar();
+  const isBusy = uploadAvatar.isPending || deleteAvatar.isPending;
+
+  function handleAvatarClick() {
+    if (isBusy) return;
+    fileInputRef.current?.click();
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file
+    if (!file) return;
+
+    if (file.size > AVATAR_MAX_SIZE_BYTES) {
+      toast.error('Image is too large — please choose a photo under 1MB.');
+      return;
+    }
+    if (!AVATAR_ALLOWED_TYPES.includes(file.type)) {
+      toast.error('Unsupported file type. Please upload a JPG, PNG, GIF, or WEBP image.');
+      return;
+    }
+
+    uploadAvatar.mutate(file);
+  }
+
+  function handleRemoveAvatar(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (isBusy) return;
+    deleteAvatar.mutate();
+  }
+
   return (
     <motion.div
       className="bg-bg-700 rounded-xl border border-border-subtle overflow-hidden"
@@ -103,13 +141,56 @@ function ProfileCard({ me }: { me: ReturnType<typeof useMe>['data'] }) {
 
       <div className="px-6 py-6 flex items-start gap-5">
         {/* Avatar */}
-        <div className="relative group shrink-0">
-          <div className="w-16 h-16 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xl font-semibold ring-2 ring-accent/20">
-            {initials}
+        <div className="shrink-0">
+          <div
+            className="relative group w-16 h-16 cursor-pointer mx-3"
+            onClick={handleAvatarClick}
+          >
+            {me?.avatarUrl ? (
+              <Image
+                src={me.avatarUrl}
+                alt={me?.name ?? 'Profile photo'}
+                width={64}
+                height={64}
+                className="w-16 h-16 rounded-full object-cover ring-2 ring-accent/20"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xl font-semibold ring-2 ring-accent/20">
+                {initials}
+              </div>
+            )}
+
+            <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              {uploadAvatar.isPending ? (
+                <Loader2 size={16} color="white" className="animate-spin" />
+              ) : (
+                <Camera size={15} color="white" strokeWidth={1.5} />
+              )}
+            </div>
+
+            {me?.avatarUrl && !isBusy && (
+              <button
+                type="button"
+                onClick={handleRemoveAvatar}
+                title="Remove photo"
+                className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-bg-800 border border-border-subtle flex items-center justify-center text-text-300 hover:text-status-red hover:border-status-red/40 transition-colors"
+              >
+                <Trash2 size={10} strokeWidth={2} />
+              </button>
+            )}
           </div>
-          <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
-            <Camera size={15} color="white" strokeWidth={1.5} />
-          </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+
+          <p className="text-2xs text-text-300 mt-2 text-center leading-tight">
+            JPG, PNG or GIF<br />Max 1MB
+          </p>
         </div>
 
         {/* Info */}

@@ -6,6 +6,7 @@ export interface ApiTeamMember {
   userId: string;
   name: string;
   avatarInitials?: string;
+  avatarUrl?: string;
   role: string;
 }
 

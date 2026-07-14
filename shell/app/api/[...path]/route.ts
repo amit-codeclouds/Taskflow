@@ -10,16 +10,19 @@ async function handler(
   const { search } = new URL(request.url);
   const target = `${BACKEND_URL}/${path}${search}`;
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
+  const headers: Record<string, string> = {};
+
+  const contentType = request.headers.get('Content-Type');
+  headers['Content-Type'] = contentType ?? 'application/json';
 
   const auth = request.headers.get('Authorization');
   if (auth) headers['Authorization'] = auth;
 
-  let body: string | undefined;
+  // Use arrayBuffer, not text() — text() re-encodes as UTF-8 and corrupts
+  // binary bodies like multipart file uploads.
+  let body: ArrayBuffer | undefined;
   if (!['GET', 'HEAD'].includes(request.method)) {
-    body = await request.text();
+    body = await request.arrayBuffer();
   }
 
   try {

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Lock, X, Check, Plus, Building2 } from 'lucide-react';
 import { useFormik } from 'formik';
@@ -200,9 +201,19 @@ function TeamNewPageContent() {
           <div>
             <label className="text-xs font-medium text-text-200 block mb-1.5">Team admin</label>
             <div className="flex items-center gap-2.5 px-3 py-2.5 bg-bg-600 border border-border-subtle rounded-lg">
-              <div className="w-8 h-8 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xs font-semibold shrink-0">
-                {auth.initials || 'U'}
-              </div>
+              {auth.avatarUrl ? (
+                <Image
+                  src={auth.avatarUrl}
+                  alt={auth.name || 'You'}
+                  width={32}
+                  height={32}
+                  className="w-8 h-8 rounded-full object-cover shrink-0"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xs font-semibold shrink-0">
+                  {auth.initials || 'U'}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-text-100 truncate">{auth.name || 'You'}</p>
                 <p className="text-xs text-text-300 truncate">{auth.title || '—'}</p>
@@ -256,9 +267,19 @@ function TeamNewPageContent() {
                         exit={{ opacity: 0, x: -8 }}
                         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                       >
-                        <div className="w-8 h-8 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xs font-semibold shrink-0">
-                          {initials}
-                        </div>
+                        {u.avatarUrl ? (
+                          <Image
+                            src={u.avatarUrl}
+                            alt={u.name}
+                            width={32}
+                            height={32}
+                            className="w-8 h-8 rounded-full object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xs font-semibold shrink-0">
+                            {initials}
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm text-text-100 truncate">{u.name}</p>
                           <p className="text-xs text-text-300 truncate">{u.title || '—'}</p>

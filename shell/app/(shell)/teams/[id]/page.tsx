@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Check, Lock, Trash2, Save } from 'lucide-react';
 import { useFormik } from 'formik';
@@ -69,9 +70,19 @@ function MemberRow({
       exit={{ opacity: 0, x: -8 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
     >
-      <div className="w-8 h-8 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xs font-semibold shrink-0">
-        {initials}
-      </div>
+      {member.avatarUrl ? (
+        <Image
+          src={member.avatarUrl}
+          alt={member.name}
+          width={32}
+          height={32}
+          className="w-8 h-8 rounded-full object-cover shrink-0"
+        />
+      ) : (
+        <div className="w-8 h-8 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xs font-semibold shrink-0">
+          {initials}
+        </div>
+      )}
 
       <div className="flex-1 min-w-0">
         <p className="text-sm text-text-100 truncate">{member.name}</p>
@@ -195,6 +206,7 @@ export default function TeamManagePage({ params }: { params: { id: string } }) {
       name:           user.name,
       role:           addMemberRole.value as TeamRole,
       avatarInitials: user.avatarInitials,
+      avatarUrl:      user.avatarUrl,
     };
     setLocalMembers(prev => [...prev, newMember]);
     setAddMemberSel(null);

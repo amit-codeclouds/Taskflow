@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { LayoutDashboard, KanbanSquare, User, Settings } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
+import Avatar from '@/components/ui/Avatar';
 import { useAuth } from '@/lib/useAuth';
 
 type NavItem = { label: string; href: string; icon: React.ReactNode };
@@ -113,9 +114,7 @@ export default function Sidebar() {
         <div className="mx-4 h-px bg-border-subtle" />
         <a href="/settings" className="block">
           <motion.div className="h-[68px] flex items-center gap-3 px-4 cursor-pointer hover:bg-bg-700 transition-colors" whileHover={{ x: 2 }}>
-            <div className="w-8 h-8 rounded-full bg-accent-bg flex items-center justify-center text-accent text-xs font-semibold shrink-0 select-none">
-              {user.initials || '??'}
-            </div>
+            <Avatar initials={user.initials || '??'} avatarUrl={user.avatarUrl} name={user.name} size="sm" />
             <div className="flex flex-col min-w-0 flex-1">
               <span className="text-sm font-medium text-text-100 truncate capitalize">
                 {user.name || 'User'}
