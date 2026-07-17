@@ -70,7 +70,7 @@ jobs:
     if: github.ref == 'refs/heads/cicd-test'
     steps:
       - name: Greet to Deployment
-        run: echo "Welcome to Deploy Checkpoint"
+        run: echo "Welcome to Deploy Checkpoint Taskflow"
 
       - name: Check Environment
         run: echo "Deploy Hook $SHELL_DEPLOY_HOOK"
