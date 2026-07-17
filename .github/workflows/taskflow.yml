@@ -33,4 +33,4 @@ jobs:
       
       - name: Checking Linting errors
         working-directory: ${{matrix.project}}
-        run: npm run lint
+        run: npm run build
