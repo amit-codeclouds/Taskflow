@@ -7,16 +7,45 @@ on:
     branches: [cicd-test]
 
 jobs:
-  linting-check:
+  lint-check:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [shell, mfe-task]
+
+    steps:
+      - name: Greeting to Linting step
+        run: echo "Welcome to Lint Check step"
+
+      - name: Extract Folders and files
+        uses: actions/checkout@v4
+
+      - name: Setting up the Node JS Environment
+        uses: actions/setup-node@v4
+        with: 
+          node-version: "24"
+          cache: "npm"
+
+      - name: Installing Dependencies
+        working-directory: ${{matrix.project}}
+        run: npm install
+      
+      - name: Checking Linting errors
+        working-directory: ${{matrix.project}}
+        run: npm run lint
+
+  build-check:
+    runs-on: ubuntu-latest
+    needs: lint-check
     strategy:
       fail-fast: false
       matrix:
         project: [shell, mfe-task, mfe-board]
 
     steps:
-      - name: Greeting to Linting step
-        run: echo "Welcome to Linting step"
+      - name: Greeting to Building Check step
+        run: echo "Welcome to Build Check step"
 
       - name: Extract Folders and files
         uses: actions/checkout@v4
@@ -34,3 +63,22 @@ jobs:
       - name: Checking Linting errors
         working-directory: ${{matrix.project}}
         run: npm run build
+
+  initialize-deploy:
+    runs-on: ubuntu-latest
+    needs: build-check
+    if: github.ref == 'refs/heads/cicd-test'
+    steps:
+      - name: Greet to Deployment
+        run: echo "Welcome to Deploy Checkpoint"
+
+      - name: Check Environment
+        run: echo "Deploy Hook $SHELL_DEPLOY_HOOK"
+        env:
+          SHELL_DEPLOY_HOOK: ${{ secrets.SHELL_DEPLOY_HOOK }}
+
+      - name: Trigger Render deploy
+        run: |
+          curl -s -w "\nHTTP Status: %{http_code}\n" --fail -X POST "$SHELL_DEPLOY_HOOK"
+        env:
+          SHELL_DEPLOY_HOOK: ${{ secrets.SHELL_DEPLOY_HOOK }}
