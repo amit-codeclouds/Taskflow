@@ -1,0 +1,36 @@
+name: Taskflow CI/CD Pipeline
+
+on: 
+  push:
+    branches: [cicd-test]
+  pull_request: 
+    branches: [cicd-test]
+
+jobs:
+  linting-check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [shell, mfe-task, mfe-board]
+
+    steps:
+      - name: Greeting to Linting step
+        run: echo "Welcome to Linting step"
+
+      - name: Extract Folders and files
+        uses: actions/checkout@v4
+
+      - name: Setting up the Node JS Environment
+        uses: actions/setup-node@v4
+        with: 
+          node-version: "24"
+          cache: "npm"
+
+      - name: Installing Dependencies
+        working-directory: ${{matrix.project}}
+        run: npm install
+      
+      - name: Checking Linting errors
+        working-directory: ${{matrix.project}}
+        run: npm run lint
