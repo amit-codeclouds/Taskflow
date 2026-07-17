@@ -11,6 +11,8 @@ import { useTeamsList } from '@/lib/hooks/useTeams';
 import { useBoardStatuses } from '@/lib/hooks/useBoardStatuses';
 import { useConfirm } from '@/components/Modals/ConfirmProvider';
 import { TaskDetailSkeleton } from '@/app/[id]/_skeleton';
+import CommentList from './CommentList';
+import CommentComposer from './CommentComposer';
 import type { AssigneeSummary } from '@/lib/types/tasks.types';
 
 function ProgressBar({ value }: { value: number }) {
@@ -65,7 +67,7 @@ function Breadcrumb({ taskNumber }: { taskNumber?: number }) {
 
 function NotFoundView({ taskId }: { taskId: string }) {
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       <Breadcrumb />
       <div className="flex flex-col items-center justify-center py-24 text-center">
         <p className="text-text-300 text-sm">Task <span className="font-mono text-text-200">{taskId}</span> was not found.</p>
@@ -104,12 +106,12 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       <Breadcrumb taskNumber={task.taskNumber} />
 
-      <div className="grid grid-cols-[1fr_280px] gap-6">
+      <div className="grid grid-cols-[3fr_2fr] gap-6">
 
-        {/* ── Left — main content ── */}
+        {/* ── Left — task info ── */}
         <div className="flex flex-col gap-5">
 
           {/* Title card */}
@@ -196,16 +198,14 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
               </div>
             )}
           </motion.div>
-        </div>
 
-        {/* ── Right — details panel ── */}
-        <motion.div
-          className="flex flex-col gap-4"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 260, damping: 28, delay: 0.12 }}
-        >
-          <div className="bg-bg-800 rounded-xl border border-border-subtle p-5 flex flex-col gap-4">
+          {/* Details */}
+          <motion.div
+            className="bg-bg-800 rounded-xl border border-border-subtle p-5 flex flex-col gap-4"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 28, delay: 0.2 }}
+          >
             <p className="text-2xs text-text-300 uppercase tracking-widest">Details</p>
 
             <DetailRow label="Team">
@@ -242,38 +242,56 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
                 {new Date(task.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </span>
             </DetailRow>
-          </div>
+          </motion.div>
 
-          {/* Edit button */}
-          <Link href={`/${task.id}/edit`} className="block">
+          {/* Edit / Delete buttons */}
+          <motion.div
+            className="flex gap-3"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 28, delay: 0.25 }}
+          >
+            <Link href={`/${task.id}/edit`} className="flex-1">
+              <motion.button
+                type="button"
+                className="w-full h-10 rounded-lg border border-border-subtle text-sm text-text-200 hover:bg-bg-700 hover:text-text-100 transition-colors flex items-center justify-center gap-2"
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              >
+                <svg width="13" height="13" viewBox="0 0 12 12" fill="none">
+                  <path d="M8.5 1.5a1.414 1.414 0 012 2L3.5 10.5l-3 .5.5-3 7.5-6.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Edit Task
+              </motion.button>
+            </Link>
+
             <motion.button
               type="button"
-              className="w-full h-10 rounded-lg border border-border-subtle text-sm text-text-200 hover:bg-bg-700 hover:text-text-100 transition-colors flex items-center justify-center gap-2"
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
+              onClick={handleDelete}
+              disabled={deleteTask.isPending}
+              data-tooltip="Delete this task"
+              className="flex-1 h-10 rounded-lg border border-border-subtle text-sm text-status-red hover:bg-red-bg transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              whileHover={deleteTask.isPending ? undefined : { scale: 1.01 }}
+              whileTap={deleteTask.isPending ? undefined : { scale: 0.99 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             >
-              <svg width="13" height="13" viewBox="0 0 12 12" fill="none">
-                <path d="M8.5 1.5a1.414 1.414 0 012 2L3.5 10.5l-3 .5.5-3 7.5-6.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              Edit Task
+              <Trash2 size={13} strokeWidth={1.5} />
+              {deleteTask.isPending ? 'Deleting…' : 'Delete Task'}
             </motion.button>
-          </Link>
+          </motion.div>
+        </div>
 
-          {/* Delete button */}
-          <motion.button
-            type="button"
-            onClick={handleDelete}
-            disabled={deleteTask.isPending}
-            data-tooltip="Delete this task"
-            className="w-full h-10 rounded-lg border border-border-subtle text-sm text-status-red hover:bg-red-bg transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-            whileHover={deleteTask.isPending ? undefined : { scale: 1.01 }}
-            whileTap={deleteTask.isPending ? undefined : { scale: 0.99 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-          >
-            <Trash2 size={13} strokeWidth={1.5} />
-            {deleteTask.isPending ? 'Deleting…' : 'Delete Task'}
-          </motion.button>
+        {/* ── Right — comments ── */}
+        <motion.div
+          className="bg-bg-800 rounded-xl border border-border-subtle p-5 flex flex-col gap-5 h-fit"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: 'spring', stiffness: 260, damping: 28, delay: 0.12 }}
+        >
+          <p className="text-2xs text-text-300 uppercase tracking-widest">Comments</p>
+          <CommentList taskId={task.id} />
+          <CommentComposer taskId={task.id} />
         </motion.div>
       </div>
     </div>

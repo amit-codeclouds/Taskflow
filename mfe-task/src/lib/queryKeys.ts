@@ -19,4 +19,8 @@ export const queryKeys = {
   boardStatuses: {
     byTeam: (teamId: string) => ['board-statuses', teamId] as const,
   },
+  comments: {
+    all: () => ['comments'] as const,
+    list: (taskId: string) => ['comments', 'list', taskId] as const,
+  },
 } as const;

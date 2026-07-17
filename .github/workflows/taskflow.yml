@@ -2,9 +2,9 @@ name: Taskflow Entire CI/CD Pipeline
 
 on: 
   push:
-    branches: [cicd-test]
+    branches: [production]
   pull_request: 
-    branches: [cicd-test]
+    branches: [production]
 
 jobs:
   lint-check:
@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [shell, mfe-task]
+        project: [shell, mfe-task, mfe-board]
 
     steps:
       - name: Greeting to Linting step
@@ -67,7 +67,7 @@ jobs:
   initialize-deploy:
     runs-on: ubuntu-latest
     needs: build-check
-    if: github.ref == 'refs/heads/cicd-test'
+    if: github.ref == 'refs/heads/production'
     strategy:
       fail-fast: false
       matrix:

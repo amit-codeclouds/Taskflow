@@ -256,6 +256,63 @@ implement them this way — see the confirmed shapes above instead.
 
 ---
 
+## Comment Service  `/api/comments`
+
+> Drives the Comments panel on **Task MFE**'s Task Detail page (`mfe-task/src/components/tasks/TaskDetailScreen.tsx`).
+> Confirmed against the Postman collection ("Taskflow DOTNET Backend" → Comments folder), but no saved
+> example response was attached there — the response shape below (embedded `author` object) reflects
+> what was verbally confirmed, not a captured payload; field names should be re-checked against the
+> live response and corrected here once available. See `mfe-task/src/lib/types/comments.types.ts`.
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/comments?taskId=:taskId` | Auth | List comments on a task, oldest first. Requester must be a member of the task's team. |
+| POST | `/api/comments?taskId=:taskId` | Auth | Add a comment to a task. Requester must be a member of the task's team. |
+| PUT | `/api/comments/:commentId` | Auth | Edit a comment's body. Only the comment's author may update it. |
+| DELETE | `/api/comments/:commentId` | Auth | Delete a comment. Only the comment's author may delete it. |
+
+### `GET /api/comments`
+**Query params**
+```
+taskId=uuid   (required)
+```
+**Response `200`** — array of comments, oldest first (field names unconfirmed — see note above):
+```json
+{
+  "result": [
+    {
+      "id": "9b5e59b4-2f84-47c8-9790-576c4fc94ba2",
+      "taskId": "e79c4b0f-9b10-4934-96ca-11442fd85bbe",
+      "authorId": "uuid",
+      "author": { "userId": "uuid", "name": "Alice Chen", "avatarInitials": "AC" },
+      "body": "<p>This looks good, ready for review.</p>",
+      "createdAt": "2026-07-17T18:00:00.000Z",
+      "updatedAt": "2026-07-17T18:00:00.000Z"
+    }
+  ]
+}
+```
+
+### `POST /api/comments`
+**Query params**: `taskId=uuid` (required)
+**Request**
+```json
+{ "body": "<p>This looks good, ready for review.</p>" }
+```
+**Response `200`** — the created Comment object (same shape as above).
+
+### `PUT /api/comments/:commentId`
+**Request**
+```json
+{ "body": "<p>This looks good, ready for review (edited).</p>" }
+```
+**Response `200`** — the updated Comment object.
+
+### `DELETE /api/comments/:commentId`
+**Response `200`** — empty result.
+
+---
+
 ## Board Service  `/api/board`
 
 > Drives the **Board MFE** (`mfe-board`). Statuses are dynamic per team — each team owns a `board_statuses` list. Tasks reference a status by id.
@@ -721,6 +778,10 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | TaskDetailScreen — status name, team name/color | `GET /api/board-statuses/team/:teamId`, `GET /api/teams` |
 | TaskDetailScreen — Edit Task button | navigates to `/:id/edit` |
 | TaskDetailScreen — Delete Task button (ConfirmProvider modal) | `DELETE /api/tasks/:id` |
+| TaskDetailScreen — Comments panel, comment list | `GET /api/comments?taskId=:id` |
+| TaskDetailScreen — CommentComposer submit | `POST /api/comments?taskId=:id` |
+| TaskDetailScreen — CommentItem edit (own comment only) | `PUT /api/comments/:commentId` |
+| TaskDetailScreen — CommentItem delete (own comment only, ConfirmProvider modal) | `DELETE /api/comments/:commentId` |
 | Sidebar / Topbar — user card | derived from `taskflow_name`/`taskflow_email` cookies — no API call yet (`GET /api/auth/me` not wired in Task MFE) |
 
 > Not yet wired in this pass (no UI surface added for them): `GET /api/tasks` (all-teams/assignee-filtered view), `PATCH /api/tasks/:id/status` (drag-drop — Board MFE concern), `GET /api/notifications`.

@@ -268,18 +268,25 @@ interface TaskAssigneeMapper {
 
 ## Comment
 
-> Comments on a task. Supports optional image attachments (e.g. screenshots).
-> `image_urls` and `image_public_ids` are parallel arrays — always updated together.
-> `image_public_ids[i]` is the Cloudinary public_id for `image_urls[i]`.
+> Comments on a task. Corrected against the live Postman collection ("Taskflow DOTNET Backend" →
+> Comments folder) and `database-schema.md`'s `comments` table — no image/attachment columns exist,
+> superseding the earlier Cloudinary-attachment plan below. `author` is an embedded summary of the
+> commenting user (verbally confirmed, not captured from a saved example response — field names may
+> need correction once a live response is checked).
+> Source: mfe-task/src/lib/types/comments.types.ts
 
 ```ts
 interface Comment {
-  id: string;                  // UUID — PK
-  task_id: string;             // FK → Task.id
-  author_id: string;           // FK → User.id
-  body: string;                // comment text
-  image_urls?: string[];       // Cloudinary secure URLs
-  image_public_ids?: string[]; // Cloudinary public_ids — for deletion
+  id: string;             // UUID — PK
+  task_id: string;        // FK → Task.id
+  author_id: string;      // FK → User.id
+  author?: {               // embedded author summary
+    userId: string;
+    name?: string;
+    avatarInitials?: string;
+    avatarUrl?: string;
+  };
+  body: string;            // comment text (HTML from the compact rich-text editor)
   created_at: string;
   updated_at: string;
 }
