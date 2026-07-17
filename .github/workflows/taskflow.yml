@@ -1,4 +1,4 @@
-name: Taskflow CI/CD Pipeline
+name: Taskflow Entire CI/CD Pipeline
 
 on: 
   push:
