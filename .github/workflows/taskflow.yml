@@ -68,17 +68,25 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-check
     if: github.ref == 'refs/heads/cicd-test'
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [shell, mfe-task, mfe-board]
     steps:
-      - name: Greet to Deployment
-        run: echo "Welcome to Deploy Checkpoint Taskflow"
+      - name: "Pull codes from Repo"
+        uses: actions/checkout@v4
 
-      - name: Check Environment
-        run: echo "Deploy Hook $SHELL_DEPLOY_HOOK"
-        env:
-          SHELL_DEPLOY_HOOK: ${{ secrets.SHELL_DEPLOY_HOOK }}
+      - name: "Installing Vercel CLI"
+        run: npm install --global vercel@latest
 
-      - name: Trigger Render deploy
-        run: |
-          curl -s -w "\nHTTP Status: %{http_code}\n" --fail -X POST "$SHELL_DEPLOY_HOOK"
-        env:
-          SHELL_DEPLOY_HOOK: ${{ secrets.SHELL_DEPLOY_HOOK }}
+      - name: "Pull Vercel Environment"
+        working-directory: ${{ matrix.project }}
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: "Build Vercel Environment"
+        working-directory: ${{ matrix.project }}
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: "Deploy In Vercel environment"
+        working-directory: ${{ matrix.project }}
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
