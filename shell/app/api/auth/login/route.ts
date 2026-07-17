@@ -3,17 +3,6 @@ import axios from 'axios';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? '';
 
-function jwtTTL(jwt: string): number {
-  try {
-    const payload = JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url').toString());
-    return typeof payload.exp === 'number' && typeof payload.iat === 'number'
-      ? payload.exp - payload.iat
-      : 3600;
-  } catch {
-    return 3600;
-  }
-}
-
 export async function POST(request: NextRequest) {
   const body = await request.json();
 
@@ -28,7 +17,7 @@ export async function POST(request: NextRequest) {
     if (accessToken) {
       response.cookies.set('taskflow_access_token', accessToken, {
         path: '/',
-        maxAge: jwtTTL(accessToken),
+        maxAge: 60 * 60 * 24 * 8,
         sameSite: 'lax',
       });
     }

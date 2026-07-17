@@ -13,6 +13,7 @@ interface RichTextEditorProps {
   onChange: (val: string) => void;
   placeholder?: string;
   minHeight?: number; // default 180
+  variant?: 'full' | 'compact'; // default 'full' — 'compact' is text + link only, no toolbar dropdowns/image/align/lists
 }
 
 const HEADING_OPTIONS = [
@@ -248,7 +249,8 @@ const TiptapDynamic = dynamic(
       );
     }
 
-    function Editor({ value, onChange, placeholder = 'Add more context, links, or steps...', minHeight = 180 }: RichTextEditorProps) {
+    function Editor({ value, onChange, placeholder = 'Add more context, links, or steps...', minHeight = 180, variant = 'full' }: RichTextEditorProps) {
+      const isCompact = variant === 'compact';
       const [linkOpen, setLinkOpen] = useState(false);
       const [linkUrl, setLinkUrl] = useState('');
       const linkPopoverRef = useRef<HTMLDivElement>(null);
@@ -256,23 +258,29 @@ const TiptapDynamic = dynamic(
 
       const editor = useEditor({
         immediatelyRender: false,
-        extensions: [
-          StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
-          Underline,
-          Link.configure({ openOnClick: false, autolink: true }),
-          // allowBase64 is required — otherwise Tiptap's HTML-parsing rule excludes
-          // `img[src^="data:"]`, so a saved base64 image silently disappears on reload.
-          ResizableImage.configure({ allowBase64: true }),
-          TextAlign.configure({ types: ['heading', 'paragraph'] }),
-          Placeholder.configure({ placeholder }),
-          FontSize,
-        ],
+        extensions: isCompact
+          ? [
+              StarterKit.configure({ heading: false }),
+              Link.configure({ openOnClick: false, autolink: true }),
+              Placeholder.configure({ placeholder }),
+            ]
+          : [
+              StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
+              Underline,
+              Link.configure({ openOnClick: false, autolink: true }),
+              // allowBase64 is required — otherwise Tiptap's HTML-parsing rule excludes
+              // `img[src^="data:"]`, so a saved base64 image silently disappears on reload.
+              ResizableImage.configure({ allowBase64: true }),
+              TextAlign.configure({ types: ['heading', 'paragraph'] }),
+              Placeholder.configure({ placeholder }),
+              FontSize,
+            ],
         content: value,
         editorProps: {
           attributes: { class: 'tf-editor-content' },
           handleDrop(_view: unknown, event: DragEvent) {
             const file = event.dataTransfer?.files?.[0];
-            if (file && file.type.startsWith('image/')) {
+            if (!isCompact && file && file.type.startsWith('image/')) {
               event.preventDefault();
               insertImageFile(file);
               return true;
@@ -281,7 +289,7 @@ const TiptapDynamic = dynamic(
           },
           handlePaste(_view: unknown, event: ClipboardEvent) {
             const file = Array.from(event.clipboardData?.files ?? []).find((f) => f.type.startsWith('image/'));
-            if (file) {
+            if (!isCompact && file) {
               event.preventDefault();
               insertImageFile(file);
               return true;
@@ -401,43 +409,53 @@ const TiptapDynamic = dynamic(
         <div className="tf-editor-wrapper rounded-lg border border-border-subtle overflow-hidden bg-[#1c1c21] focus-within:border-accent transition-colors">
           {/* Toolbar */}
           <div className="flex items-center flex-wrap gap-1 p-2 bg-[#1A1A1E] border-b border-border-subtle">
-            <ToolbarDropdown
-              label="Text style"
-              activeLabel={HEADING_OPTIONS.find((o) => o.value === activeHeading)?.label ?? 'Paragraph'}
-              options={HEADING_OPTIONS}
-              activeValue={activeHeading}
-              onSelect={selectHeading}
-            />
+            {!isCompact && (
+              <>
+                <ToolbarDropdown
+                  label="Text style"
+                  activeLabel={HEADING_OPTIONS.find((o) => o.value === activeHeading)?.label ?? 'Paragraph'}
+                  options={HEADING_OPTIONS}
+                  activeValue={activeHeading}
+                  onSelect={selectHeading}
+                />
 
-            <ToolbarDropdown
-              label="Text size"
-              activeLabel={FONT_SIZE_OPTIONS.find((o) => o.value === activeFontSize)?.label ?? 'Normal'}
-              options={FONT_SIZE_OPTIONS}
-              activeValue={activeFontSize}
-              onSelect={selectFontSize}
-            />
+                <ToolbarDropdown
+                  label="Text size"
+                  activeLabel={FONT_SIZE_OPTIONS.find((o) => o.value === activeFontSize)?.label ?? 'Normal'}
+                  options={FONT_SIZE_OPTIONS}
+                  activeValue={activeFontSize}
+                  onSelect={selectFontSize}
+                />
 
-            <Divider />
+                <Divider />
+              </>
+            )}
 
             <button type="button" data-tooltip="Bold" onClick={() => editor.chain().focus().toggleBold().run()} className={toolbarBtnClass(editor.isActive('bold'))}><Bold size={16} /></button>
             <button type="button" data-tooltip="Italic" onClick={() => editor.chain().focus().toggleItalic().run()} className={toolbarBtnClass(editor.isActive('italic'))}><Italic size={16} /></button>
-            <button type="button" data-tooltip="Underline" onClick={() => editor.chain().focus().toggleUnderline().run()} className={toolbarBtnClass(editor.isActive('underline'))}><UnderlineIcon size={16} /></button>
+            {!isCompact && (
+              <button type="button" data-tooltip="Underline" onClick={() => editor.chain().focus().toggleUnderline().run()} className={toolbarBtnClass(editor.isActive('underline'))}><UnderlineIcon size={16} /></button>
+            )}
 
-            <Divider />
+            {!isCompact && (
+              <>
+                <Divider />
 
-            <button type="button" data-tooltip="Align left" onClick={() => applyAlign('left')} className={toolbarBtnClass(isAlignActive('left'))}><AlignLeft size={16} /></button>
-            <button type="button" data-tooltip="Align center" onClick={() => applyAlign('center')} className={toolbarBtnClass(isAlignActive('center'))}><AlignCenter size={16} /></button>
-            <button type="button" data-tooltip="Align right" onClick={() => applyAlign('right')} className={toolbarBtnClass(isAlignActive('right'))}><AlignRight size={16} /></button>
-            <button type="button" data-tooltip="Justify" onClick={() => applyAlign('justify')} disabled={isImageSelected} className={`${toolbarBtnClass(isAlignActive('justify'))} ${isImageSelected ? 'opacity-30 cursor-not-allowed' : ''}`}><AlignJustify size={16} /></button>
+                <button type="button" data-tooltip="Align left" onClick={() => applyAlign('left')} className={toolbarBtnClass(isAlignActive('left'))}><AlignLeft size={16} /></button>
+                <button type="button" data-tooltip="Align center" onClick={() => applyAlign('center')} className={toolbarBtnClass(isAlignActive('center'))}><AlignCenter size={16} /></button>
+                <button type="button" data-tooltip="Align right" onClick={() => applyAlign('right')} className={toolbarBtnClass(isAlignActive('right'))}><AlignRight size={16} /></button>
+                <button type="button" data-tooltip="Justify" onClick={() => applyAlign('justify')} disabled={isImageSelected} className={`${toolbarBtnClass(isAlignActive('justify'))} ${isImageSelected ? 'opacity-30 cursor-not-allowed' : ''}`}><AlignJustify size={16} /></button>
 
-            <Divider />
+                <Divider />
 
-            <button type="button" data-tooltip="Bulleted list" onClick={() => editor.chain().focus().toggleBulletList().run()} className={toolbarBtnClass(editor.isActive('bulletList'))}><List size={16} /></button>
-            <button type="button" data-tooltip="Numbered list" onClick={() => editor.chain().focus().toggleOrderedList().run()} className={toolbarBtnClass(editor.isActive('orderedList'))}><ListOrdered size={16} /></button>
-            <button type="button" data-tooltip="Indent" onClick={() => editor.chain().focus().sinkListItem('listItem').run()} disabled={!editor.can().sinkListItem('listItem')} className={`${toolbarBtnClass(false)} disabled:opacity-30 disabled:cursor-not-allowed`}><Indent size={16} /></button>
-            <button type="button" data-tooltip="Outdent" onClick={() => editor.chain().focus().liftListItem('listItem').run()} disabled={!editor.can().liftListItem('listItem')} className={`${toolbarBtnClass(false)} disabled:opacity-30 disabled:cursor-not-allowed`}><Outdent size={16} /></button>
+                <button type="button" data-tooltip="Bulleted list" onClick={() => editor.chain().focus().toggleBulletList().run()} className={toolbarBtnClass(editor.isActive('bulletList'))}><List size={16} /></button>
+                <button type="button" data-tooltip="Numbered list" onClick={() => editor.chain().focus().toggleOrderedList().run()} className={toolbarBtnClass(editor.isActive('orderedList'))}><ListOrdered size={16} /></button>
+                <button type="button" data-tooltip="Indent" onClick={() => editor.chain().focus().sinkListItem('listItem').run()} disabled={!editor.can().sinkListItem('listItem')} className={`${toolbarBtnClass(false)} disabled:opacity-30 disabled:cursor-not-allowed`}><Indent size={16} /></button>
+                <button type="button" data-tooltip="Outdent" onClick={() => editor.chain().focus().liftListItem('listItem').run()} disabled={!editor.can().liftListItem('listItem')} className={`${toolbarBtnClass(false)} disabled:opacity-30 disabled:cursor-not-allowed`}><Outdent size={16} /></button>
 
-            <Divider />
+                <Divider />
+              </>
+            )}
 
             <div className="relative" ref={linkPopoverRef}>
               <button type="button" data-tooltip="Link" onClick={() => (linkOpen ? setLinkOpen(false) : openLinkPopover())} className={toolbarBtnClass(editor.isActive('link'))}><Link2 size={16} /></button>
@@ -462,30 +480,39 @@ const TiptapDynamic = dynamic(
                 </div>
               )}
             </div>
-            <button type="button" data-tooltip="Quote" onClick={() => editor.chain().focus().toggleBlockquote().run()} className={toolbarBtnClass(editor.isActive('blockquote'))}><Quote size={16} /></button>
-            <button type="button" data-tooltip="Inline code" onClick={() => editor.chain().focus().toggleCode().run()} className={toolbarBtnClass(editor.isActive('code'))}><CodeIcon size={16} /></button>
 
-            <Divider />
+            {!isCompact && (
+              <>
+                <button type="button" data-tooltip="Quote" onClick={() => editor.chain().focus().toggleBlockquote().run()} className={toolbarBtnClass(editor.isActive('blockquote'))}><Quote size={16} /></button>
+                <button type="button" data-tooltip="Inline code" onClick={() => editor.chain().focus().toggleCode().run()} className={toolbarBtnClass(editor.isActive('code'))}><CodeIcon size={16} /></button>
 
-            <button type="button" data-tooltip="Insert image" onClick={() => fileInputRef.current?.click()} className={toolbarBtnClass(false)}>
-              <ImagePlus size={16} />
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) insertImageFile(file);
-                e.target.value = '';
-              }}
-            />
+                <Divider />
+
+                <button type="button" data-tooltip="Insert image" onClick={() => fileInputRef.current?.click()} className={toolbarBtnClass(false)}>
+                  <ImagePlus size={16} />
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) insertImageFile(file);
+                    e.target.value = '';
+                  }}
+                />
+              </>
+            )}
 
             <div className="flex-1" />
 
-            <button type="button" data-tooltip="Undo" onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} className={`${toolbarBtnClass(false)} disabled:opacity-30 disabled:cursor-not-allowed`}><Undo2 size={16} /></button>
-            <button type="button" data-tooltip="Redo" onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} className={`${toolbarBtnClass(false)} disabled:opacity-30 disabled:cursor-not-allowed`}><Redo2 size={16} /></button>
+            {!isCompact && (
+              <>
+                <button type="button" data-tooltip="Undo" onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} className={`${toolbarBtnClass(false)} disabled:opacity-30 disabled:cursor-not-allowed`}><Undo2 size={16} /></button>
+                <button type="button" data-tooltip="Redo" onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} className={`${toolbarBtnClass(false)} disabled:opacity-30 disabled:cursor-not-allowed`}><Redo2 size={16} /></button>
+              </>
+            )}
           </div>
 
           {/* Content */}

@@ -7,7 +7,7 @@ const theme = { baseColor: '#222227', highlightColor: '#2C2C32' };
 export function TaskDetailSkeleton() {
   return (
     <SkeletonTheme {...theme}>
-      <div className="max-w-4xl mx-auto space-y-5">
+      <div className="max-w-7xl mx-auto space-y-5">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2">
           <Skeleton width={50} height={12} />
@@ -15,7 +15,7 @@ export function TaskDetailSkeleton() {
           <Skeleton width={70} height={12} />
         </div>
 
-        <div className="grid grid-cols-[1fr_280px] gap-6">
+        <div className="grid grid-cols-[3fr_2fr] gap-6">
           {/* Left column */}
           <div className="flex flex-col gap-5">
             <div className="bg-bg-800 rounded-xl border border-border-subtle p-6 space-y-3">
@@ -31,18 +31,34 @@ export function TaskDetailSkeleton() {
               <Skeleton width={90} height={11} />
               <Skeleton count={3} />
             </div>
+            <div className="bg-bg-800 rounded-xl border border-border-subtle p-5 space-y-4">
+              <Skeleton width={60} height={11} />
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between">
+                  <Skeleton width={60} height={11} />
+                  <Skeleton width={80} height={13} />
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <Skeleton containerClassName="flex-1" height={40} borderRadius={8} />
+              <Skeleton containerClassName="flex-1" height={40} borderRadius={8} />
+            </div>
           </div>
 
-          {/* Right column */}
-          <div className="bg-bg-800 rounded-xl border border-border-subtle p-5 space-y-4 h-fit">
-            <Skeleton width={60} height={11} />
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <Skeleton width={60} height={11} />
-                <Skeleton width={80} height={13} />
+          {/* Right column — comments */}
+          <div className="bg-bg-800 rounded-xl border border-border-subtle p-5 space-y-5 h-fit">
+            <Skeleton width={80} height={11} />
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <Skeleton circle width={32} height={32} />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton width="40%" height={11} />
+                  <Skeleton count={2} />
+                </div>
               </div>
             ))}
-            <Skeleton height={36} borderRadius={8} />
+            <Skeleton height={90} borderRadius={8} />
           </div>
         </div>
       </div>
