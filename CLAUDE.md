@@ -1,4 +1,4 @@
-# Taskflow — CLAUDE.md
+# Taskflow App— CLAUDE.md
 
 > Read this fully before writing any code.
 > This file covers exactly what we build right now — nothing more.
