@@ -177,6 +177,8 @@ Sets `taskflow_session` (httpOnly) + `taskflow_name` + `taskflow_email` + `taskf
 | DELETE | `/api/tasks/:id` | Auth | Delete task |
 | PATCH | `/api/tasks/:id/status` | Auth | Change only the task's status (drag-drop / quick move) |
 | GET | `/api/board-statuses/team/:teamId` | Auth | Team's status catalog — `{ statusId, statusName }[]`, powers the status dropdown + per-team status tabs |
+| GET | `/api/migrate/task/archived` | Auth | Archived tasks for a team (paginated). Query: `teamId`, `page`, `limit`, `statusId`, `search`. Powers the Board MFE **Archived Tasks** screen (`ArchivedTasklistComponent`). Consumed by `TeamService.getArchivedTasks()` |
+| GET | `/api/migrate/task/archived/:taskId` | Auth | Single archived task detail. Powers the Board MFE **Archived Task Details** screen (`ArchivedTaskdetailsComponent`). Consumed by `TeamService.getArchivedTask()` |
 
 ### `GET /api/tasks/my`
 **Query params**
@@ -244,6 +246,44 @@ Note: status *names* are not embedded on the task — resolve `statusId` against
 { "statusId": "uuid" }
 ```
 **Response `200`** — updated Task object.
+
+### `GET /api/migrate/task/archived`
+**Query params**
+```
+teamId=uuid            (required)
+page=1&limit=10
+statusId=uuid           (optional — filter by status)
+search=string           (optional)
+```
+**Response `200`** — paginated list of archived tasks. Note: assignees arrive under
+`assigneeDetails` (not `assignees`), each with `id` (not `userId`), and `avatarUrl` /
+`avatarInitials` may be empty strings. `TeamService.getArchivedTasks()` unwraps the
+list tolerantly (`{ result: { data } }` | `{ data }` | `{ result: [] }` | `[]`).
+```json
+{
+  "data": [
+    {
+      "id": "2271b4e3-2b72-424a-8be3-d342981d90a2",
+      "taskNumber": 1,
+      "title": "Test Task",
+      "description": null,
+      "priority": "High",
+      "label": null,
+      "statusId": "530b9897-2332-4052-b906-5d24eb7a24cf",
+      "teamId": "8b475c9a-4c87-4e9a-9f8b-74b4e5ed65db",
+      "assigneeDetails": [
+        { "id": "cfad9fc7-...", "name": "Kumbhakar Biswas", "avatarInitials": "", "avatarUrl": "" }
+      ],
+      "expectedCompletion": null,
+      "progress": 0,
+      "createdBy": "00000000-0000-0000-0000-000000000000",
+      "deletedAt": null,
+      "createdAt": "2026-07-11T05:13:04.365661Z",
+      "updatedAt": "2026-07-11T05:41:21.56791Z"
+    }
+  ]
+}
+```
 
 <details>
 <summary>Superseded plan (kept for history — not the live contract)</summary>
@@ -738,6 +778,10 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | Delete status (🗑, board column header → confirmation modal) | `DELETE /api/board-statuses/:statusId` via `TeamService.deleteStatus()`, then refetch the board. ✅ confirmed live (401 unauth) |
 | Drag task to another column | `PATCH /api/tasks/:id/status` via `TeamService.updateTaskStatus(taskId, statusId)` — body `{ statusId }`. ✅ confirmed live (PATCH → 401 unauth; PUT/POST → 405) |
 | "+ Add Task" button per column | navigates to `/tasks/new?teamId=&statusId=` → `POST /api/tasks` |
+| "Archived Task" button per team card (DashboardComponent) | navigates to `/archived/:teamId` (Angular router, same zone) |
+| Archived Tasks table (ArchivedTasklistComponent) — Task # / Title / Priority / Assignee | `GET /api/migrate/task/archived?teamId=&page=&limit=&statusId=&search=` via `TeamService.getArchivedTasks()`. Assignee cell shows `assigneeDetails[].avatarUrl` (fallback initials) with the name on hover |
+| Archived Tasks table — "View Task" eye icon per row | navigates to `/archived-task/:taskId` (Angular router, same zone) → `ArchivedTaskdetailsComponent` |
+| Archived Task Details (ArchivedTaskdetailsComponent) — number, title, priority, label, progress, dates, assignees, description | `GET /api/migrate/task/archived/:taskId` via `TeamService.getArchivedTask()`. Description rendered from CKEditor HTML via `[innerHTML]` |
 | Task card "↗" open icon | navigates to `/tasks/:id` |
 | Sidebar — user card | `GET /api/auth/me` |
 | Topbar — notification bell | `GET /api/notifications` |

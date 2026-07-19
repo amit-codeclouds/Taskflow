@@ -71,6 +71,50 @@ export interface TeamBoard {
 }
 // ───────────────────────────────────────────────────────────────────────────
 
+// ── GET /api/migrate/task/archived?teamId=&page=&limit=&statusId=&search= ──
+// One assignee on an archived task. Note: `id` (not `userId`) and the fields may
+// be empty strings ("") rather than absent — the mapper handles that.
+export interface ArchivedAssignee {
+  id: string;
+  name: string;
+  avatarInitials?: string;
+  avatarUrl?: string;
+}
+
+// One archived task as returned by the archived-tasks list. Confirmed against the
+// live payload: assignees arrive under `assigneeDetails`, priority is capitalised
+// (e.g. "High"), and `label`/`avatarUrl` may be null/"".
+export interface ApiArchivedTask {
+  id: string;
+  taskNumber?: number;
+  number?: number;
+  title: string;
+  description?: string | null;
+  priority?: string | null;
+  label?: string | null;
+  statusId?: string;
+  teamId?: string;
+  assigneeDetails?: ArchivedAssignee[];
+  assignees?: ArchivedAssignee[];   // alias tolerance
+  expectedCompletion?: string | null;
+  progress?: number;
+  // Present on the single-task detail response (GET .../archived/:taskId).
+  createdBy?: string;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  deletedAt?: string | null;
+}
+
+// Generic paginated envelope used by list endpoints ({ data, total, page, ... }).
+export interface Paginated<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+// ───────────────────────────────────────────────────────────────────────────
+
 // Body for creating a board status (POST). Field names mirror the modal form.
 export interface CreateStatusPayload {
   name: string;

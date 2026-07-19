@@ -1,6 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { Team } from '../../shared/interfaces/board.interface';
 import { BoardService } from '../../core/services/board/board.service';
 import { CreateStatusComponent } from '../../shared/modal/create-status/create-status.component';
@@ -85,6 +85,7 @@ function readStatusEntries(raw: Team['statusTaskCounts']): { key: string; label:
 })
 export class DashboardComponent implements OnInit {
   private boardService = inject(BoardService);
+  private router = inject(Router);
 
   boards: BoardSummary[] = [];
   loading = true;
@@ -124,6 +125,14 @@ export class DashboardComponent implements OnInit {
 
   closeStatusModal(): void {
     this.statusModalTeam = null;
+  }
+
+  // ── Archived tasks ──
+  openArchived(team: Team, event: Event): void {
+    // Stop the click from triggering the card's routerLink navigation.
+    event.stopPropagation();
+    event.preventDefault();
+    this.router.navigate(['/archived', team.id]);
   }
 
   onStatusCreated(): void {

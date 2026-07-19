@@ -1,0 +1,165 @@
+:host {
+  display: block;
+  background: #121215;
+  min-height: calc(100vh - 64px);
+  padding: 32px 24px;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: #F4F3F0;
+}
+
+.detail-container { max-width: 760px; margin: 0 auto; }
+
+.back-link {
+  display: inline-block; font-size: 12px; color: #6E6C6A;
+  background: transparent; border: none; cursor: pointer; padding: 0;
+  margin-bottom: 16px;
+  transition: color 0.15s;
+  &:hover { color: #ABAAA5; }
+}
+
+/* ── Card ── */
+.detail-card {
+  background: #222227; border: 1px solid #2C2C32; border-radius: 12px;
+  padding: 28px;
+}
+
+.detail-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+}
+.head-left { display: flex; align-items: center; gap: 10px; }
+.task-number {
+  font-size: 13px; font-weight: 600; color: #ABAAA5;
+  font-variant-numeric: tabular-nums;
+}
+.archived-badge {
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+  color: #E09D34; background: #E09D341A; border: 1px solid #E09D3455;
+  padding: 2px 8px; border-radius: 999px;
+}
+
+.task-title { font-size: 24px; font-weight: 600; color: #F4F3F0; margin: 14px 0 0; }
+
+.label-chip {
+  display: inline-flex; margin-top: 12px;
+  font-size: 11px; font-weight: 500; color: #766Be8;
+  background: #6155DD1A; border: 1px solid #6155DD55;
+  padding: 3px 10px; border-radius: 999px;
+}
+
+/* ── Priority pill ── */
+.priority-pill {
+  display: inline-flex; align-items: center;
+  font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 999px;
+  border: 1px solid transparent; white-space: nowrap;
+}
+.priority-high   { color: #DC4949; background: #DC49491A; border-color: #DC494955; }
+.priority-medium { color: #E09D34; background: #E09D341A; border-color: #E09D3455; }
+.priority-low    { color: #32B173; background: #32B1731A; border-color: #32B17355; }
+
+/* ── Meta grid ── */
+.meta-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
+  margin-top: 24px; padding: 20px 0; border-top: 1px solid #2C2C3255;
+}
+.meta-item { display: flex; flex-direction: column; gap: 6px; }
+.meta-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #6E6C6A;
+}
+.meta-value { font-size: 13px; color: #F4F3F0; }
+
+.progress-row { display: flex; align-items: center; gap: 10px; }
+.progress-track {
+  flex: 1; height: 6px; border-radius: 999px; background: #2C2C32; overflow: hidden;
+}
+.progress-fill { height: 100%; border-radius: 999px; background: #6155DD; }
+.progress-val { font-size: 12px; color: #ABAAA5; font-variant-numeric: tabular-nums; }
+
+/* ── Sections ── */
+.detail-section { margin-top: 24px; padding-top: 20px; border-top: 1px solid #2C2C3255; }
+.section-title {
+  font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+  color: #ABAAA5; margin: 0 0 14px;
+}
+.empty-inline { font-size: 13px; color: #6E6C6A; margin: 0; }
+
+/* ── Assignees ── */
+.assignee-list { display: flex; flex-wrap: wrap; gap: 10px; }
+.assignee-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: #1A1A1E; border: 1px solid #2C2C32;
+  padding: 5px 12px 5px 5px; border-radius: 999px;
+}
+.assignee-avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: #261F42; color: #6155DD;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600; object-fit: cover; flex-shrink: 0;
+}
+.assignee-name { font-size: 13px; color: #F4F3F0; }
+
+/* ── Description (CKEditor HTML) ── */
+// NOTE: the description is rendered via [innerHTML], so its child elements do
+// NOT carry Angular's view-encapsulation attributes. Plain `.description img`
+// rules would never match them — the child selectors must use ::ng-deep to
+// pierce encapsulation. (Inherited props like color/font-size still cascade
+// onto the injected content from `.description` itself, so they stay here.)
+.description {
+  font-size: 14px; line-height: 1.6; color: #D6D5D1;
+  max-width: 100%;
+  overflow-x: auto;            // wide content (tables/pre) scrolls, never stretches the card
+  overflow-wrap: break-word;   // long words / URLs don't push the card wider
+
+  ::ng-deep {
+    :is(p, ul, ol) { margin: 0 0 12px; }
+    :is(h1, h2, h3) { color: #F4F3F0; margin: 18px 0 10px; }
+    a { color: #766Be8; }
+    ul, ol { padding-left: 20px; }
+
+    // Images scale to the page width and keep their aspect ratio, overriding any
+    // inline width/height attributes CKEditor emits.
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      display: block;
+    }
+
+    // CKEditor wraps images in <figure> (display:table shrink-wraps to the image's
+    // natural size, which defeats the img's max-width). Force block layout and cap
+    // the wrapper so a resized figure can't overflow the card.
+    figure {
+      display: block;
+      max-width: 100% !important;
+      width: auto !important;
+      margin: 12px 0;
+    }
+
+    // Wide tables scroll inside the block instead of stretching the card.
+    table { max-width: 100%; }
+
+    code {
+      background: #1A1A1E; border: 1px solid #2C2C32; border-radius: 4px;
+      padding: 1px 5px; font-size: 12px;
+    }
+  }
+}
+
+/* ── States ── */
+.state-msg {
+  padding: 60px 0; text-align: center; color: #6E6C6A; font-size: 13px;
+}
+
+/* ── Skeleton ── */
+.skeleton {
+  position: relative; overflow: hidden;
+  background-color: #2C2C32; border-radius: 4px;
+
+  &::after {
+    content: ''; position: absolute; inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, #393940, transparent);
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  }
+}
+@keyframes skeleton-shimmer { 100% { transform: translateX(100%); } }

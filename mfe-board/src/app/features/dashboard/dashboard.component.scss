@@ -120,6 +120,16 @@
   &:hover { background: #6155DD1A; border-color: #6155DD; }
 }
 
+.archived-btn {
+  display: inline-flex; align-items: center;
+  height: 28px; padding: 0 12px; border-radius: 8px;
+  font-size: 12px; font-weight: 500;
+  background: transparent; color: #ABAAA5;
+  border: 1px solid #2C2C32; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  &:hover { background: #2C2C32; border-color: #393940; color: #F4F3F0; }
+}
+
 .empty-state {
   padding: 80px 0; text-align: center; color: #6E6C6A; font-size: 13px;
 }
