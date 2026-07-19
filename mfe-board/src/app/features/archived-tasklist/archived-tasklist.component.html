@@ -1,0 +1,90 @@
+<div class="archived-container">
+  <!-- Header -->
+  <div class="archived-header">
+    <div>
+      <a class="back-link" routerLink="/">← Back to Boards</a>
+      <h1 class="archived-title">Archived Tasks</h1>
+      <p class="archived-subtitle" *ngIf="!loading && !error">
+        {{ total }} archived task{{ total === 1 ? '' : 's' }}
+      </p>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <table class="archived-table">
+      <thead>
+        <tr>
+          <th class="col-num">Task #</th>
+          <th class="col-title">Title</th>
+          <th class="col-priority">Priority</th>
+          <th class="col-assignee">Assignee</th>
+          <th class="col-view">View Task</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <!-- Loading skeleton -->
+        <ng-container *ngIf="loading">
+          <tr *ngFor="let s of skeletonRows">
+            <td><div class="skeleton" style="width:40px;height:14px"></div></td>
+            <td><div class="skeleton" style="width:70%;height:14px"></div></td>
+            <td><div class="skeleton" style="width:60px;height:20px;border-radius:999px"></div></td>
+            <td>
+              <div class="assignees">
+                <div class="skeleton skeleton-avatar" *ngFor="let a of [0,1,2]"></div>
+              </div>
+            </td>
+            <td><div class="skeleton" style="width:28px;height:28px;border-radius:8px"></div></td>
+          </tr>
+        </ng-container>
+
+        <!-- Rows -->
+        <ng-container *ngIf="!loading && !error">
+          <tr *ngFor="let row of rows">
+            <td class="col-num">{{ row.number }}</td>
+            <td class="col-title">{{ row.title }}</td>
+            <td class="col-priority">
+              <span class="priority-pill" [class]="'priority-' + row.priority">
+                {{ row.priority | titlecase }}
+              </span>
+            </td>
+            <td class="col-assignee">
+              <div class="assignees" *ngIf="row.assignees.length; else noAssignee">
+                <span class="assignee" *ngFor="let a of row.assignees">
+                  <img *ngIf="a.avatarUrl" class="assignee-avatar" [src]="a.avatarUrl" [alt]="a.name" />
+                  <span *ngIf="!a.avatarUrl" class="assignee-avatar">{{ a.initials }}</span>
+                  <span class="assignee-tooltip">{{ a.name }}</span>
+                </span>
+              </div>
+              <ng-template #noAssignee><span class="unassigned">—</span></ng-template>
+            </td>
+            <td class="col-view">
+              <button type="button" class="view-btn" (click)="viewTask(row.id)" title="View task" aria-label="View task">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
+            </td>
+          </tr>
+        </ng-container>
+      </tbody>
+    </table>
+
+    <!-- Empty / error states -->
+    <div class="state-msg" *ngIf="!loading && error">
+      Couldn't load archived tasks. Please try again.
+    </div>
+    <div class="state-msg" *ngIf="!loading && !error && rows.length === 0">
+      No archived tasks for this team.
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination" *ngIf="!loading && !error && totalPages > 1">
+    <button class="page-btn" [disabled]="page <= 1" (click)="prevPage()">Previous</button>
+    <span class="page-info">Page {{ page }} of {{ totalPages }}</span>
+    <button class="page-btn" [disabled]="page >= totalPages" (click)="nextPage()">Next</button>
+  </div>
+</div>

@@ -1,8 +1,9 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { Team } from '../../shared/interfaces/board.interface';
 import { BoardService } from '../../core/services/board/board.service';
+import { CreateStatusComponent } from '../../shared/modal/create-status/create-status.component';
 
 // One rendered status pill on a board card — only built for statuses that are
 // actually present in the team's `statusTaskCounts`.
@@ -12,12 +13,17 @@ interface StatusPill {
   color: string;
 }
 
+interface Assignee {
+  initials: string;
+  avatarUrl?: string;
+}
+
 interface BoardSummary {
   team: Team;
   total: number;
   inProgress: number;
   statuses: StatusPill[];
-  assignees: string[];
+  assignees: Assignee[];
 }
 
 // Dot colour + display label for the well-known statuses; unknown statuses fall
@@ -73,12 +79,13 @@ function readStatusEntries(raw: Team['statusTaskCounts']): { key: string; label:
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [NgFor, NgIf, RouterLink],
+  imports: [NgFor, NgIf, RouterLink, CreateStatusComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit {
   private boardService = inject(BoardService);
+  private router = inject(Router);
 
   boards: BoardSummary[] = [];
   loading = true;
@@ -87,7 +94,15 @@ export class DashboardComponent implements OnInit {
   // Placeholder rows rendered while loading (skeleton cards).
   readonly skeletonCards = [0, 1, 2];
 
+  // Team whose Add-Status modal is open (null = closed).
+  statusModalTeam: Team | null = null;
+
   ngOnInit(): void {
+    this.load();
+  }
+
+  private load(): void {
+    this.loading = true;
     this.boardService.getTeams().subscribe({
       next: (teams) => {
         this.boards = teams.map(team => this.toSummary(team));
@@ -100,13 +115,39 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+  // ── Add-status modal (CreateStatusComponent) ──
+  openAddStatus(team: Team, event: Event): void {
+    // Stop the click from triggering the card's routerLink navigation.
+    event.stopPropagation();
+    event.preventDefault();
+    this.statusModalTeam = team;
+  }
+
+  closeStatusModal(): void {
+    this.statusModalTeam = null;
+  }
+
+  // ── Archived tasks ──
+  openArchived(team: Team, event: Event): void {
+    // Stop the click from triggering the card's routerLink navigation.
+    event.stopPropagation();
+    event.preventDefault();
+    this.router.navigate(['/archived', team.id]);
+  }
+
+  onStatusCreated(): void {
+    this.statusModalTeam = null;
+    this.load();   // refresh cards so the new status pill appears
+  }
+
   // Built entirely from the GET /api/teams response. Assignees come from the team's
   // `members` array; status pills come from whatever statuses are present in the
   // team's `statusTaskCounts` — a status absent from the response gets no pill.
   private toSummary(team: Team): BoardSummary {
-    const assignees = (team.members ?? []).map(
-      m => (m.avatarInitials?.trim() || initialsFromName(m.name)),
-    );
+    const assignees: Assignee[] = (team.members ?? []).map(m => ({
+      initials: m.avatarInitials?.trim() || initialsFromName(m.name),
+      avatarUrl: m.avatarUrl,
+    }));
     const entries = readStatusEntries(team.statusTaskCounts);
     return {
       team,
@@ -125,6 +166,6 @@ export class DashboardComponent implements OnInit {
   get totalTasks(): number { return this.boards.reduce((s, b) => s + b.total, 0); }
   get totalInProgress(): number { return this.boards.reduce((s, b) => s + b.inProgress, 0); }
 
-  visibleAssignees(b: BoardSummary): string[] { return b.assignees.slice(0, 4); }
+  visibleAssignees(b: BoardSummary): Assignee[] { return b.assignees.slice(0, 4); }
   overflowAssignees(b: BoardSummary): number { return Math.max(0, b.assignees.length - 4); }
 }

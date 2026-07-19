@@ -249,6 +249,38 @@ interface AssigneeSummary {
 
 ---
 
+## ArchivedTask (API response shape — `GET /api/migrate/task/archived`)
+
+> Source: `mfe-board/src/app/shared/interfaces/board.interface.ts` (`ApiArchivedTask`).
+> Same core fields as `Task`, but the archived-list payload nests assignees under
+> `assigneeDetails` (not `assignees`), and each uses `id` (not `userId`). Empty
+> `avatarUrl` / `avatarInitials` arrive as `""` rather than being absent.
+
+```ts
+interface ApiArchivedTask {
+  id: string;                        // UUID
+  taskNumber?: number;               // display id (e.g. "#42")
+  title: string;
+  description?: string | null;
+  priority?: string | null;          // 'High' | 'Medium' | 'Low'
+  label?: string | null;
+  statusId?: string;
+  teamId?: string;
+  assigneeDetails?: ArchivedAssignee[];
+  expectedCompletion?: string | null;
+  progress?: number;
+}
+
+interface ArchivedAssignee {
+  id: string;                        // FK → User.id (note: `id`, not `userId`)
+  name: string;
+  avatarInitials?: string;           // may be ""
+  avatarUrl?: string;                // may be ""
+}
+```
+
+---
+
 ## TaskAssigneeMapper
 
 > A task can be assigned to multiple users.

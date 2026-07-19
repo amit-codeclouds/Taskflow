@@ -61,12 +61,24 @@
 .column-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .column-title { font-size: 13px; font-weight: 600; color: #F4F3F0; }
 .column-count { font-size: 11px; background: #2C2C32; color: #6E6C6A; padding: 1px 7px; border-radius: 999px; font-weight: 500; }
+.column-header-actions { display: flex; align-items: center; gap: 6px; }
+
 .column-add-btn {
   width: 24px; height: 24px; border-radius: 6px; background: #2C2C32;
   display: flex; align-items: center; justify-content: center; color: #6E6C6A;
   transition: background 0.15s, color 0.15s;
 
   &:hover { background: #6155DD22; color: #6155DD; }
+}
+
+.column-icon-btn {
+  width: 24px; height: 24px; border-radius: 6px; background: #2C2C32;
+  display: flex; align-items: center; justify-content: center; color: #6E6C6A;
+  border: none; cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+
+  &:hover { background: #393940; color: #F4F3F0; }
+  &--danger:hover { background: #DC49491A; color: #DC4949; }
 }
 .column-cards {
   display: flex; flex-direction: column; gap: 8px;
@@ -128,6 +140,7 @@
   border: 2px solid #222227;   // card background — creates the overlap ring
   margin-left: -6px;
   flex-shrink: 0;
+  object-fit: cover;           // for <img> avatars — keeps them from stretching
   &:first-child { margin-left: 0; }
 }
 .task-assignee--overflow { background: #2C2C32; color: #ABAAA5; }

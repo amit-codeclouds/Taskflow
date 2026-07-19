@@ -1,0 +1,78 @@
+<div class="detail-container">
+  <!-- Back -->
+  <button type="button" class="back-link" (click)="goBack()">← Back</button>
+
+  <!-- Loading skeleton -->
+  <div class="detail-card" *ngIf="loading">
+    <div class="skeleton" style="width:60px;height:12px"></div>
+    <div class="skeleton" style="width:60%;height:26px;margin-top:12px"></div>
+    <div class="skeleton" style="width:100%;height:14px;margin-top:24px"></div>
+    <div class="skeleton" style="width:90%;height:14px;margin-top:10px"></div>
+    <div class="skeleton" style="width:70%;height:14px;margin-top:10px"></div>
+  </div>
+
+  <!-- Error -->
+  <div class="state-msg" *ngIf="!loading && error">
+    Couldn't load this archived task. Please try again.
+  </div>
+
+  <!-- Detail -->
+  <div class="detail-card" *ngIf="!loading && !error && task">
+    <div class="detail-head">
+      <div class="head-left">
+        <span class="task-number">{{ task.number }}</span>
+        <span class="archived-badge">Archived</span>
+      </div>
+      <span class="priority-pill" [class]="'priority-' + task.priority">
+        {{ task.priority | titlecase }} Priority
+      </span>
+    </div>
+
+    <h1 class="task-title">{{ task.title }}</h1>
+
+    <span class="label-chip" *ngIf="task.label">{{ task.label }}</span>
+
+    <!-- Meta grid -->
+    <div class="meta-grid">
+      <div class="meta-item">
+        <span class="meta-label">Progress</span>
+        <div class="progress-row">
+          <div class="progress-track"><div class="progress-fill" [style.width.%]="task.progress"></div></div>
+          <span class="progress-val">{{ task.progress }}%</span>
+        </div>
+      </div>
+      <div class="meta-item" *ngIf="task.expectedCompletion">
+        <span class="meta-label">Expected Completion</span>
+        <span class="meta-value">{{ task.expectedCompletion }}</span>
+      </div>
+      <div class="meta-item" *ngIf="task.createdAt">
+        <span class="meta-label">Created</span>
+        <span class="meta-value">{{ task.createdAt }}</span>
+      </div>
+      <div class="meta-item" *ngIf="task.updatedAt">
+        <span class="meta-label">Last Updated</span>
+        <span class="meta-value">{{ task.updatedAt }}</span>
+      </div>
+    </div>
+
+    <!-- Assignees -->
+    <div class="detail-section">
+      <h2 class="section-title">Assignees</h2>
+      <div class="assignee-list" *ngIf="task.assignees.length; else noAssignee">
+        <div class="assignee-chip" *ngFor="let a of task.assignees">
+          <img *ngIf="a.avatarUrl" class="assignee-avatar" [src]="a.avatarUrl" [alt]="a.name" />
+          <span *ngIf="!a.avatarUrl" class="assignee-avatar">{{ a.initials }}</span>
+          <span class="assignee-name">{{ a.name }}</span>
+        </div>
+      </div>
+      <ng-template #noAssignee><p class="empty-inline">No assignees.</p></ng-template>
+    </div>
+
+    <!-- Description -->
+    <div class="detail-section">
+      <h2 class="section-title">Description</h2>
+      <div class="description" *ngIf="task.descriptionHtml; else noDesc" [innerHTML]="task.descriptionHtml"></div>
+      <ng-template #noDesc><p class="empty-inline">No description.</p></ng-template>
+    </div>
+  </div>
+</div>

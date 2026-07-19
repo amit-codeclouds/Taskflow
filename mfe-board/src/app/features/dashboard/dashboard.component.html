@@ -75,7 +75,10 @@
 
       <div class="board-card-bottom">
         <div class="assignees">
-          <div class="assignee-avatar" *ngFor="let a of visibleAssignees(b)">{{ a }}</div>
+          <ng-container *ngFor="let a of visibleAssignees(b)">
+            <img *ngIf="a.avatarUrl" class="assignee-avatar" [src]="a.avatarUrl" [alt]="a.initials" />
+            <div *ngIf="!a.avatarUrl" class="assignee-avatar">{{ a.initials }}</div>
+          </ng-container>
           <div class="assignee-overflow" *ngIf="overflowAssignees(b) > 0">+{{ overflowAssignees(b) }}</div>
         </div>
 
@@ -83,6 +86,8 @@
           <span class="column-pill" *ngFor="let s of b.statuses">
             <span class="dot" [style.background]="s.color"></span>{{ s.count }} {{ s.label }}
           </span>
+          <span class="add-status-btn" (click)="openAddStatus(b.team, $event)">+ Add Status</span>
+          <span class="archived-btn" (click)="openArchived(b.team, $event)">Archived Task</span>
           <span class="open-btn">Open</span>
         </div>
       </div>
@@ -93,3 +98,12 @@
     </div>
   </div>
 </div>
+
+<!-- Add Status modal -->
+<app-create-status
+  *ngIf="statusModalTeam"
+  [teamId]="statusModalTeam.id"
+  [teamName]="statusModalTeam.name"
+  (close)="closeStatusModal()"
+  (created)="onStatusCreated()"
+></app-create-status>
