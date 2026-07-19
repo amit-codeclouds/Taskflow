@@ -77,6 +77,7 @@
   border: 2px solid #222227; margin-left: -6px;
   display: flex; align-items: center; justify-content: center;
   font-size: 10px; font-weight: 600;
+  object-fit: cover;   // for <img> avatars — keeps them from stretching
   &:first-child { margin-left: 0; }
 }
 .assignee-overflow {
@@ -107,6 +108,16 @@
   text-decoration: none;
   transition: background 0.15s;
   &:hover { background: #393940; }
+}
+
+.add-status-btn {
+  display: inline-flex; align-items: center;
+  height: 28px; padding: 0 12px; border-radius: 8px;
+  font-size: 12px; font-weight: 500;
+  background: transparent; color: #6155DD;
+  border: 1px solid #6155DD55; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  &:hover { background: #6155DD1A; border-color: #6155DD; }
 }
 
 .empty-state {

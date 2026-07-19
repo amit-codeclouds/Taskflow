@@ -733,9 +733,9 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | Topbar team-switcher dropdown (Board MFE only) | `GET /api/teams` |
 | Kanban columns + tasks (BoardComponent) | `GET /api/tasks/team/:teamId/board` via `TeamService.getTeamBoard()` — response mapped to columns/tasks in the component; no static data |
 | Column "Load more" tasks | `GET /api/board/:teamId/status/:statusId/tasks?page&limit` |
-| "+ Add Status" modal submit | `POST /api/board/:teamId/statuses` |
+| "+ Add Status" modal submit (dashboard card → CreateStatusComponent) | `POST /api/board-statuses/create` via `TeamService.createStatus()` — body `{ name, description, position, teamId, isArchievable }`. ✅ confirmed live (401 unauth) |
 | Edit status (✎) modal submit | `PATCH /api/board/:teamId/statuses/:statusId` |
-| Delete status (🗑) | `DELETE /api/board/:teamId/statuses/:statusId` |
+| Delete status (🗑, board column header → confirmation modal) | `DELETE /api/board-statuses/:statusId` via `TeamService.deleteStatus()`, then refetch the board. ✅ confirmed live (401 unauth) |
 | Drag task to another column | `PATCH /api/tasks/:id/status` via `TeamService.updateTaskStatus(taskId, statusId)` — body `{ statusId }`. ✅ confirmed live (PATCH → 401 unauth; PUT/POST → 405) |
 | "+ Add Task" button per column | navigates to `/tasks/new?teamId=&statusId=` → `POST /api/tasks` |
 | Task card "↗" open icon | navigates to `/tasks/:id` |

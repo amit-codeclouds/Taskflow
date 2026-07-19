@@ -1,0 +1,59 @@
+:host { font-family: 'Inter', system-ui, sans-serif; }
+
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+
+.modal-card {
+  width: 100%; max-width: 420px;
+  background: #1A1A1E; border: 1px solid #2C2C32; border-radius: 12px;
+  padding: 24px;
+  max-height: calc(100vh - 48px); overflow-y: auto;
+}
+
+.modal-title { font-size: 16px; font-weight: 600; color: #F4F3F0; margin: 0 0 16px; }
+
+.modal-form { display: flex; flex-direction: column; gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field-label {
+  font-size: 11px; color: #6E6C6A; text-transform: uppercase;
+  letter-spacing: 0.08em; font-weight: 500;
+}
+.field-input {
+  width: 100%; padding: 9px 12px;
+  background: #121215; border: 1px solid #2C2C32; border-radius: 8px;
+  color: #F4F3F0; font-size: 14px; outline: none; font-family: inherit;
+  transition: border-color 0.15s;
+  &::placeholder { color: #6E6C6A; }
+  &:focus { border-color: #6155DD; }
+  &:read-only { color: #ABAAA5; cursor: default; }
+}
+textarea.field-input { resize: vertical; min-height: 40px; }
+
+.field-checkbox {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: #F4F3F0; cursor: pointer; user-select: none;
+  input { width: 16px; height: 16px; accent-color: #6155DD; cursor: pointer; }
+}
+
+.field-error { color: #DC4949; font-size: 12px; margin: 0; }
+.modal-error { color: #DC4949; font-size: 12px; margin: 0; }
+
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+.modal-btn {
+  height: 36px; padding: 0 16px; border-radius: 8px;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  border: 1px solid transparent; transition: background 0.15s, opacity 0.15s;
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+.modal-btn--ghost {
+  background: transparent; color: #ABAAA5; border-color: #2C2C32;
+  &:hover:not(:disabled) { background: #222227; color: #F4F3F0; }
+}
+.modal-btn--primary {
+  background: #6155DD; color: #fff;
+  &:hover:not(:disabled) { background: #766Be8; }
+}

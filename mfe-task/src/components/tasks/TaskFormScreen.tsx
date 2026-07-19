@@ -202,7 +202,7 @@ export default function TaskFormScreen({ taskId }: { taskId?: string }) {
         title:              '',
         description:        '',
         teamId:             searchParams.get('teamId')   ?? '',
-        statusId:           '',
+        statusId:           searchParams.get('statusId') ?? '',
         priority:           'Medium',
         label:              '',
         assigneeIds:        [],

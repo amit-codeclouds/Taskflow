@@ -1,3 +1,8 @@
+export interface Assignee {
+  initials: string;
+  avatarUrl?: string;
+}
+
 export interface Task {
   id: string;         // display id, e.g. "#42"
   taskId: string;     // real backend UUID — used for API calls (status update)
@@ -5,7 +10,7 @@ export interface Task {
   priority: 'high' | 'medium' | 'low';
   label: string;
   labelColor: string;
-  assignees: string[];
+  assignees: Assignee[];
   due: string;
 }
 
@@ -15,6 +20,8 @@ export interface Column {
   title: string;
   color: string;
   count: number;
+  isArchievable: boolean;
+  isDeletable: boolean;
   tasks: Task[];
 }
 
@@ -23,6 +30,7 @@ export interface TeamMember {
   userId: string;
   name: string;
   avatarInitials?: string;
+  avatarUrl?: string;
   role: string;
 }
 
@@ -53,6 +61,8 @@ export interface ApiBoardColumn {
   position?: number;
   totalTasks?: number;
   count?: number;
+  isArchievable?: boolean;
+  isDeletable?: boolean;
   tasks: ApiBoardTask[];
 }
 
@@ -60,6 +70,15 @@ export interface TeamBoard {
   columns: ApiBoardColumn[];
 }
 // ───────────────────────────────────────────────────────────────────────────
+
+// Body for creating a board status (POST). Field names mirror the modal form.
+export interface CreateStatusPayload {
+  name: string;
+  description: string;
+  position: number;
+  teamId: string;
+  isArchievable: boolean;
+}
 
 // One per-status task count as returned inside a team's `statusTaskCounts`.
 // Field names are tolerant since the exact shape is still being confirmed.

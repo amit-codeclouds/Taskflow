@@ -61,11 +61,38 @@
           <span class="column-title">{{ col.title }}</span>
           <span class="column-count">{{ col.tasks.length }}</span>
         </div>
-        <a [href]="addTaskUrl(col)" class="column-add-btn">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M6 2v8M2 6h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-        </a>
+        <div class="column-header-actions">
+          <button
+            *ngIf="col.isArchievable"
+            type="button"
+            class="column-icon-btn"
+            title="Archive status"
+            (click)="archiveStatus(col, $event)"
+          >
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <rect x="1.5" y="2" width="11" height="3" rx="1" stroke="currentColor" stroke-width="1.2"/>
+              <path d="M2.5 5v6a1 1 0 001 1h7a1 1 0 001-1V5" stroke="currentColor" stroke-width="1.2"/>
+              <path d="M5.5 7.5h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <button
+            *ngIf="col.isDeletable"
+            type="button"
+            class="column-icon-btn column-icon-btn--danger"
+            title="Delete status"
+            (click)="deleteStatus(col, $event)"
+          >
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <path d="M2.5 3.5h9M5.5 3.5V2.5a1 1 0 011-1h1a1 1 0 011 1v1M4 3.5v8a1 1 0 001 1h4a1 1 0 001-1v-8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M6 6v4M8 6v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <a [href]="addTaskUrl(col)" class="column-add-btn">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M6 2v8M2 6h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </a>
+        </div>
       </div>
       <div
         class="column-cards"
@@ -75,7 +102,7 @@
         [cdkDropListConnectedTo]="connectedDropLists"
         (cdkDropListDropped)="onTaskDropped($event, col)"
       >
-        <div class="task-card" cdkDrag *ngFor="let task of col.tasks; let ti = index" [style.animation-delay]="(ci * 0.08 + ti * 0.05) + 's'">
+        <div class="task-card" cdkDrag *ngFor="let task of col.tasks; let ti = index" [style.animation-delay]="(ci * 0.08 + ti * 0.05) + 's'" (click)="openTask(task)">
           <div class="task-card-top">
             <span class="task-label" [style.background]="task.labelColor + '22'" [style.color]="task.labelColor">{{ task.label }}</span>
             <div class="priority-dot" [ngClass]="'priority-' + task.priority"></div>
@@ -92,7 +119,10 @@
               </span>
             </div>
             <div class="task-assignees">
-              <div class="task-assignee" *ngFor="let a of task.assignees.slice(0, 3)">{{ a }}</div>
+              <ng-container *ngFor="let a of task.assignees.slice(0, 3)">
+                <img *ngIf="a.avatarUrl" class="task-assignee" [src]="a.avatarUrl" [alt]="a.initials" />
+                <div *ngIf="!a.avatarUrl" class="task-assignee">{{ a.initials }}</div>
+              </ng-container>
               <div class="task-assignee task-assignee--overflow" *ngIf="task.assignees.length > 3">
                 +{{ task.assignees.length - 3 }}
               </div>
@@ -131,6 +161,18 @@
 <div class="board-container" *ngIf="!loading && !selectedTeam">
   <p class="board-subtitle" style="padding:40px 0">Board not found.</p>
 </div>
+
+<!-- Archive / delete status confirmation (reusable modal) -->
+<app-confirmation-modal
+  *ngIf="confirm"
+  [title]="confirm.kind === 'delete' ? 'Delete status?' : 'Archive status?'"
+  [message]="(confirm.kind === 'delete' ? 'Delete' : 'Archive') + ' the “' + confirm.col.title + '” status?'"
+  [confirmText]="confirm.kind === 'delete' ? 'Delete' : 'Archive'"
+  [variant]="confirm.kind === 'delete' ? 'danger' : 'default'"
+  [loading]="confirmLoading"
+  (confirm)="onConfirm()"
+  (cancel)="onCancelConfirm()"
+></app-confirmation-modal>
 
 <!-- Shared column skeleton, reused by the initial load and per-team board load -->
 <ng-template #columnsSkeleton>

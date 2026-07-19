@@ -17,6 +17,7 @@ import {
 } from '../../shared/interfaces/board.interface';
 import { BoardService } from '../../core/services/board/board.service';
 import { TeamService } from '../../core/services/team/team.service';
+import { ConfirmationModalComponent } from '../../shared/modal/confirmation-modal/confirmation-modal.component';
 
 // Palette used to colour columns by position (the API statuses carry no colour).
 const COLUMN_PALETTE = ['#6E6C6A', '#6155DD', '#32B173', '#E09D34', '#DC4949', '#6a9eef'];
@@ -40,7 +41,7 @@ function initialsFromName(name?: string | null): string {
 @Component({
   selector: 'app-board',
   standalone: true,
-  imports: [NgFor, NgClass, NgIf, NgTemplateOutlet, DragDropModule],
+  imports: [NgFor, NgClass, NgIf, NgTemplateOutlet, DragDropModule, ConfirmationModalComponent],
   templateUrl: './board.component.html',
   styleUrl: './board.component.scss'
 })
@@ -57,6 +58,10 @@ export class BoardComponent implements OnInit {
 
   // Skeleton placeholder layout: 3 columns with these task-card counts.
   readonly skeletonColumns = [[0, 1, 2], [0, 1], [0, 1, 2]];
+
+  // Pending archive/delete confirmation (null = no modal open).
+  confirm: { kind: 'archive' | 'delete'; col: Column } | null = null;
+  confirmLoading = false;
 
   constructor(private route: ActivatedRoute, private router: Router) {}
 
@@ -105,6 +110,8 @@ export class BoardComponent implements OnInit {
       title: column.name ?? column.title ?? '',
       color: column.color ?? COLUMN_PALETTE[index % COLUMN_PALETTE.length],
       count: column.totalTasks ?? column.count ?? tasks.length,
+      isArchievable: !!column.isArchievable,
+      isDeletable: !!column.isDeletable,
       tasks,
     };
   }
@@ -119,8 +126,11 @@ export class BoardComponent implements OnInit {
       label: task.label ?? '',
       labelColor: LABEL_COLORS[(task.label ?? '').toLowerCase()] ?? '#766Be8',
       assignees: (task.assignees ?? [])
-        .map(a => a.avatarInitials?.trim() || initialsFromName(a.name))
-        .filter(Boolean),
+        .map(a => ({
+          initials: a.avatarInitials?.trim() || initialsFromName(a.name),
+          avatarUrl: a.avatarUrl,
+        }))
+        .filter(a => a.initials || a.avatarUrl),
       due: this.formatDue(task.expectedCompletion ?? task.dueDate ?? task.due),
     };
   }
@@ -139,6 +149,50 @@ export class BoardComponent implements OnInit {
   addTaskUrl(col: Column): string {
     const params = new URLSearchParams({ teamId: this.selectedTeam?.id ?? '', statusId: col.statusId });
     return `/tasks/new?${params.toString()}`;
+  }
+
+  // Open the task detail page. /tasks/* is the Task MFE zone, so this is a hard
+  // (cross-zone) navigation, not an Angular router navigation.
+  openTask(task: Task): void {
+    window.location.href = `/tasks/${task.taskId}`;
+  }
+
+  archiveStatus(col: Column, event: Event): void {
+    event.stopPropagation();
+    this.confirm = { kind: 'archive', col };
+  }
+
+  deleteStatus(col: Column, event: Event): void {
+    event.stopPropagation();
+    this.confirm = { kind: 'delete', col };
+  }
+
+  onConfirm(): void {
+    if (!this.confirm) return;
+    const { kind, col } = this.confirm;
+
+    if (kind === 'delete') {
+      this.confirmLoading = true;
+      this.teamService.deleteStatus(col.statusId).subscribe({
+        next: () => {
+          this.confirmLoading = false;
+          this.confirm = null;
+          if (this.selectedTeam) this.loadBoard(this.selectedTeam.id);   // refetch the board
+        },
+        error: () => {
+          // Keep the modal open so the user can retry or cancel.
+          this.confirmLoading = false;
+        },
+      });
+      return;
+    }
+
+    // TODO: archive-status API (no endpoint yet).
+    this.confirm = null;
+  }
+
+  onCancelConfirm(): void {
+    if (!this.confirmLoading) this.confirm = null;
   }
 
   selectTeam(team: Team, e: Event) {
