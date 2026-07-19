@@ -64,9 +64,31 @@ jobs:
         working-directory: ${{matrix.project}}
         run: npm run build
 
-  initialize-deploy:
+  checking-secrets:
     runs-on: ubuntu-latest
     needs: build-check
+    if: github.ref == 'refs/heads/production'
+    steps:
+      - name: Checking for Secrets
+        run: echo "Welcome to checking for secrets"
+
+      - name: Checking Secrets
+        run: |
+          echo "Vercel Organisation ${ORG_ID}"
+          echo "Shell Project ID ${SHELL_PRJ_ID}"
+          echo "MFE Task Project Id ${TASK_PRJ_ID}"
+          echo "MFE Board Project Id ${BOARD_PRJ_ID}"
+          echo "Vercel Token ${V_TOKEN}"
+        env:
+          ORG_ID: ${{ secrets.VERCEL_ORG_ID}}
+          SHELL_PRJ_ID: ${{ secrets.VERCEL_PROJECT_ID_SHELL }}
+          TASK_PRJ_ID: ${{ secrets.VERCEL_PROJECT_ID_MFE_TASK }}
+          BOARD_PRJ_ID: ${{ secrets.VERCEL_PROJECT_ID_MFE_BOARD }}
+          V_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+  initialize-deploy:
+    runs-on: ubuntu-latest
+    needs: checking-secrets
     if: github.ref == 'refs/heads/production'
     strategy:
       fail-fast: false
