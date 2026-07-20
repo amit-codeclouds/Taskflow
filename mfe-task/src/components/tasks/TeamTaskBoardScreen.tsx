@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import AppSelect, { type SelectOption } from '@/components/ui/AppSelect';
@@ -19,6 +20,10 @@ function SearchIcon() {
       <path d="M9 9l2.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
   );
+}
+
+function PlusIcon() {
+  return <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" /></svg>;
 }
 
 function InfoIcon() {
@@ -152,15 +157,27 @@ export default function TeamTaskBoardScreen() {
             Tasks grouped by status for this team.
           </p>
         </div>
-        <div className="w-[220px] shrink-0">
-          <AppSelect
-            instanceId="assigned-team-filter"
-            options={teamOptions}
-            value={teamOptions.find((o) => o.value === teamId) ?? null}
-            onChange={(opt) => handleTeamChange(opt as SelectOption | null)}
-            isSearchable={false}
-            placeholder="Switch team…"
-          />
+        <div className="flex items-center gap-3 shrink-0">
+          <Link href={`/new?teamId=${teamId}`}>
+            <motion.button
+              className="flex items-center gap-2 bg-accent text-white text-sm font-medium px-4 py-2 rounded-lg"
+              whileHover={{ scale: 1.02, boxShadow: '0 0 16px rgba(97,85,221,0.3)' }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            >
+              <PlusIcon />New Task
+            </motion.button>
+          </Link>
+          <div className="w-[220px]">
+            <AppSelect
+              instanceId="assigned-team-filter"
+              options={teamOptions}
+              value={teamOptions.find((o) => o.value === teamId) ?? null}
+              onChange={(opt) => handleTeamChange(opt as SelectOption | null)}
+              isSearchable={false}
+              placeholder="Switch team…"
+            />
+          </div>
         </div>
       </motion.div>
 
