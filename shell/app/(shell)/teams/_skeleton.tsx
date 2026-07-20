@@ -52,3 +52,39 @@ export function TeamsSkeleton() {
     </SkeletonTheme>
   );
 }
+
+export function AssignedTeamsSkeleton() {
+  return (
+    <SkeletonTheme {...theme}>
+      <div className="max-w-3xl mx-auto space-y-6">
+        {/* Header */}
+        <div>
+          <Skeleton width={160} height={22} />
+          <Skeleton width={200} height={13} className="mt-1" />
+        </div>
+
+        {/* Team cards */}
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={i}
+              className="bg-bg-700 rounded-xl border border-border-subtle p-5 flex items-center gap-4"
+            >
+              <Skeleton circle width={36} height={36} />
+              <div className="flex-1 space-y-2">
+                <Skeleton width={140} height={14} />
+                <Skeleton width={200} height={11} />
+              </div>
+              <div className="flex gap-1">
+                {Array.from({ length: 3 }).map((__, j) => (
+                  <Skeleton key={j} circle width={28} height={28} />
+                ))}
+              </div>
+              <Skeleton width={80} height={28} borderRadius={6} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </SkeletonTheme>
+  );
+}

@@ -176,20 +176,6 @@
   &:hover { background: #222227; }
 }
 
-.user-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #261F42;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #6155DD;
-  font-size: 12px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
 .user-info {
   display: flex;
   flex-direction: column;

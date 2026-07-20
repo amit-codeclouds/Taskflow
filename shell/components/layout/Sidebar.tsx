@@ -1,9 +1,10 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Users, UserCircle2, Settings, KanbanSquare, User } from 'lucide-react';
+import { LayoutDashboard, Users, UserCircle2, Settings, KanbanSquare, User, ChevronRight } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
 import Avatar from '@/components/ui/Avatar';
 import { useAuth } from '@/lib/useAuth';
@@ -11,9 +12,16 @@ import { useAuth } from '@/lib/useAuth';
 type NavItem = { label: string; href: string; icon: React.ReactNode; external?: boolean };
 
 const WORKSPACE_ITEMS: NavItem[] = [
-  { label: 'Home',   href: '/',       icon: <LayoutDashboard size={16} strokeWidth={1.5} /> },
-  { label: 'Teams',  href: '/teams',  icon: <Users           size={16} strokeWidth={1.5} /> },
-  { label: 'People', href: '/people', icon: <UserCircle2     size={16} strokeWidth={1.5} /> },
+  { label: 'Home', href: '/', icon: <LayoutDashboard size={16} strokeWidth={1.5} /> },
+];
+
+const WORKSPACE_TRAILING_ITEMS: NavItem[] = [
+  { label: 'People', href: '/people', icon: <UserCircle2 size={16} strokeWidth={1.5} /> },
+];
+
+const TEAMS_CHILDREN = [
+  { label: 'Workspace Teams', href: '/teams' },
+  { label: 'Assigned Teams', href: '/teams/assigned' },
 ];
 
 const TOOLS_ITEMS: NavItem[] = [
@@ -46,6 +54,69 @@ function NavLink({ label, href, icon, isActive, index, external }: NavItem & { i
         <Link href={href} className="block">{inner}</Link>
       )}
     </motion.div>
+  );
+}
+
+function TeamsAccordion({ index }: { index: number }) {
+  const pathname = usePathname();
+  const isAssigned = pathname.startsWith('/teams/assigned');
+  const isSectionActive = pathname.startsWith('/teams');
+  const [open, setOpen] = useState(isSectionActive);
+
+  return (
+    <div className="mx-2">
+      <motion.button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={`relative flex items-center justify-between w-full gap-3 h-11 px-4 rounded-lg text-sm transition-colors ${
+          isSectionActive ? 'text-text-100 font-medium' : 'text-text-200 hover:bg-bg-700 hover:text-text-100'
+        }`}
+        initial={{ opacity: 0, x: -16 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0.05 + index * 0.04 }}
+        whileHover={{ x: 4 }}
+      >
+        <span className="flex items-center gap-3">
+          <span className="shrink-0 w-4 h-4"><Users size={16} strokeWidth={1.5} /></span>
+          <span>Teams</span>
+        </span>
+        <motion.span
+          animate={{ rotate: open ? 90 : 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          className="shrink-0 text-text-300"
+        >
+          <ChevronRight size={14} strokeWidth={1.5} />
+        </motion.span>
+      </motion.button>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            className="overflow-hidden"
+          >
+            <nav className="flex flex-col gap-0.5 ml-6 pl-3 pt-0.5 pb-0.5 border-l border-border-subtle">
+              {TEAMS_CHILDREN.map(child => {
+                const isActive = child.href === '/teams/assigned' ? isAssigned : (isSectionActive && !isAssigned);
+                return (
+                  <Link key={child.href} href={child.href} className="block">
+                    <span className={`relative flex items-center h-10 px-3 rounded-lg text-sm transition-colors ${
+                      isActive ? 'bg-accent-bg text-accent-hover font-medium' : 'text-text-300 hover:bg-bg-700 hover:text-text-100'
+                    }`}>
+                      {isActive && <motion.span layoutId="activeSubNav" className="absolute left-0 top-[14%] h-[72%] w-[3px] bg-accent rounded-r-full" />}
+                      {child.label}
+                    </span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -86,6 +157,11 @@ export default function Sidebar() {
             const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
             return <NavLink key={item.href} {...item} isActive={isActive} index={i} />;
           })}
+          <TeamsAccordion index={WORKSPACE_ITEMS.length} />
+          {WORKSPACE_TRAILING_ITEMS.map((item, i) => {
+            const isActive = pathname.startsWith(item.href);
+            return <NavLink key={item.href} {...item} isActive={isActive} index={WORKSPACE_ITEMS.length + 1 + i} />;
+          })}
         </nav>
 
         {/* Tools group */}
@@ -97,7 +173,14 @@ export default function Sidebar() {
           <nav className="flex flex-col gap-0.5">
             {TOOLS_ITEMS.map((item, i) => {
               const isActive = pathname.startsWith(item.href);
-              return <NavLink key={item.href} {...item} isActive={isActive} index={WORKSPACE_ITEMS.length + i} />;
+              return (
+                <NavLink
+                  key={item.href}
+                  {...item}
+                  isActive={isActive}
+                  index={WORKSPACE_ITEMS.length + 1 + WORKSPACE_TRAILING_ITEMS.length + i}
+                />
+              );
             })}
           </nav>
         </div>

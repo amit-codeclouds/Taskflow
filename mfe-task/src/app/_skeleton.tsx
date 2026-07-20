@@ -52,3 +52,25 @@ export function TaskListSkeleton() {
     </SkeletonTheme>
   );
 }
+
+// Rows-only skeleton for the Archived tab on TeamTaskBoardScreen — the tabs/header
+// are already rendered by that point, only the task rows are still loading.
+export function ArchivedTasksSkeleton() {
+  return (
+    <SkeletonTheme {...theme}>
+      <div className="bg-bg-700 rounded-card border border-border-subtle overflow-hidden">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div
+            key={i}
+            className={`flex items-center gap-4 px-5 py-4 ${i !== 3 ? 'border-b border-border-subtle' : ''}`}
+          >
+            <Skeleton circle width={8} height={8} />
+            <Skeleton width={200} height={13} />
+            <Skeleton width={70} height={18} borderRadius={999} className="ml-auto" />
+            <Skeleton circle width={28} height={28} />
+          </div>
+        ))}
+      </div>
+    </SkeletonTheme>
+  );
+}

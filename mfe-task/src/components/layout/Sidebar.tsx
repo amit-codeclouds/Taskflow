@@ -1,22 +1,29 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { LayoutDashboard, KanbanSquare, User, Settings } from 'lucide-react';
+import { useState } from 'react';
+import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
+import { usePathname } from 'next/navigation';
+import { LayoutDashboard, ListChecks, KanbanSquare, Users, ChevronRight, User, Settings } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
 import Avatar from '@/components/ui/Avatar';
 import { useAuth } from '@/lib/useAuth';
+import { useTeamsList } from '@/lib/hooks/useTeams';
 
-type NavItem = { label: string; href: string; icon: React.ReactNode };
+type NavItem = { label: string; href: string; icon: React.ReactNode; external?: boolean };
 
 const WORKSPACE_ITEMS: NavItem[] = [
-  { label: 'Dashboard', href: '/', icon: <LayoutDashboard size={16} strokeWidth={1.5} /> },
+  // Cross-zone — Shell owns the Dashboard/home screen. Plain <a>, never <Link>.
+  { label: 'Dashboard', href: '/', icon: <LayoutDashboard size={16} strokeWidth={1.5} />, external: true },
+  // Same-zone — this app's own root. Next auto-prefixes the basePath via <Link>.
+  { label: 'My Tasks', href: '/', icon: <ListChecks size={16} strokeWidth={1.5} /> },
 ];
 
 const TOOLS_ITEMS: NavItem[] = [
-  { label: 'Task Board', href: '/board', icon: <KanbanSquare size={16} strokeWidth={1.5} /> },
+  { label: 'Task Board', href: '/board', icon: <KanbanSquare size={16} strokeWidth={1.5} />, external: true },
 ];
 
-function NavLink({ label, href, icon, isActive, index }: NavItem & { isActive: boolean; index: number }) {
+function NavLink({ label, href, icon, isActive, index, external }: NavItem & { isActive: boolean; index: number }) {
   const inner = (
     <span className={`relative flex items-center gap-3 h-11 px-4 rounded-lg text-sm transition-colors ${
       isActive ? 'bg-accent-bg text-accent-hover font-medium' : 'text-text-200 hover:bg-bg-700 hover:text-text-100'
@@ -37,12 +44,81 @@ function NavLink({ label, href, icon, isActive, index }: NavItem & { isActive: b
       transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0.05 + index * 0.04 }}
       whileHover={isActive ? undefined : { x: 4 }}
     >
-      <a href={href} className="block">{inner}</a>
+      {external ? (
+        <a href={href} className="block">{inner}</a>
+      ) : (
+        <Link href={href} className="block">{inner}</Link>
+      )}
     </motion.div>
   );
 }
 
+function AssignedTeamsAccordion({ index }: { index: number }) {
+  const pathname = usePathname();
+  const isOnListview = pathname === '/listview';
+  const [open, setOpen] = useState(isOnListview);
+
+  const { data: teams = [], isPending } = useTeamsList({ excludeWorkspace: true });
+
+  return (
+    <div className="mx-2">
+      <motion.button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={`relative flex items-center justify-between w-full gap-3 h-11 px-4 rounded-lg text-sm transition-colors ${
+          isOnListview ? 'text-text-100 font-medium' : 'text-text-200 hover:bg-bg-700 hover:text-text-100'
+        }`}
+        initial={{ opacity: 0, x: -16 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0.05 + index * 0.04 }}
+        whileHover={{ x: 4 }}
+      >
+        <span className="flex items-center gap-3">
+          <span className="shrink-0 w-4 h-4"><Users size={16} strokeWidth={1.5} /></span>
+          <span>Assigned Teams</span>
+        </span>
+        <motion.span
+          animate={{ rotate: open ? 90 : 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          className="shrink-0 text-text-300"
+        >
+          <ChevronRight size={14} strokeWidth={1.5} />
+        </motion.span>
+      </motion.button>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            className="overflow-hidden"
+          >
+            <nav className="flex flex-col gap-0.5 ml-6 pl-3 pt-0.5 pb-0.5 border-l border-border-subtle">
+              {isPending && (
+                <p className="text-sm text-text-300 px-3 py-2">Loading…</p>
+              )}
+              {!isPending && teams.length === 0 && (
+                <p className="text-sm text-text-300 px-3 py-2">No assigned teams</p>
+              )}
+              {teams.map((team) => (
+                <Link key={team.id} href={`/listview?teamid=${team.id}`} className="block">
+                  <span className="relative flex items-center h-10 px-3 rounded-lg text-sm text-text-300 hover:bg-bg-700 hover:text-text-100 transition-colors truncate">
+                    {team.name}
+                  </span>
+                </Link>
+              ))}
+            </nav>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function Sidebar() {
+  const pathname = usePathname();
   const user = useAuth();
 
   return (
@@ -76,8 +152,9 @@ export default function Sidebar() {
         </div>
         <nav className="flex flex-col gap-0.5">
           {WORKSPACE_ITEMS.map((item, i) => (
-            <NavLink key={item.href} {...item} isActive={false} index={i} />
+            <NavLink key={item.label} {...item} isActive={!item.external && pathname === item.href} index={i} />
           ))}
+          <AssignedTeamsAccordion index={WORKSPACE_ITEMS.length} />
         </nav>
 
         {/* Tools group */}
@@ -88,7 +165,7 @@ export default function Sidebar() {
           </div>
           <nav className="flex flex-col gap-0.5">
             {TOOLS_ITEMS.map((item, i) => (
-              <NavLink key={item.href} {...item} isActive={false} index={WORKSPACE_ITEMS.length + i} />
+              <NavLink key={item.label} {...item} isActive={false} index={WORKSPACE_ITEMS.length + 1 + i} />
             ))}
           </nav>
         </div>

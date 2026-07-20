@@ -7,10 +7,10 @@ import { queryKeys } from '@/lib/queryKeys';
 import { extractErrorMessage } from '@/lib/http/extractError';
 import type { CreateTeamPayload, UpdateTeamPayload, TeamInvitePayload } from '@/lib/types/teams.types';
 
-export function useTeamsList() {
+export function useTeamsList(params?: { excludeWorkspace?: boolean }) {
   return useQuery({
-    queryKey: queryKeys.teams.list(),
-    queryFn: () => teamsService.list(),
+    queryKey: queryKeys.teams.list(params),
+    queryFn: () => teamsService.list(params),
   });
 }
 

@@ -7,7 +7,7 @@
   <div class="topbar-actions">
     <div class="profile-dropdown">
       <button class="profile-trigger" (click)="toggleDropdown()">
-        <div class="avatar">{{ auth.user().initials }}</div>
+        <app-avatar [avatarUrl]="auth.user().avatarUrl" [initials]="auth.user().initials" [name]="auth.user().name"></app-avatar>
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" class="chevron" [class.chevron--open]="open">
           <path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>

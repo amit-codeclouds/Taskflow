@@ -72,7 +72,7 @@
   <div class="sidebar-divider"></div>
 
   <a href="/settings" class="sidebar-user">
-    <div class="user-avatar">{{ auth.user().initials }}</div>
+    <app-avatar [avatarUrl]="auth.user().avatarUrl" [initials]="auth.user().initials" [name]="auth.user().name"></app-avatar>
     <div class="user-info">
       <span class="user-name">{{ auth.user().name || 'User' }}</span>
       <span class="user-role">{{ auth.user().email }}</span>

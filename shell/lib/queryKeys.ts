@@ -10,7 +10,8 @@ export const queryKeys = {
   },
   teams: {
     all: () => ['teams'] as const,
-    list: () => ['teams', 'list'] as const,
+    list: (params?: { excludeWorkspace?: boolean }) =>
+      params ? (['teams', 'list', params] as const) : (['teams', 'list'] as const),
     stats: () => ['teams', 'stats'] as const,
     detail: (id: string) => ['teams', 'detail', id] as const,
   },
