@@ -60,6 +60,13 @@ function adaptArchivedTask(task: ApiArchivedTask): ApiTask {
 
 const ARCHIVED_TAB = '__archived__';
 
+// The backend's `search` param on this endpoint does a case-sensitive match, so
+// typing "test" misses a task titled "Test Task". Rather than rely on it, we
+// fetch an unfiltered batch and do our own case-insensitive filtering client-side.
+// Bounded to the first 100 archived tasks for the team — fine for a per-team list,
+// but a team with more archived tasks than that could miss older matches.
+const ARCHIVED_SEARCH_FETCH_LIMIT = 100;
+
 export default function TeamTaskBoardScreen() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -90,8 +97,14 @@ export default function TeamTaskBoardScreen() {
   const isArchivedTab = currentTab === ARCHIVED_TAB;
   const activeColumn = columns.find((c) => c.id === currentTab);
 
+  const isSearchingArchived = archivedSearch.trim().length > 0;
+
+  // Stable query key while typing (no `search`/`page`) — the fetch happens once
+  // per team, then every keystroke re-filters the same cached batch instantly.
   const { data: archivedPaged, isPending: archivedPending, isFetching: archivedFetching } = useArchivedTasks(
-    { teamId, page: archivedPage, search: archivedSearch || undefined },
+    isSearchingArchived
+      ? { teamId, limit: ARCHIVED_SEARCH_FETCH_LIMIT }
+      : { teamId, page: archivedPage, limit: ARCHIVED_TASKS_PAGE_LIMIT },
     { enabled: isArchivedTab },
   );
 
@@ -107,8 +120,21 @@ export default function TeamTaskBoardScreen() {
 
   if (isPending) return <TaskListSkeleton />;
 
-  const archivedTasks = (archivedPaged?.data ?? []).map(adaptArchivedTask);
-  const archivedTotalPages = archivedPaged?.totalPages ?? 1;
+  const rawArchivedTasks = archivedPaged?.data ?? [];
+  const filteredArchivedRaw = isSearchingArchived
+    ? rawArchivedTasks.filter((t) => t.title.toLowerCase().includes(archivedSearch.trim().toLowerCase()))
+    : rawArchivedTasks;
+
+  const archivedTotal = isSearchingArchived ? filteredArchivedRaw.length : (archivedPaged?.total ?? 0);
+  const archivedTotalPages = isSearchingArchived
+    ? Math.max(1, Math.ceil(archivedTotal / ARCHIVED_TASKS_PAGE_LIMIT))
+    : (archivedPaged?.totalPages ?? 1);
+
+  const archivedPageSlice = isSearchingArchived
+    ? filteredArchivedRaw.slice((archivedPage - 1) * ARCHIVED_TASKS_PAGE_LIMIT, archivedPage * ARCHIVED_TASKS_PAGE_LIMIT)
+    : filteredArchivedRaw;
+
+  const archivedTasks = archivedPageSlice.map(adaptArchivedTask);
   const isBusy = isArchivedTab ? archivedFetching : boardFetching;
 
   return (
@@ -224,31 +250,33 @@ export default function TeamTaskBoardScreen() {
 
           {isArchivedTab && archivedTasks.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <p className="text-text-300 text-sm">No archived tasks yet.</p>
+              <p className="text-text-300 text-sm">
+                {isSearchingArchived ? 'No archived tasks match your search.' : 'No archived tasks yet.'}
+              </p>
             </div>
           )}
         </div>
       )}
 
       {/* Archived pagination */}
-      {isArchivedTab && (archivedPaged?.total ?? 0) > 0 && (
+      {isArchivedTab && archivedTotal > 0 && (
         <div className="flex items-center justify-between mt-4">
           <p className="text-2xs text-text-300">
-            Showing {(((archivedPaged?.page ?? 1) - 1) * ARCHIVED_TASKS_PAGE_LIMIT) + 1}
-            –{Math.min((archivedPaged?.page ?? 1) * ARCHIVED_TASKS_PAGE_LIMIT, archivedPaged?.total ?? 0)}
-            {' '}of {archivedPaged?.total ?? 0} · Page {archivedPaged?.page ?? 1} of {archivedTotalPages}
+            Showing {((archivedPage - 1) * ARCHIVED_TASKS_PAGE_LIMIT) + 1}
+            –{Math.min(archivedPage * ARCHIVED_TASKS_PAGE_LIMIT, archivedTotal)}
+            {' '}of {archivedTotal} · Page {archivedPage} of {archivedTotalPages}
           </p>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setArchivedPage((p) => Math.max(1, p - 1))}
-              disabled={(archivedPaged?.page ?? 1) <= 1 || archivedFetching}
+              disabled={archivedPage <= 1 || archivedFetching}
               className="h-8 px-3 rounded-lg text-xs text-text-200 bg-bg-700 border border-border-subtle hover:bg-bg-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Previous
             </button>
             <button
               onClick={() => setArchivedPage((p) => Math.min(archivedTotalPages, p + 1))}
-              disabled={(archivedPaged?.page ?? 1) >= archivedTotalPages || archivedFetching}
+              disabled={archivedPage >= archivedTotalPages || archivedFetching}
               className="h-8 px-3 rounded-lg text-xs text-text-200 bg-bg-700 border border-border-subtle hover:bg-bg-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Next

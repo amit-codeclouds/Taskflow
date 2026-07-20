@@ -26,6 +26,7 @@ export interface AuthUser {
   email: string;
   title: string;
   initials: string;
+  avatarUrl?: string;
   workspaceName: string;
 }
 
@@ -61,6 +62,7 @@ export class AuthService {
           email: data.email ?? '',
           title: data.title ?? '',
           initials: data.avatarInitials || getInitials(data.name),
+          avatarUrl: data.avatarUrl,
           workspaceName: workspace?.name ?? '',
         });
       },

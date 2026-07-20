@@ -3,11 +3,12 @@ import { NgIf } from '@angular/common';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
+import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
 
 @Component({
   selector: 'app-topbar',
   standalone: true,
-  imports: [NgIf],
+  imports: [NgIf, AvatarComponent],
   templateUrl: './topbar.component.html',
   styleUrl: './topbar.component.scss'
 })
