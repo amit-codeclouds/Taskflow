@@ -526,16 +526,20 @@ The invited person appears in the People list with `status: "pending"` until the
 ## Team Service  `/api/teams`
 
 > Drives the **Shell** — Teams section.
-> - `shell/components/teams/TeamsScreen.tsx` — list + stats (`/teams`)
+> - `shell/components/teams/TeamsScreen.tsx` — list + stats (`/teams`), Workspace Teams sub-nav
+> - `shell/components/teams/AssignedTeamsScreen.tsx` — list of teams assigned outside the workspace (`/teams/assigned`), Assigned Teams sub-nav
 > - `shell/app/(shell)/teams/new/page.tsx` — Create Team page (`/teams/new`)
 > - `shell/app/(shell)/teams/[id]/page.tsx` — Manage Team page (`/teams/:id`)
+> - `shell/app/(shell)/teams/[id]/tasks/page.tsx` — Team Tasks placeholder (`/teams/:id/tasks`) — real task list not yet implemented
 > - `shell/components/teams/TeamInviteModal.tsx` — Invite by email (modal)
+> - `shell/components/layout/Sidebar.tsx` — "Teams" sidebar item is an expandable accordion with two sub-links: Workspace Teams (`/teams`) and Assigned Teams (`/teams/assigned`)
 >
 > Teams are separate from Projects. A team groups users; a project groups tasks.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | GET | `/api/teams` | Auth | List teams the current user belongs to |
+| GET | `/api/teams?exclude_workspace=true` | Auth | List teams the current user is assigned to that are **outside** their own workspace |
 | POST | `/api/teams` | Auth | Create a new team |
 | GET | `/api/teams/:id` | Auth | Get team details with members |
 | PATCH | `/api/teams/:id` | Auth | Update team name / description |
@@ -567,6 +571,9 @@ The invited person appears in the People list with `status: "pending"` until the
   ]
 }
 ```
+
+### `GET /api/teams?exclude_workspace=true`
+Same response shape as `GET /api/teams`, filtered to teams the current user is a member of that do **not** belong to their own workspace (i.e. teams they were added to via cross-workspace invite). Drives `AssignedTeamsScreen`. Team cards rendered from this response show a **View Tasks** action only — no Manage / Invite actions, since the current user is not an admin of these teams.
 
 ### `GET /api/teams/stats`
 **Response `200`**
@@ -772,6 +779,9 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | TeamsScreen — "New Team" button → navigates to `/teams/new` | (navigation only) |
 | `/teams/new` — Create Team page submit (name + desc + color + member multi-select) | `POST /api/teams` (includes `color` + `memberIds[]`) |
 | TeamCard — "Manage" button → navigates to `/teams/:id` | (navigation only) |
+| Sidebar — "Teams" accordion → Workspace Teams / Assigned Teams sub-links | (navigation only) |
+| AssignedTeamsScreen — assigned team list (`/teams/assigned`) | `GET /api/teams?exclude_workspace=true` |
+| AssignedTeamCard — "View Tasks" button → navigates to `/teams/:id/tasks` | (navigation only — placeholder page, no API yet) |
 | `/teams/:id` — Manage Team page save (edit name / desc / color) | `PATCH /api/teams/:id` |
 | `/teams/:id` — Add from workspace (member picker + role, Add button) | `POST /api/teams/:id/members` |
 | `/teams/:id` — Change member role dropdown | `PATCH /api/teams/:id/members/:userId` |

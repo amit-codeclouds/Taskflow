@@ -9,8 +9,10 @@ import type {
 } from '@/lib/types/teams.types';
 
 export const teamsService = {
-  async list(): Promise<ApiTeam[]> {
-    const { data } = await apiClient.get<{ result: ApiTeam[] }>('/teams');
+  async list(params?: { excludeWorkspace?: boolean }): Promise<ApiTeam[]> {
+    const { data } = await apiClient.get<{ result: ApiTeam[] }>('/teams', {
+      params: params?.excludeWorkspace ? { exclude_workspace: true } : undefined,
+    });
     return data.result ?? [];
   },
 
