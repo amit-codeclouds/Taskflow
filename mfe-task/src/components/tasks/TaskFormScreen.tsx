@@ -179,9 +179,15 @@ export default function TaskFormScreen({ taskId }: { taskId?: string }) {
   const isEdit        = !!taskId;
 
   const { data: editTask, isPending: taskPending, isError: taskError } = useTaskDetail(taskId ?? '');
-  const { data: teams = [], isPending: teamsPending } = useTeamsList();
+  const { data: teams = [], isPending: teamsPending } = useTeamsList({ excludeWorkspace: true });
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
+
+  // Deep-linked from a specific team/status (e.g. "+Add Task" on a team's board) —
+  // lock those fields so the task can't be created under a different team/status
+  // than the one the user actually came from.
+  const isTeamPrefilled = !isEdit && !!searchParams.get('teamId');
+  const isStatusPrefilled = !isEdit && !!searchParams.get('statusId');
 
   const [selectedTeamId, setSelectedTeamId] = useState(() => searchParams.get('teamId') ?? '');
   const { data: teamStatuses = [], isPending: statusesPending } = useBoardStatuses(selectedTeamId);
@@ -353,8 +359,14 @@ export default function TaskFormScreen({ taskId }: { taskId?: string }) {
                         <Skeleton height={40} borderRadius={8} baseColor="#222227" highlightColor="#2C2C32" />
                       ) : (
                         <div
-                          data-tooltip={isEdit ? "A task's team can't be changed after creation" : undefined}
-                          className={isEdit ? 'cursor-not-allowed' : undefined}
+                          data-tooltip={
+                            isEdit
+                              ? "A task's team can't be changed after creation"
+                              : isTeamPrefilled
+                              ? 'Preset from the link you followed'
+                              : undefined
+                          }
+                          className={(isEdit || isTeamPrefilled) ? 'cursor-not-allowed' : undefined}
                         >
                           <AppSelect
                             options={TEAM_OPTIONS}
@@ -368,7 +380,7 @@ export default function TaskFormScreen({ taskId }: { taskId?: string }) {
                             placeholder="Select team…"
                             formatOptionLabel={TeamOptionLabel as any}
                             hasError={!!(touched.teamId && errors.teamId)}
-                            isDisabled={isEdit}
+                            isDisabled={isEdit || isTeamPrefilled}
                           />
                         </div>
                       )}
@@ -380,14 +392,19 @@ export default function TaskFormScreen({ taskId }: { taskId?: string }) {
                       {statusesPending && values.teamId ? (
                         <Skeleton height={40} borderRadius={8} baseColor="#222227" highlightColor="#2C2C32" />
                       ) : (
-                        <AppSelect
-                          options={STATUS_OPTIONS}
-                          value={STATUS_OPTIONS.find(o => o.value === values.statusId) ?? null}
-                          onChange={opt => setFieldValue('statusId', opt?.value ?? '')}
-                          placeholder={values.teamId ? 'Select status…' : 'Select a team first'}
-                          isDisabled={!values.teamId}
-                          hasError={!!(touched.statusId && errors.statusId)}
-                        />
+                        <div
+                          data-tooltip={isStatusPrefilled ? 'Preset from the link you followed' : undefined}
+                          className={isStatusPrefilled ? 'cursor-not-allowed' : undefined}
+                        >
+                          <AppSelect
+                            options={STATUS_OPTIONS}
+                            value={STATUS_OPTIONS.find(o => o.value === values.statusId) ?? null}
+                            onChange={opt => setFieldValue('statusId', opt?.value ?? '')}
+                            placeholder={values.teamId ? 'Select status…' : 'Select a team first'}
+                            isDisabled={!values.teamId || isStatusPrefilled}
+                            hasError={!!(touched.statusId && errors.statusId)}
+                          />
+                        </div>
                       )}
                       <FieldErr name="statusId" />
                     </div>
