@@ -177,8 +177,8 @@ Sets `taskflow_session` (httpOnly) + `taskflow_name` + `taskflow_email` + `taskf
 | DELETE | `/api/tasks/:id` | Auth | Delete task |
 | PATCH | `/api/tasks/:id/status` | Auth | Change only the task's status (drag-drop / quick move) |
 | GET | `/api/board-statuses/team/:teamId` | Auth | Team's status catalog — `{ statusId, statusName }[]`, powers the status dropdown + per-team status tabs |
-| GET | `/api/migrate/task/archived` | Auth | Archived tasks for a team (paginated). Query: `teamId`, `page`, `limit`, `statusId`, `search`. Powers the Board MFE **Archived Tasks** screen (`ArchivedTasklistComponent`). Consumed by `TeamService.getArchivedTasks()` |
-| GET | `/api/migrate/task/archived/:taskId` | Auth | Single archived task detail. Powers the Board MFE **Archived Task Details** screen (`ArchivedTaskdetailsComponent`). Consumed by `TeamService.getArchivedTask()` |
+| GET | `/api/migrate/task/archived` | Auth | Archived tasks for a team (paginated). Query: `teamId`, `page`, `limit`, `statusId`, `search`. Powers the Board MFE **Archived Tasks** screen (`ArchivedTasklistComponent`, `TeamService.getArchivedTasks()`) and the Task MFE's **Archived** tab on `TeamTaskBoardScreen` (`/tasks/listview`, `archivedTasksService.list()`) |
+| GET | `/api/migrate/task/archived/:taskId` | Auth | Single archived task detail. Powers the Board MFE **Archived Task Details** screen (`ArchivedTaskdetailsComponent`). Consumed by `TeamService.getArchivedTask()`. Not yet wired in the Task MFE — its Archived tab only lists, no detail drill-down yet |
 
 ### `GET /api/tasks/my`
 **Query params**
@@ -355,11 +355,13 @@ taskId=uuid   (required)
 
 ## Board Service  `/api/board`
 
-> Drives the **Board MFE** (`mfe-board`). Statuses are dynamic per team — each team owns a `board_statuses` list. Tasks reference a status by id.
+> Drives the **Board MFE** (`mfe-board`) and, as of the Team Task List View feature, the
+> **Task MFE**'s `TeamTaskBoardScreen` (`/tasks/listview?teamid=`, `mfe-task/src/lib/services/board.service.ts`).
+> Statuses are dynamic per team — each team owns a `board_statuses` list. Tasks reference a status by id.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/api/tasks/team/:teamId/board` | Auth | Team's board — statuses + tasks. ✅ confirmed live path (returns 401 unauth). Consumed by `TeamService.getTeamBoard()` in mfe-board. The `/api/board/:teamId` path below is **not** live (404) — kept for history |
+| GET | `/api/tasks/team/:teamId/board` | Auth | Team's board — statuses + tasks. ✅ confirmed live path (returns 401 unauth). Confirmed response: `{ result: { teamId, columns: [{ id, name, description, position, totalTasks, isArchievable, isDeletable, tasks: [...full TaskResponseDto objects...] }] } }` — column `id` doubles as each task's `statusId`; embedded tasks match the same shape as `GET /api/tasks/my`/`:id` (including `createdAt`/`updatedAt`), no pagination per column. Consumed by `TeamService.getTeamBoard()` in mfe-board and `boardService.getTeamBoard()` in mfe-task. The `/api/board/:teamId` path below is **not** live (404) — kept for history |
 | GET | `/api/board/:teamId` | Auth | ⚠️ 404 on the live backend — superseded by `/api/tasks/team/:teamId/board` above |
 | GET | `/api/board/:teamId/status/:statusId/tasks` | Auth | Load more tasks for one status |
 | POST | `/api/board/:teamId/statuses` | Auth | Create a status (admin / pm) |
@@ -530,7 +532,7 @@ The invited person appears in the People list with `status: "pending"` until the
 > - `shell/components/teams/AssignedTeamsScreen.tsx` — list of teams assigned outside the workspace (`/teams/assigned`), Assigned Teams sub-nav
 > - `shell/app/(shell)/teams/new/page.tsx` — Create Team page (`/teams/new`)
 > - `shell/app/(shell)/teams/[id]/page.tsx` — Manage Team page (`/teams/:id`)
-> - `shell/app/(shell)/teams/[id]/tasks/page.tsx` — Team Tasks placeholder (`/teams/:id/tasks`) — real task list not yet implemented
+> - AssignedTeamCard's "View Tasks" button cross-zone-links straight into Task MFE's `TeamTaskBoardScreen` (`/tasks/listview?teamid=`) — no placeholder page in Shell
 > - `shell/components/teams/TeamInviteModal.tsx` — Invite by email (modal)
 > - `shell/components/layout/Sidebar.tsx` — "Teams" sidebar item is an expandable accordion with two sub-links: Workspace Teams (`/teams`) and Assigned Teams (`/teams/assigned`)
 >
@@ -781,7 +783,7 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | TeamCard — "Manage" button → navigates to `/teams/:id` | (navigation only) |
 | Sidebar — "Teams" accordion → Workspace Teams / Assigned Teams sub-links | (navigation only) |
 | AssignedTeamsScreen — assigned team list (`/teams/assigned`) | `GET /api/teams?exclude_workspace=true` |
-| AssignedTeamCard — "View Tasks" button → navigates to `/teams/:id/tasks` | (navigation only — placeholder page, no API yet) |
+| AssignedTeamCard — "View Tasks" button → cross-zone `<a href="/tasks/listview?teamid=...">` into Task MFE's `TeamTaskBoardScreen` | (navigation only — see Task MFE traceability below) |
 | `/teams/:id` — Manage Team page save (edit name / desc / color) | `PATCH /api/teams/:id` |
 | `/teams/:id` — Add from workspace (member picker + role, Add button) | `POST /api/teams/:id/members` |
 | `/teams/:id` — Change member role dropdown | `PATCH /api/teams/:id/members/:userId` |
@@ -833,8 +835,13 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | TaskDetailScreen — CommentItem edit (own comment only) | `PUT /api/comments/:commentId` |
 | TaskDetailScreen — CommentItem delete (own comment only, ConfirmProvider modal) | `DELETE /api/comments/:commentId` |
 | Sidebar / Topbar — user card | derived from `taskflow_name`/`taskflow_email` cookies — no API call yet (`GET /api/auth/me` not wired in Task MFE) |
+| TeamTaskBoardScreen (`/tasks/listview?teamid=`) — status tabs + per-tab task list | `GET /api/tasks/team/:teamId/board` via `boardService.getTeamBoard()`; tabs come from `columns[]`, no separate board-statuses call |
+| TeamTaskBoardScreen — task row Edit/Delete visibility | client-side only — `TaskRow` shows Edit + Delete for a task only when the signed-in user is one of its `assignees`; everyone else gets View only (no API) |
+| TeamTaskBoardScreen — Archived tab (with tooltip explaining its purpose) | `GET /api/migrate/task/archived?teamId=&page=&limit=&search=` via `archivedTasksService.list()`; rows render read-only (no view/edit/delete — no archived-task detail page exists yet in Task MFE) |
+| TeamTaskBoardScreen — Archived tab search + pagination | same endpoint, `search`/`page` query params |
+| Entry point: Shell's AssignedTeamsScreen "View Tasks" button | cross-zone `<a href="/tasks/listview?teamid=...">` (navigation only) |
 
-> Not yet wired in this pass (no UI surface added for them): `GET /api/tasks` (all-teams/assignee-filtered view), `PATCH /api/tasks/:id/status` (drag-drop — Board MFE concern), `GET /api/notifications`.
+> Not yet wired in this pass (no UI surface added for them): `GET /api/tasks` (all-teams/assignee-filtered view), `PATCH /api/tasks/:id/status` (drag-drop — Board MFE concern), `GET /api/notifications`, `GET /api/migrate/task/archived/:taskId` (archived task detail).
 
 ### Board MFE (`mfe-board/`)
 

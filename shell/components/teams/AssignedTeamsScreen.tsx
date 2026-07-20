@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, ListChecks } from 'lucide-react';
 import { useTeamsList } from '@/lib/hooks/useTeams';
@@ -13,11 +12,9 @@ import { TeamInitial, MemberAvatar } from './TeamAvatars';
 function AssignedTeamCard({
   team,
   index,
-  onViewTasks,
 }: {
   team: ApiTeam;
   index: number;
-  onViewTasks: (team: ApiTeam) => void;
 }) {
   const activeCount    = team.members.length;
   const pendingCount   = team.pendingInvites;
@@ -62,15 +59,16 @@ function AssignedTeamCard({
 
             {/* Actions */}
             <div className="flex items-center gap-1.5">
-              <motion.button
-                onClick={() => onViewTasks(team)}
+              {/* Cross-zone nav into mfe-task — plain <a>, never <Link>, per Multi-Zones rules */}
+              <motion.a
+                href={`/tasks/listview?teamid=${team.id}`}
                 className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-xs font-medium bg-bg-600 text-text-200 hover:bg-bg-500 hover:text-text-100 transition-colors"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
               >
                 <ListChecks size={11} />
                 View Tasks
-              </motion.button>
+              </motion.a>
             </div>
           </div>
         </div>
@@ -82,7 +80,6 @@ function AssignedTeamCard({
 // ─── AssignedTeamsScreen ──────────────────────────────────────────────────────
 
 export default function AssignedTeamsScreen() {
-  const router = useRouter();
   const { data: teams = [], isPending } = useTeamsList({ excludeWorkspace: true });
 
   if (isPending) return <AssignedTeamsSkeleton />;
@@ -110,7 +107,6 @@ export default function AssignedTeamsScreen() {
               key={team.id}
               team={team}
               index={i}
-              onViewTasks={t => router.push(`/teams/${t.id}/tasks`)}
             />
           ))}
         </AnimatePresence>

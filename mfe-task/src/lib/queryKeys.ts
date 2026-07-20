@@ -10,7 +10,8 @@ export const queryKeys = {
   },
   teams: {
     all: () => ['teams'] as const,
-    list: () => ['teams', 'list'] as const,
+    list: (params?: { excludeWorkspace?: boolean }) =>
+      params ? (['teams', 'list', params] as const) : (['teams', 'list'] as const),
   },
   people: {
     all: () => ['people'] as const,
@@ -18,6 +19,13 @@ export const queryKeys = {
   },
   boardStatuses: {
     byTeam: (teamId: string) => ['board-statuses', teamId] as const,
+  },
+  board: {
+    team: (teamId: string) => ['board', 'team', teamId] as const,
+  },
+  archivedTasks: {
+    list: (params: { teamId: string; page?: number; limit?: number; statusId?: string; search?: string }) =>
+      ['archived-tasks', 'list', params] as const,
   },
   comments: {
     all: () => ['comments'] as const,
