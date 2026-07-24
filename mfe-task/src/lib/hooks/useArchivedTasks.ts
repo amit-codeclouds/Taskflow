@@ -15,3 +15,11 @@ export function useArchivedTasks(params: ArchivedTasksParams, options?: { enable
     placeholderData: keepPreviousData,
   });
 }
+
+export function useArchivedTask(taskId: string) {
+  return useQuery({
+    queryKey: queryKeys.archivedTasks.detail(taskId),
+    queryFn: () => archivedTasksService.getById(taskId),
+    enabled: !!taskId,
+  });
+}

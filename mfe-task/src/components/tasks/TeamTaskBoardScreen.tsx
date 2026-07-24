@@ -8,7 +8,7 @@ import AppSelect, { type SelectOption } from '@/components/ui/AppSelect';
 import { useTeamBoard } from '@/lib/hooks/useBoard';
 import { useArchivedTasks, ARCHIVED_TASKS_PAGE_LIMIT } from '@/lib/hooks/useArchivedTasks';
 import { useTeamsList } from '@/lib/hooks/useTeams';
-import { TaskListSkeleton, ArchivedTasksSkeleton } from '@/app/_skeleton';
+import { TaskListSkeleton, TaskRowsSkeleton } from '@/app/_skeleton';
 import { TaskRow } from './TaskRow';
 import type { ApiTask, AssigneeSummary, Priority, LabelType } from '@/lib/types/tasks.types';
 import type { ApiArchivedTask } from '@/lib/types/archivedTasks.types';
@@ -106,7 +106,7 @@ export default function TeamTaskBoardScreen() {
 
   // Stable query key while typing (no `search`/`page`) — the fetch happens once
   // per team, then every keystroke re-filters the same cached batch instantly.
-  const { data: archivedPaged, isPending: archivedPending, isFetching: archivedFetching } = useArchivedTasks(
+  const { data: archivedPaged, isFetching: archivedFetching } = useArchivedTasks(
     isSearchingArchived
       ? { teamId, limit: ARCHIVED_SEARCH_FETCH_LIMIT }
       : { teamId, page: archivedPage, limit: ARCHIVED_TASKS_PAGE_LIMIT },
@@ -232,10 +232,10 @@ export default function TeamTaskBoardScreen() {
       )}
 
       {/* Task list */}
-      {isArchivedTab && archivedPending ? (
-        <ArchivedTasksSkeleton />
+      {isBusy ? (
+        <TaskRowsSkeleton />
       ) : (
-        <div className={`bg-bg-700 rounded-card border border-border-subtle overflow-visible transition-opacity ${isBusy ? 'opacity-60' : ''}`}>
+        <div className="bg-bg-700 rounded-card border border-border-subtle overflow-visible">
           <AnimatePresence mode="popLayout">
             {isArchivedTab
               ? archivedTasks.map((task, i) => (
@@ -246,6 +246,7 @@ export default function TeamTaskBoardScreen() {
                     isLast={i === archivedTasks.length - 1}
                     statusName="Archived"
                     readOnly
+                    viewHref={`/archieve/${task.id}`}
                   />
                 ))
               : (activeColumn?.tasks ?? []).map((task, i) => (

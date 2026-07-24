@@ -1,13 +1,54 @@
 <div class="archived-container">
   <!-- Header -->
   <div class="archived-header">
-    <div>
-      <a class="back-link" routerLink="/">← Back to Boards</a>
-      <h1 class="archived-title">Archived Tasks</h1>
-      <p class="archived-subtitle" *ngIf="!loading && !error">
-        {{ total }} archived task{{ total === 1 ? '' : 's' }}
-      </p>
+    <a class="back-link" routerLink="/">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M8.5 3L4.5 7l4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+      Back to Boards
+    </a>
+    <div class="archived-header-row" *ngIf="!loadingTeam; else teamSkeleton">
+      <div class="team-badge" *ngIf="teamName" [style.background]="teamColor + '33'" [style.color]="teamColor">
+        {{ teamName.slice(0, 2).toUpperCase() }}
+      </div>
+      <div>
+        <h1 class="archived-title">Archived Tasks</h1>
+        <p class="archived-subtitle" *ngIf="!loading && !error">
+          {{ total }} archived task{{ total === 1 ? '' : 's' }}
+          <ng-container *ngIf="teamName">&nbsp;·&nbsp;{{ teamName }}</ng-container>
+          <ng-container *ngIf="selectedStatusName">&nbsp;·&nbsp;{{ selectedStatusName }}</ng-container>
+        </p>
+      </div>
     </div>
+    <ng-template #teamSkeleton>
+      <div class="archived-header-row">
+        <div class="skeleton" style="width:40px;height:40px;border-radius:11px;flex-shrink:0"></div>
+        <div style="flex:1">
+          <div class="skeleton" style="width:160px;height:24px"></div>
+          <div class="skeleton" style="width:120px;height:14px;margin-top:8px"></div>
+        </div>
+      </div>
+    </ng-template>
+  </div>
+
+  <!-- Status tabs — archivable statuses for this team only -->
+  <div class="status-tabs" *ngIf="loadingTeam || statuses.length">
+    <ng-container *ngIf="!loadingTeam; else tabsSkeleton">
+      <span
+        class="status-tab"
+        [class.status-tab--active]="selectedStatusId === ''"
+        (click)="selectStatus('')"
+      >All</span>
+      <span
+        class="status-tab"
+        *ngFor="let s of statuses"
+        [class.status-tab--active]="selectedStatusId === s.id"
+        (click)="selectStatus(s.id)"
+      >
+        <span class="status-dot" [style.background]="s.color"></span>{{ s.name }}
+      </span>
+    </ng-container>
+    <ng-template #tabsSkeleton>
+      <div class="skeleton skeleton-tab" *ngFor="let t of skeletonTabs"></div>
+    </ng-template>
   </div>
 
   <!-- Table -->
@@ -19,6 +60,8 @@
           <th class="col-title">Title</th>
           <th class="col-priority">Priority</th>
           <th class="col-assignee">Assignee</th>
+          <th class="col-date">Created</th>
+          <th class="col-date">Updated</th>
           <th class="col-view">View Task</th>
         </tr>
       </thead>
@@ -35,6 +78,8 @@
                 <div class="skeleton skeleton-avatar" *ngFor="let a of [0,1,2]"></div>
               </div>
             </td>
+            <td><div class="skeleton" style="width:70px;height:14px"></div></td>
+            <td><div class="skeleton" style="width:70px;height:14px"></div></td>
             <td><div class="skeleton" style="width:28px;height:28px;border-radius:8px"></div></td>
           </tr>
         </ng-container>
@@ -59,6 +104,8 @@
               </div>
               <ng-template #noAssignee><span class="unassigned">—</span></ng-template>
             </td>
+            <td class="col-date">{{ row.createdAt }}</td>
+            <td class="col-date">{{ row.updatedAt }}</td>
             <td class="col-view">
               <button type="button" class="view-btn" (click)="viewTask(row.id)" title="View task" aria-label="View task">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -77,14 +124,20 @@
       Couldn't load archived tasks. Please try again.
     </div>
     <div class="state-msg" *ngIf="!loading && !error && rows.length === 0">
-      No archived tasks for this team.
+      No archived tasks{{ selectedStatusName ? ' in ' + selectedStatusName : '' }} for this team.
     </div>
   </div>
 
   <!-- Pagination -->
   <div class="pagination" *ngIf="!loading && !error && totalPages > 1">
-    <button class="page-btn" [disabled]="page <= 1" (click)="prevPage()">Previous</button>
+    <button class="page-btn" [disabled]="page <= 1" (click)="prevPage()">
+      <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9 3L5 7l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+      Previous
+    </button>
     <span class="page-info">Page {{ page }} of {{ totalPages }}</span>
-    <button class="page-btn" [disabled]="page >= totalPages" (click)="nextPage()">Next</button>
+    <button class="page-btn" [disabled]="page >= totalPages" (click)="nextPage()">
+      Next
+      <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M5 3l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+    </button>
   </div>
 </div>
