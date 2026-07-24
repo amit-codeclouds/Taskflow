@@ -23,12 +23,20 @@
   <div class="sidebar-section-label">Workspace</div>
 
   <nav class="sidebar-nav">
-    <a href="/" class="nav-item">
+    <a href="/" class="nav-item" [class.nav-item--active]="isDashboardActive()">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <path d="M2 6.5L8 2l6 4.5V13a1 1 0 01-1 1h-3v-4H6v4H3a1 1 0 01-1-1V6.5z"
           stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
       </svg>
       <span>Dashboard</span>
+    </a>
+    <a href="/board" class="nav-item" [class.nav-item--active]="isTaskBoardActive()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <rect x="1.5" y="2" width="4" height="12" rx="1" stroke="currentColor" stroke-width="1.3"/>
+        <rect x="6" y="2" width="4" height="8" rx="1" stroke="currentColor" stroke-width="1.3"/>
+        <rect x="10.5" y="2" width="4" height="10" rx="1" stroke="currentColor" stroke-width="1.3"/>
+      </svg>
+      <span>Task Board</span>
     </a>
   </nav>
 
@@ -37,7 +45,7 @@
   <div class="sidebar-section-label">Tools</div>
 
   <nav class="sidebar-nav">
-    <a href="/tasks" class="nav-item">
+    <a href="/tasks" class="nav-item" [class.nav-item--active]="isTasksActive">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.3"/>
         <path d="M5.5 8l1.5 1.5 3.5-3.5" stroke="currentColor" stroke-width="1.3"
@@ -52,14 +60,14 @@
   <div class="sidebar-divider"></div>
 
   <div class="sidebar-bottom-links">
-    <a href="/profile" class="nav-item nav-item--sm">
+    <a href="/profile" class="nav-item nav-item--sm" [class.nav-item--active]="isProfileActive">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <circle cx="8" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.3"/>
         <path d="M2.5 14c0-2.5 2.2-4 5.5-4s5.5 1.5 5.5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
       </svg>
       <span>My Profile</span>
     </a>
-    <a href="/settings" class="nav-item nav-item--sm">
+    <a href="/settings" class="nav-item nav-item--sm" [class.nav-item--active]="isSettingsActive">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <circle cx="8" cy="8" r="2.2" stroke="currentColor" stroke-width="1.3"/>
         <path d="M8 1.8v1.6M8 12.6v1.6M14.2 8h-1.6M3.4 8H1.8M12.2 3.8l-1.2 1.2M4.8 11.2l-1.2 1.2M12.2 12.2l-1.2-1.2M4.8 4.8L3.6 3.6"

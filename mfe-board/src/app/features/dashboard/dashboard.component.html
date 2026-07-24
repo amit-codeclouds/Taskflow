@@ -7,7 +7,7 @@
     </div>
     <div *ngIf="loading">
       <div class="skeleton" style="width:120px;height:24px"></div>
-      <div class="skeleton" style="width:180px;height:13px;margin-top:8px"></div>
+      <div class="skeleton" style="width:180px;height:14px;margin-top:8px"></div>
     </div>
   </div>
 
@@ -86,8 +86,18 @@
           <span class="column-pill" *ngFor="let s of b.statuses">
             <span class="dot" [style.background]="s.color"></span>{{ s.count }} {{ s.label }}
           </span>
-          <span class="add-status-btn" (click)="openAddStatus(b.team, $event)">+ Add Status</span>
-          <span class="archived-btn" (click)="openArchived(b.team, $event)">Archived Task</span>
+          <span class="add-status-btn" role="button" tabindex="0" (click)="openAddStatus(b.team, $event)" (keydown.enter)="openAddStatus(b.team, $event)">
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 2v8M2 6h8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            Add Status
+          </span>
+          <span class="archived-btn" role="button" tabindex="0" (click)="openArchived(b.team, $event)" (keydown.enter)="openArchived(b.team, $event)">
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+              <rect x="1.5" y="2" width="11" height="3" rx="1" stroke="currentColor" stroke-width="1.2" />
+              <path d="M2.5 5v6a1 1 0 001 1h7a1 1 0 001-1V5" stroke="currentColor" stroke-width="1.2" />
+              <path d="M5.5 7.5h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+            </svg>
+            Archived Task
+          </span>
           <span class="open-btn">Open</span>
         </div>
       </div>
