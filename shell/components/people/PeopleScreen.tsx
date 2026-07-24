@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { UserPlus, Search, UserCheck, Clock, Users, Trash2, RefreshCw, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { usePeopleList, usePeopleStats, useRemovePerson, PEOPLE_PAGE_LIMIT } from '@/lib/hooks/usePeople';
 import { useTeamsList } from '@/lib/hooks/useTeams';
-import { PeopleSkeleton } from '@/app/(shell)/people/_skeleton';
+import { PeopleSkeleton, PeopleRowsSkeleton } from '@/app/(shell)/people/_skeleton';
 import InviteModal from '@/components/Modals/InviteModal';
 import { useConfirm } from '@/components/Modals/ConfirmProvider';
 import Select from 'react-select';
@@ -312,26 +312,30 @@ export default function PeopleScreen() {
       </div>
 
       {/* Member rows */}
-      <div className={`bg-bg-700 rounded-card border border-border-subtle overflow-hidden transition-opacity duration-200 ${isFetching && !isPending ? 'opacity-60' : 'opacity-100'}`}>
-        <AnimatePresence initial={false}>
-          {people.map((m, i) => (
-            <MemberRow
-              key={m.id}
-              member={m}
-              index={i}
-              allTeams={allTeams}
-              onRemove={handleRemove}
-              onResend={handleResend}
-            />
-          ))}
-        </AnimatePresence>
-        {people.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16">
-            <Users size={24} className="text-text-300 mb-2" strokeWidth={1.3} />
-            <p className="text-sm text-text-300">No members match your filters.</p>
-          </div>
-        )}
-      </div>
+      {isFetching ? (
+        <PeopleRowsSkeleton />
+      ) : (
+        <div className="bg-bg-700 rounded-card border border-border-subtle overflow-hidden">
+          <AnimatePresence initial={false}>
+            {people.map((m, i) => (
+              <MemberRow
+                key={m.id}
+                member={m}
+                index={i}
+                allTeams={allTeams}
+                onRemove={handleRemove}
+                onResend={handleResend}
+              />
+            ))}
+          </AnimatePresence>
+          {people.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16">
+              <Users size={24} className="text-text-300 mb-2" strokeWidth={1.3} />
+              <p className="text-sm text-text-300">No members match your filters.</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Pagination */}
       {totalPages > 1 && (
