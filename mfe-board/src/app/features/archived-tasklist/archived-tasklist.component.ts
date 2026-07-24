@@ -24,6 +24,8 @@ interface ArchivedRow {
   title: string;
   priority: 'high' | 'medium' | 'low';
   assignees: AssigneeView[];
+  createdAt: string;    // formatted, or '—'
+  updatedAt: string;    // formatted, or '—'
 }
 
 // One status tab — only statuses with isArchievable === true are shown, since those
@@ -39,6 +41,12 @@ function initialsFromName(name?: string | null): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   return name.slice(0, 2).toUpperCase();
+}
+
+function formatDate(iso?: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 @Component({
@@ -166,6 +174,8 @@ export class ArchivedTasklistComponent implements OnInit {
           avatarUrl: a.avatarUrl?.trim() || undefined,
         }))
         .filter(a => a.name || a.avatarUrl),
+      createdAt: formatDate(task.createdAt),
+      updatedAt: formatDate(task.updatedAt),
     };
   }
 

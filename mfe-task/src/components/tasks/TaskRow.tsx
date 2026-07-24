@@ -106,25 +106,29 @@ export function AssigneeStack({ assignees, size = 'md' }: { assignees: AssigneeS
 
 // Edit + Delete only render for the current user's own assigned tasks — everyone
 // else (e.g. viewing a teammate's task from the team board) only gets View.
-// Pass `readOnly` for tasks with no live detail route yet (e.g. archived tasks),
-// which hides the action cluster entirely and drops the row's own link-through.
+// Pass `readOnly` for tasks with no live detail route (e.g. archived tasks) —
+// this always hides Edit/Remove. Pass `viewHref` alongside it to still link the
+// row through to a read-only detail page (e.g. `/archieve/<id>`) with just a
+// View button; without it, a readOnly row renders as plain, unlinked content.
 export function TaskRow({
   task,
   index,
   isLast,
   statusName,
   readOnly = false,
+  viewHref,
 }: {
   task: ApiTask;
   index: number;
   isLast: boolean;
   statusName: string;
   readOnly?: boolean;
+  viewHref?: string;
 }) {
   const confirm = useConfirm();
   const deleteTask = useDeleteTask();
   const { id: currentUserId } = useAuth();
-  const isAssignedToMe = task.assignees.some((a) => a.userId === currentUserId);
+  const isAssignedToMe = !readOnly && task.assignees.some((a) => a.userId === currentUserId);
 
   async function handleRemove(e: React.MouseEvent) {
     e.preventDefault();
@@ -170,6 +174,11 @@ export function TaskRow({
     </>
   );
 
+  // Archived rows have no live detail route of their own — `viewHref` (e.g.
+  // /archieve/<id>) stands in for the normal `/${task.id}` link-through.
+  const linkHref = readOnly ? viewHref : `/${task.id}`;
+  const showActions = !readOnly || !!viewHref;
+
   return (
     <motion.div
       layout
@@ -177,7 +186,7 @@ export function TaskRow({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.97 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30, delay: index * 0.04 }}
-      className={`flex items-start gap-4 px-5 py-4 transition-colors group ${!readOnly ? 'hover:bg-bg-600' : ''} ${
+      className={`flex items-start gap-4 px-5 py-4 transition-colors group ${linkHref ? 'hover:bg-bg-600' : ''} ${
         !isLast ? 'border-b border-border-subtle' : 'rounded-b-xl'
       } ${index === 0 ? 'rounded-t-xl' : ''}`}
     >
@@ -185,16 +194,16 @@ export function TaskRow({
       <span className={`w-2 h-2 rounded-full shrink-0 mt-2 ${PRIORITY_COLORS[task.priority]}`} />
 
       {/* Content — two lines */}
-      {readOnly ? (
-        <div className="flex-1 min-w-0 flex flex-col gap-1.5">{content}</div>
-      ) : (
-        <Link href={`/${task.id}`} className="flex-1 min-w-0 flex flex-col gap-1.5 cursor-pointer">
+      {linkHref ? (
+        <Link href={linkHref} className="flex-1 min-w-0 flex flex-col gap-1.5 cursor-pointer">
           {content}
         </Link>
+      ) : (
+        <div className="flex-1 min-w-0 flex flex-col gap-1.5">{content}</div>
       )}
 
       {/* Right side — Edit / View / Remove */}
-      {!readOnly && (
+      {showActions && (
         <div className="flex items-center gap-1 shrink-0 pt-0.5">
           {isAssignedToMe && (
             <Link
@@ -206,14 +215,16 @@ export function TaskRow({
               <EditIcon />
             </Link>
           )}
-          <Link
-            href={`/${task.id}`}
-            data-tooltip="View task"
-            onClick={(e) => e.stopPropagation()}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-text-300 hover:text-accent hover:bg-accent-bg transition-colors"
-          >
-            <RedirectIcon />
-          </Link>
+          {linkHref && (
+            <Link
+              href={linkHref}
+              data-tooltip="View task"
+              onClick={(e) => e.stopPropagation()}
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-text-300 hover:text-accent hover:bg-accent-bg transition-colors"
+            >
+              <RedirectIcon />
+            </Link>
+          )}
           {isAssignedToMe && (
             <button
               type="button"

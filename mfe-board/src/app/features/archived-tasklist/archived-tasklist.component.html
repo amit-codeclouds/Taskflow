@@ -60,6 +60,8 @@
           <th class="col-title">Title</th>
           <th class="col-priority">Priority</th>
           <th class="col-assignee">Assignee</th>
+          <th class="col-date">Created</th>
+          <th class="col-date">Updated</th>
           <th class="col-view">View Task</th>
         </tr>
       </thead>
@@ -76,6 +78,8 @@
                 <div class="skeleton skeleton-avatar" *ngFor="let a of [0,1,2]"></div>
               </div>
             </td>
+            <td><div class="skeleton" style="width:70px;height:14px"></div></td>
+            <td><div class="skeleton" style="width:70px;height:14px"></div></td>
             <td><div class="skeleton" style="width:28px;height:28px;border-radius:8px"></div></td>
           </tr>
         </ng-container>
@@ -100,6 +104,8 @@
               </div>
               <ng-template #noAssignee><span class="unassigned">—</span></ng-template>
             </td>
+            <td class="col-date">{{ row.createdAt }}</td>
+            <td class="col-date">{{ row.updatedAt }}</td>
             <td class="col-view">
               <button type="button" class="view-btn" (click)="viewTask(row.id)" title="View task" aria-label="View task">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

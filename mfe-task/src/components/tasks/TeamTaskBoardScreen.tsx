@@ -246,6 +246,7 @@ export default function TeamTaskBoardScreen() {
                     isLast={i === archivedTasks.length - 1}
                     statusName="Archived"
                     readOnly
+                    viewHref={`/archieve/${task.id}`}
                   />
                 ))
               : (activeColumn?.tasks ?? []).map((task, i) => (
