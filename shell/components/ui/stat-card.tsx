@@ -28,7 +28,7 @@ export default function StatCard({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30, delay }}
-      whileHover={{ y: -2, boxShadow: '0 8px 32px rgba(0,0,0,0.45)' }}
+      whileHover={{ y: -2, boxShadow: 'var(--shadow-elevated)' }}
     >
       <div className="flex items-start justify-between">
         <div className={`w-9 h-9 rounded-lg bg-bg-600 flex items-center justify-center ${color}`}>

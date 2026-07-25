@@ -19,7 +19,7 @@
             <span class="team-dot" [style.background]="team.color"></span>
             <span>{{ team.name }}</span>
             <svg *ngIf="team.id === sel.id" width="12" height="12" viewBox="0 0 12 12" fill="none" style="margin-left:auto">
-              <path d="M2 6l3 3 5-5" stroke="#6155DD" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M2 6l3 3 5-5" style="stroke: var(--color-accent)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </div>
         </div>
@@ -104,7 +104,7 @@
       >
         <div class="task-card" cdkDrag *ngFor="let task of col.tasks; let ti = index" [style.animation-delay]="(ci * 0.08 + ti * 0.05) + 's'" (click)="openTask(task)">
           <div class="task-card-top">
-            <span class="task-label" [style.background]="task.labelColor + '22'" [style.color]="task.labelColor">{{ task.label }}</span>
+            <span class="task-label" [style.background]="'color-mix(in srgb, ' + task.labelColor + ' 13%, transparent)'" [style.color]="task.labelColor">{{ task.label }}</span>
             <div class="priority-dot" [ngClass]="'priority-' + task.priority"></div>
           </div>
           <p class="task-title">{{ task.title }}</p>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, Palette, Bell, Shield, Check, Camera,
@@ -10,6 +11,7 @@ import { useMe } from '@/lib/hooks/useMe';
 import { useUpdateUser } from '@/lib/hooks/useUsers';
 import { SettingsSkeleton } from '@/app/(shell)/settings/_skeleton';
 import { getInitials } from '@/lib/initials';
+import { getTheme, setTheme, type Theme } from '@/lib/theme';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -129,9 +131,11 @@ function ThemeOption({ label, active, disabled, preview, onClick }: {
 export default function SettingsScreen() {
   const { data: me, isPending } = useMe();
   const updateUser = useUpdateUser();
+  const router = useRouter();
 
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
+  const [theme, setThemeState] = useState<Theme>('dark');
 
   useEffect(() => {
     if (me) {
@@ -139,6 +143,17 @@ export default function SettingsScreen() {
       setRole(me.title ?? '');
     }
   }, [me]);
+
+  useEffect(() => {
+    setThemeState(getTheme());
+  }, []);
+
+  function handleThemeChange(next: Theme) {
+    if (next === theme) return;
+    setTheme(next);
+    setThemeState(next);
+    router.refresh();
+  }
 
   const [notifs, setNotifs] = useState({
     taskAssigned: true, commentAdded: true, dueSoon: true, statusChanged: false,
@@ -175,7 +190,8 @@ export default function SettingsScreen() {
           <div className="flex gap-3">
             <ThemeOption
               label="Dark"
-              active={true}
+              active={theme === 'dark'}
+              onClick={() => handleThemeChange('dark')}
               preview={
                 <div className="h-14 bg-[#121215] flex flex-col gap-1 p-1.5">
                   <div className="h-1.5 w-10 bg-[#222227] rounded-full" />
@@ -186,8 +202,8 @@ export default function SettingsScreen() {
             />
             <ThemeOption
               label="Light"
-              active={false}
-              disabled
+              active={theme === 'light'}
+              onClick={() => handleThemeChange('light')}
               preview={
                 <div className="h-14 bg-[#F8F8F8] flex flex-col gap-1 p-1.5">
                   <div className="h-1.5 w-10 bg-[#E5E5E5] rounded-full" />

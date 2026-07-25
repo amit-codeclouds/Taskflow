@@ -8,7 +8,14 @@ import { BoardService } from '../../core/services/board/board.service';
 
 // Palette used to colour status tabs by position when the API supplies no colour
 // (mirrors the palette BoardComponent uses for board columns).
-const STATUS_PALETTE = ['#6E6C6A', '#6155DD', '#32B173', '#E09D34', '#DC4949', '#6a9eef'];
+const STATUS_PALETTE = [
+  'var(--color-text-300)',
+  'var(--color-accent)',
+  'var(--color-status-green)',
+  'var(--color-status-amber)',
+  'var(--color-status-red)',
+  '#6a9eef',
+];
 
 // One assignee as rendered in the table — avatar + name for the hover tooltip.
 interface AssigneeView {

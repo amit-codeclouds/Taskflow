@@ -2,21 +2,73 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-bg-900: #121215;
+  --color-bg-800: #1A1A1E;
+  --color-bg-700: #222227;
+  --color-bg-600: #2C2C32;
+  --color-bg-500: #393940;
+  --color-text-100: #F4F3F0;
+  --color-text-200: #ABAAA5;
+  --color-text-300: #6E6C6A;
+  --color-accent: #6155DD;
+  --color-accent-hover: #766BE8;
+  --color-accent-bg: #261F42;
+  --color-status-green: #32B173;
+  --color-status-amber: #E09D34;
+  --color-status-red: #DC4949;
+  --color-green-bg: #123822;
+  --color-amber-bg: #45320D;
+  --color-red-bg: #451515;
+  --color-border-subtle: #2C2C32;
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-elevated: 0 4px 16px rgba(0,0,0,0.5);
+  --shadow-glow: 0 0 20px rgba(97,85,221,0.15);
+  --overlay-accent-hover: rgba(97,85,221,0.3);
+  --overlay-selection: rgba(97,85,221,0.3);
+}
+
+:root[data-theme="light"] {
+  --color-bg-900: #F7F7F8;
+  --color-bg-800: #EFEFF1;
+  --color-bg-700: #FFFFFF;
+  --color-bg-600: #E4E4E7;
+  --color-bg-500: #D4D4D8;
+  --color-text-100: #18181B;
+  --color-text-200: #52525B;
+  --color-text-300: #8A8A93;
+  --color-accent: #6155DD;
+  --color-accent-hover: #4F44C7;
+  --color-accent-bg: #EEECFC;
+  --color-status-green: #178350;
+  --color-status-amber: #A6690E;
+  --color-status-red: #C23636;
+  --color-green-bg: #E4F5EC;
+  --color-amber-bg: #FBF0DD;
+  --color-red-bg: #FBE6E6;
+  --color-border-subtle: #E4E4E7;
+  --shadow-card: 0 1px 3px rgba(24,24,27,0.08), 0 1px 2px rgba(24,24,27,0.06);
+  --shadow-elevated: 0 4px 16px rgba(24,24,27,0.10);
+  --shadow-glow: 0 0 20px rgba(97,85,221,0.10);
+  --overlay-accent-hover: rgba(97,85,221,0.18);
+  --overlay-selection: rgba(97,85,221,0.18);
+}
+
 ::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: #1A1A1E; }
-::-webkit-scrollbar-thumb { background: #393940; border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: #6155DD; }
+::-webkit-scrollbar-track { background: var(--color-bg-800); }
+::-webkit-scrollbar-thumb { background: var(--color-bg-500); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-accent); }
 
 *:focus-visible {
-  outline: 2px solid #6155DD;
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
 html { scroll-behavior: smooth; }
 
 ::selection {
-  background: rgba(97, 85, 221, 0.3);
-  color: #F4F3F0;
+  background: var(--overlay-selection);
+  color: var(--color-text-100);
 }
 
 @keyframes slide-progress {

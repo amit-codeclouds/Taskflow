@@ -51,9 +51,9 @@ type FormValues = {
 // ── Static option lists ───────────────────────────────────────────────────────
 
 const PRIORITY_OPTIONS: SelectOption[] = [
-  { value: 'High',   label: 'High',   color: '#DC4949' },
-  { value: 'Medium', label: 'Medium', color: '#E09D34' },
-  { value: 'Low',    label: 'Low',    color: '#32B173' },
+  { value: 'High',   label: 'High',   color: 'var(--color-status-red)' },
+  { value: 'Medium', label: 'Medium', color: 'var(--color-status-amber)' },
+  { value: 'Low',    label: 'Low',    color: 'var(--color-status-green)' },
 ];
 
 const LABEL_OPTIONS: SelectOption[] = [
@@ -89,13 +89,13 @@ function PersonMultiValueLabel({ data }: { data: PersonOption }) {
       ) : (
         <div
           className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
-          style={{ background: 'rgba(97,85,221,0.3)', color: '#766Be8', fontSize: '9px', fontWeight: 700 }}
+          style={{ background: 'var(--overlay-accent-hover)', color: 'var(--color-accent-hover)', fontSize: '9px', fontWeight: 700 }}
         >
           {data.initials}
         </div>
       )}
-      <span style={{ color: '#766Be8', fontSize: '12px', fontWeight: 500 }}>{data.label}</span>
-      <span style={{ color: '#6E6C6A', fontSize: '11px' }}>{data.title}</span>
+      <span style={{ color: 'var(--color-accent-hover)', fontSize: '12px', fontWeight: 500 }}>{data.label}</span>
+      <span style={{ color: 'var(--color-text-300)', fontSize: '11px' }}>{data.title}</span>
     </div>
   );
 }
@@ -356,7 +356,7 @@ export default function TaskFormScreen({ taskId }: { taskId?: string }) {
                     <div>
                       <label className={labelClass}>Team <span className="text-status-red">*</span></label>
                       {teamsPending ? (
-                        <Skeleton height={40} borderRadius={8} baseColor="#222227" highlightColor="#2C2C32" />
+                        <Skeleton height={40} borderRadius={8} baseColor="var(--color-bg-700)" highlightColor="var(--color-bg-600)" />
                       ) : (
                         <div
                           data-tooltip={
@@ -390,7 +390,7 @@ export default function TaskFormScreen({ taskId }: { taskId?: string }) {
                     <div>
                       <label className={labelClass}>Status <span className="text-status-red">*</span></label>
                       {statusesPending && values.teamId ? (
-                        <Skeleton height={40} borderRadius={8} baseColor="#222227" highlightColor="#2C2C32" />
+                        <Skeleton height={40} borderRadius={8} baseColor="var(--color-bg-700)" highlightColor="var(--color-bg-600)" />
                       ) : (
                         <div
                           data-tooltip={isStatusPrefilled ? 'Preset from the link you followed' : undefined}
@@ -473,7 +473,7 @@ export default function TaskFormScreen({ taskId }: { taskId?: string }) {
                         }}
                       >
                         <motion.div
-                          className="h-full rounded-full bg-gradient-to-r from-[#6155DD] to-[#766Be8]"
+                          className="h-full rounded-full bg-gradient-to-r from-[var(--color-accent)] to-[var(--color-accent-hover)]"
                           animate={{ width: `${values.progress}%` }}
                           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                         />
@@ -503,7 +503,7 @@ export default function TaskFormScreen({ taskId }: { taskId?: string }) {
                   <div>
                     <label className={labelClass}>Assignees</label>
                     {peoplePending && values.teamId ? (
-                      <Skeleton height={40} borderRadius={8} baseColor="#222227" highlightColor="#2C2C32" />
+                      <Skeleton height={40} borderRadius={8} baseColor="var(--color-bg-700)" highlightColor="var(--color-bg-600)" />
                     ) : (
                       <AppSelect
                         isMulti
@@ -558,7 +558,7 @@ export default function TaskFormScreen({ taskId }: { taskId?: string }) {
 // ── Component-level skeleton — shown only while the task being edited loads ──
 
 function FormSkeleton() {
-  const theme = { baseColor: '#222227', highlightColor: '#2C2C32' };
+  const theme = { baseColor: 'var(--color-bg-700)', highlightColor: 'var(--color-bg-600)' };
   return (
     <div className="max-w-5xl mx-auto flex flex-col gap-6">
       <div className="bg-bg-800 rounded-xl border border-border-subtle p-6 flex flex-col gap-5">

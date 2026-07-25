@@ -161,7 +161,7 @@ export default function TeamTaskBoardScreen() {
           <Link href={`/new?teamId=${teamId}`}>
             <motion.button
               className="flex items-center gap-2 bg-accent text-white text-sm font-medium px-4 py-2 rounded-lg"
-              whileHover={{ scale: 1.02, boxShadow: '0 0 16px rgba(97,85,221,0.3)' }}
+              whileHover={{ scale: 1.02, boxShadow: '0 0 16px var(--overlay-accent-hover)' }}
               whileTap={{ scale: 0.97 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             >

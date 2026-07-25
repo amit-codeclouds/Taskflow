@@ -10,7 +10,7 @@
 
 .modal-card {
   width: 100%; max-width: 440px;
-  background: #1A1A1E; border: 1px solid #2C2C32; border-radius: 14px;
+  background: var(--color-bg-800); border: 1px solid var(--color-border-subtle); border-radius: 14px;
   padding: 28px;
   max-height: calc(100vh - 48px); overflow-y: auto;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
@@ -22,17 +22,17 @@
 .modal-icon {
   width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  background: #6155DD1A; color: #766Be8; border: 1px solid #6155DD55;
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent); color: var(--color-accent-hover); border: 1px solid color-mix(in srgb, var(--color-accent) 33%, transparent);
 }
 .modal-head-text { flex: 1; min-width: 0; }
-.modal-title { font-size: 18px; font-weight: 600; color: #F4F3F0; margin: 0; }
-.modal-subtitle { font-size: 12px; color: #6E6C6A; margin: 3px 0 0; }
+.modal-title { font-size: 18px; font-weight: 600; color: var(--color-text-100); margin: 0; }
+.modal-subtitle { font-size: 12px; color: var(--color-text-300); margin: 3px 0 0; }
 .modal-close {
   width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  background: transparent; color: #6E6C6A; border: 1px solid transparent;
+  background: transparent; color: var(--color-text-300); border: 1px solid transparent;
   cursor: pointer; transition: background 0.15s, color 0.15s;
-  &:hover:not(:disabled) { background: #2C2C32; color: #F4F3F0; }
+  &:hover:not(:disabled) { background: var(--color-border-subtle); color: var(--color-text-100); }
   &:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
@@ -40,18 +40,18 @@
 .modal-form { display: flex; flex-direction: column; gap: 14px; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field-label {
-  font-size: 11px; color: #6E6C6A; text-transform: uppercase;
+  font-size: 11px; color: var(--color-text-300); text-transform: uppercase;
   letter-spacing: 0.08em; font-weight: 500;
 }
 .field-input {
   width: 100%; padding: 9px 12px;
-  background: #121215; border: 1px solid #2C2C32; border-radius: 8px;
-  color: #F4F3F0; font-size: 14px; outline: none; font-family: inherit;
+  background: var(--color-bg-900); border: 1px solid var(--color-border-subtle); border-radius: 8px;
+  color: var(--color-text-100); font-size: 14px; outline: none; font-family: inherit;
   transition: border-color 0.15s, box-shadow 0.15s;
-  &::placeholder { color: #6E6C6A; }
-  &:focus { border-color: #6155DD; box-shadow: 0 0 0 3px rgba(97, 85, 221, 0.18); }
-  &:read-only { color: #ABAAA5; cursor: default; }
-  &:read-only:focus { box-shadow: none; border-color: #2C2C32; }
+  &::placeholder { color: var(--color-text-300); }
+  &:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent); }
+  &:read-only { color: var(--color-text-200); cursor: default; }
+  &:read-only:focus { box-shadow: none; border-color: var(--color-border-subtle); }
 }
 textarea.field-input { resize: vertical; min-height: 40px; }
 
@@ -59,12 +59,12 @@ textarea.field-input { resize: vertical; min-height: 40px; }
 .toggle-row {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
   padding: 12px 14px; border-radius: 10px;
-  background: #121215; border: 1px solid #2C2C32;
+  background: var(--color-bg-900); border: 1px solid var(--color-border-subtle);
   cursor: pointer; user-select: none;
 }
 .toggle-text { display: flex; flex-direction: column; gap: 3px; }
-.toggle-title { font-size: 14px; font-weight: 500; color: #F4F3F0; }
-.toggle-desc { font-size: 11px; color: #6E6C6A; line-height: 1.4; }
+.toggle-title { font-size: 14px; font-weight: 500; color: var(--color-text-100); }
+.toggle-desc { font-size: 11px; color: var(--color-text-300); line-height: 1.4; }
 
 .toggle-switch { position: relative; flex-shrink: 0; margin-top: 2px; width: 36px; height: 20px; }
 .toggle-switch input {
@@ -72,21 +72,21 @@ textarea.field-input { resize: vertical; min-height: 40px; }
 }
 .toggle-track {
   display: block; width: 36px; height: 20px; border-radius: 999px;
-  background: #2C2C32; border: 1px solid #393940;
+  background: var(--color-border-subtle); border: 1px solid var(--color-bg-500);
   transition: background 0.18s, border-color 0.18s;
   position: relative;
 }
 .toggle-thumb {
   position: absolute; top: 1px; left: 1px;
   width: 16px; height: 16px; border-radius: 50%;
-  background: #ABAAA5;
+  background: var(--color-text-200);
   transition: transform 0.18s, background 0.18s;
 }
-.toggle-switch input:checked ~ .toggle-track { background: #6155DD; border-color: #6155DD; }
+.toggle-switch input:checked ~ .toggle-track { background: var(--color-accent); border-color: var(--color-accent); }
 .toggle-switch input:checked ~ .toggle-track .toggle-thumb { transform: translateX(16px); background: #fff; }
 
-.field-error { color: #DC4949; font-size: 12px; margin: 0; }
-.modal-error { color: #DC4949; font-size: 12px; margin: 0; }
+.field-error { color: var(--color-status-red); font-size: 12px; margin: 0; }
+.modal-error { color: var(--color-status-red); font-size: 12px; margin: 0; }
 
 /* ── Actions ── */
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
@@ -98,12 +98,12 @@ textarea.field-input { resize: vertical; min-height: 40px; }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 .modal-btn--ghost {
-  background: transparent; color: #ABAAA5; border-color: #2C2C32;
-  &:hover:not(:disabled) { background: #222227; color: #F4F3F0; }
+  background: transparent; color: var(--color-text-200); border-color: var(--color-border-subtle);
+  &:hover:not(:disabled) { background: var(--color-bg-700); color: var(--color-text-100); }
 }
 .modal-btn--primary {
-  background: #6155DD; color: #fff;
-  &:hover:not(:disabled) { background: #766Be8; }
+  background: var(--color-accent); color: #fff;
+  &:hover:not(:disabled) { background: var(--color-accent-hover); }
 }
 
 .btn-spinner {

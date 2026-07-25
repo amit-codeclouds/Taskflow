@@ -324,7 +324,7 @@ function TeamNewPageContent() {
             type="submit"
             disabled={formik.isSubmitting || createTeam.isPending}
             className="flex items-center gap-2 h-10 px-5 rounded-lg text-sm font-medium bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-            whileHover={createTeam.isPending ? undefined : { scale: 1.02, boxShadow: '0 0 16px rgba(97,85,221,0.3)' }}
+            whileHover={createTeam.isPending ? undefined : { scale: 1.02, boxShadow: '0 0 16px var(--overlay-accent-hover)' }}
             whileTap={createTeam.isPending ? undefined : { scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
           >
