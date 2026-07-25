@@ -58,6 +58,15 @@
   --overlay-selection: rgba(97,85,221,0.18);
 }
 
+*, *::before, *::after {
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease,
+    box-shadow 0.25s ease, fill 0.25s ease, stroke 0.25s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none; }
+}
+
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: var(--color-bg-800); }
 ::-webkit-scrollbar-thumb { background: var(--color-bg-500); border-radius: 2px; }
