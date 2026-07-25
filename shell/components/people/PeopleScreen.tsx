@@ -227,7 +227,7 @@ export default function PeopleScreen() {
         <motion.button
           onClick={() => setShowInvite(true)}
           className="flex items-center gap-2 bg-accent text-white text-sm font-medium px-4 py-2 rounded-lg"
-          whileHover={{ scale: 1.02, boxShadow: '0 0 16px rgba(97,85,221,0.3)' }}
+          whileHover={{ scale: 1.02, boxShadow: '0 0 16px var(--overlay-accent-hover)' }}
           whileTap={{ scale: 0.97 }}
         >
           <UserPlus size={14} strokeWidth={1.8} />

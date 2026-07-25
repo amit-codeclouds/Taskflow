@@ -20,23 +20,23 @@ function buildStyles<T extends SelectOption>(hasError?: boolean): StylesConfig<T
   return {
     control: (base, state) => ({
       ...base,
-      background: '#222227',
-      border: `1px solid ${hasError ? '#DC4949' : state.isFocused ? '#6155DD' : '#2C2C32'}`,
+      background: 'var(--color-bg-700)',
+      border: `1px solid ${hasError ? 'var(--color-status-red)' : state.isFocused ? 'var(--color-accent)' : 'var(--color-border-subtle)'}`,
       borderRadius: '8px',
       minHeight: '40px',
       boxShadow: 'none',
       cursor: 'pointer',
       transition: 'border-color 0.15s',
-      '&:hover': { borderColor: hasError ? '#DC4949' : '#6155DD' },
+      '&:hover': { borderColor: hasError ? 'var(--color-status-red)' : 'var(--color-accent)' },
     }),
     menu: (base) => ({
       ...base,
-      background: '#1A1A1E',
-      border: '1px solid #2C2C32',
+      background: 'var(--color-bg-800)',
+      border: '1px solid var(--color-border-subtle)',
       borderRadius: '10px',
       overflow: 'hidden',
       zIndex: 50,
-      boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
+      boxShadow: 'var(--shadow-elevated)',
     }),
     menuList: (base) => ({
       ...base,
@@ -46,28 +46,28 @@ function buildStyles<T extends SelectOption>(hasError?: boolean): StylesConfig<T
     option: (base, state) => ({
       ...base,
       background: state.isSelected
-        ? '#261F42'
+        ? 'var(--color-accent-bg)'
         : state.isFocused
-        ? '#222227'
+        ? 'var(--color-bg-700)'
         : 'transparent',
-      color: state.isSelected ? '#766Be8' : '#F4F3F0',
+      color: state.isSelected ? 'var(--color-accent-hover)' : 'var(--color-text-100)',
       borderRadius: '6px',
       fontSize: '14px',
       cursor: 'pointer',
       padding: '8px 10px',
-      '&:active': { background: '#261F42' },
+      '&:active': { background: 'var(--color-accent-bg)' },
     }),
-    singleValue: (base) => ({ ...base, color: '#F4F3F0', fontSize: '14px' }),
-    multiValue: (base) => ({ ...base, background: '#261F42', borderRadius: '6px', padding: '2px 4px' }),
-    multiValueLabel: (base) => ({ ...base, color: '#766Be8', fontSize: '12px', padding: '1px 4px' }),
+    singleValue: (base) => ({ ...base, color: 'var(--color-text-100)', fontSize: '14px' }),
+    multiValue: (base) => ({ ...base, background: 'var(--color-accent-bg)', borderRadius: '6px', padding: '2px 4px' }),
+    multiValueLabel: (base) => ({ ...base, color: 'var(--color-accent-hover)', fontSize: '12px', padding: '1px 4px' }),
     multiValueRemove: (base) => ({
       ...base,
-      color: '#766Be8',
+      color: 'var(--color-accent-hover)',
       borderRadius: '0 4px 4px 0',
-      '&:hover': { background: '#6155DD', color: '#fff' },
+      '&:hover': { background: 'var(--color-accent)', color: '#fff' },
     }),
-    placeholder: (base) => ({ ...base, color: '#6E6C6A', fontSize: '14px' }),
-    input: (base) => ({ ...base, color: '#F4F3F0', fontSize: '14px', margin: 0, padding: 0 }),
+    placeholder: (base) => ({ ...base, color: 'var(--color-text-300)', fontSize: '14px' }),
+    input: (base) => ({ ...base, color: 'var(--color-text-100)', fontSize: '14px', margin: 0, padding: 0 }),
     valueContainer: (base, state) => ({
       ...base,
       padding: state.selectProps.menuIsOpen ? '0 4px 0 36px' : '0 12px',
@@ -78,20 +78,20 @@ function buildStyles<T extends SelectOption>(hasError?: boolean): StylesConfig<T
     indicatorSeparator: () => ({ display: 'none' }),
     dropdownIndicator: (base, state) => ({
       ...base,
-      color: state.isFocused ? '#6155DD' : '#6E6C6A',
+      color: state.isFocused ? 'var(--color-accent)' : 'var(--color-text-300)',
       padding: '0 6px',
       transform: state.selectProps.menuIsOpen ? 'rotate(180deg)' : 'rotate(0deg)',
       transition: 'transform 0.2s, color 0.15s',
-      '&:hover': { color: '#6155DD' },
+      '&:hover': { color: 'var(--color-accent)' },
     }),
     clearIndicator: (base) => ({
       ...base,
-      color: '#6E6C6A',
+      color: 'var(--color-text-300)',
       padding: '0 4px',
-      '&:hover': { color: '#F4F3F0' },
+      '&:hover': { color: 'var(--color-text-100)' },
     }),
-    noOptionsMessage: (base) => ({ ...base, color: '#6E6C6A', fontSize: '14px', padding: '10px' }),
-    loadingMessage: (base) => ({ ...base, color: '#6E6C6A', fontSize: '14px' }),
+    noOptionsMessage: (base) => ({ ...base, color: 'var(--color-text-300)', fontSize: '14px', padding: '10px' }),
+    loadingMessage: (base) => ({ ...base, color: 'var(--color-text-300)', fontSize: '14px' }),
   };
 }
 
@@ -119,7 +119,7 @@ function CustomControl<T extends SelectOption, IsMulti extends boolean = false>(
             left: '12px',
             top: '50%',
             transform: 'translateY(-50%)',
-            color: '#6155DD',
+            color: 'var(--color-accent)',
             pointerEvents: 'none',
             zIndex: 1,
             display: 'flex',

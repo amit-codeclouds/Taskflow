@@ -27,7 +27,7 @@ function AssignedTeamCard({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30, delay: index * 0.07 }}
-      whileHover={{ borderColor: '#2C2C3A' }}
+      whileHover={{ borderColor: 'var(--color-border-subtle)' }}
     >
       <div className="flex items-start gap-3">
         <TeamInitial color={team.color} name={team.name} />

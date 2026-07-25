@@ -406,9 +406,9 @@ const TiptapDynamic = dynamic(
       }
 
       return (
-        <div className="tf-editor-wrapper rounded-lg border border-border-subtle overflow-hidden bg-[#1c1c21] focus-within:border-accent transition-colors">
+        <div className="tf-editor-wrapper rounded-lg border border-border-subtle overflow-hidden bg-[var(--color-bg-800)] focus-within:border-accent transition-colors">
           {/* Toolbar */}
-          <div className="flex items-center flex-wrap gap-1 p-2 bg-[#1A1A1E] border-b border-border-subtle">
+          <div className="flex items-center flex-wrap gap-1 p-2 bg-[var(--color-bg-800)] border-b border-border-subtle">
             {!isCompact && (
               <>
                 <ToolbarDropdown

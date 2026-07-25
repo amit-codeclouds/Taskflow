@@ -167,7 +167,7 @@ export default function TeamInviteModal({ team, existingEmails, onClose, onInvit
                     type="checkbox"
                     checked={formik.values.addToWorkspace}
                     onChange={e => formik.setFieldValue('addToWorkspace', e.target.checked)}
-                    className="w-4 h-4 mt-0.5 rounded accent-[#6155DD] cursor-pointer shrink-0"
+                    className="w-4 h-4 mt-0.5 rounded accent-[var(--color-accent)] cursor-pointer shrink-0"
                   />
                   <label htmlFor="add-to-workspace" className="cursor-pointer select-none">
                     <span className="text-sm text-text-100">Also add to workspace</span>

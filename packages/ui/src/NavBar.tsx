@@ -7,8 +7,8 @@ export function NavBar() {
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        background: '#121215',
-        borderBottom: '1px solid #222227',
+        background: 'var(--color-bg-900)',
+        borderBottom: '1px solid var(--color-bg-700)',
         fontFamily: 'Inter, system-ui, sans-serif',
       }}
     >
@@ -25,18 +25,18 @@ export function NavBar() {
       >
         <a
           href="/"
-          style={{ color: '#F4F3F0', fontSize: 18, fontWeight: 600, textDecoration: 'none' }}
+          style={{ color: 'var(--color-text-100)', fontSize: 18, fontWeight: 600, textDecoration: 'none' }}
         >
           Taskflow
         </a>
         <div style={{ display: 'flex', gap: 24, fontSize: 14 }}>
-          <a href="/" style={{ color: '#ABAAA5', textDecoration: 'none' }}>
+          <a href="/" style={{ color: 'var(--color-text-200)', textDecoration: 'none' }}>
             Home
           </a>
-          <a href="/tasks" style={{ color: '#ABAAA5', textDecoration: 'none' }}>
+          <a href="/tasks" style={{ color: 'var(--color-text-200)', textDecoration: 'none' }}>
             Tasks
           </a>
-          <a href="/board" style={{ color: '#ABAAA5', textDecoration: 'none' }}>
+          <a href="/board" style={{ color: 'var(--color-text-200)', textDecoration: 'none' }}>
             Board
           </a>
         </div>

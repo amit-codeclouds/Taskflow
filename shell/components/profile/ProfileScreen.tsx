@@ -436,7 +436,7 @@ export default function ProfileScreen() {
               onClick={handleSave}
               disabled={updateUser.isPending}
               className="flex items-center gap-2 h-9 px-5 rounded-lg bg-accent text-white text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
-              whileHover={updateUser.isPending ? undefined : { scale: 1.02, boxShadow: '0 0 16px rgba(97,85,221,0.35)' }}
+              whileHover={updateUser.isPending ? undefined : { scale: 1.02, boxShadow: '0 0 16px var(--overlay-accent-hover)' }}
               whileTap={updateUser.isPending ? undefined : { scale: 0.98 }}
             >
               {updateUser.isPending ? 'Saving…' : 'Save changes'}

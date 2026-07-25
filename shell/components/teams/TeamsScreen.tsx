@@ -35,7 +35,7 @@ function TeamCard({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30, delay: index * 0.07 }}
-      whileHover={{ borderColor: '#2C2C3A' }}
+      whileHover={{ borderColor: 'var(--color-border-subtle)' }}
     >
       <div className="flex items-start gap-3">
         <TeamInitial color={team.color} name={team.name} />
@@ -135,7 +135,7 @@ export default function TeamsScreen() {
         <motion.button
           onClick={() => router.push(`/teams/new?workspaceId=${auth.workspaceId}`)}
           className="flex items-center gap-2 bg-accent text-white text-sm font-medium px-4 py-2 rounded-lg"
-          whileHover={{ scale: 1.02, boxShadow: '0 0 16px rgba(97,85,221,0.3)' }}
+          whileHover={{ scale: 1.02, boxShadow: '0 0 16px var(--overlay-accent-hover)' }}
           whileTap={{ scale: 0.97 }}
           transition={{ type: 'spring', stiffness: 400, damping: 30 }}
         >

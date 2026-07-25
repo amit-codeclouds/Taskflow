@@ -4,7 +4,7 @@ import Skeleton, { SkeletonTheme } from 'react-loading-skeleton';
 import CommentItem from './CommentItem';
 import { useComments } from '@/lib/hooks/useComments';
 
-const skeletonTheme = { baseColor: '#222227', highlightColor: '#2C2C32' };
+const skeletonTheme = { baseColor: 'var(--color-bg-700)', highlightColor: 'var(--color-bg-600)' };
 
 export default function CommentList({ taskId }: { taskId: string }) {
   const { data: comments, isPending, isError, refetch } = useComments(taskId);
