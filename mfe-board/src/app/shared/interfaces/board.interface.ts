@@ -18,6 +18,7 @@ export interface Column {
   id: string;
   statusId: string;
   title: string;
+  description: string;
   color: string;
   count: number;
   isArchievable: boolean;
@@ -57,6 +58,7 @@ export interface ApiBoardColumn {
   id: string;
   name?: string;
   title?: string;
+  description?: string;
   color?: string;
   position?: number;
   totalTasks?: number;

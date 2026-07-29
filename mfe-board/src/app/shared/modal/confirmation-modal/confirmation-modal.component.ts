@@ -33,6 +33,8 @@ export class ConfirmationModalComponent {
   @Input() message = '';
   @Input() confirmText = 'Yes';
   @Input() cancelText = 'No';
+  /** Hide the cancel button for a single-action (acknowledge / "OK") modal. */
+  @Input() showCancel = true;
   /** 'danger' styles the confirm button red (for destructive actions). */
   @Input() variant: 'default' | 'danger' = 'default';
   /** Set true by the parent while the confirm action is in flight. */

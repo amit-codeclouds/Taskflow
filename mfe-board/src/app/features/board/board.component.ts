@@ -108,6 +108,7 @@ export class BoardComponent implements OnInit {
       id: column.id,
       statusId: column.id,
       title: column.name ?? column.title ?? '',
+      description: column.description ?? '',
       color: column.color ?? COLUMN_PALETTE[index % COLUMN_PALETTE.length],
       count: column.totalTasks ?? column.count ?? tasks.length,
       isArchievable: !!column.isArchievable,

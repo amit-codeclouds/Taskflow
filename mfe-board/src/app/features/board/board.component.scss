@@ -61,6 +61,64 @@
 .column-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .column-title { font-size: 13px; font-weight: 600; color: #F4F3F0; }
 .column-count { font-size: 11px; background: #2C2C32; color: #6E6C6A; padding: 1px 7px; border-radius: 999px; font-weight: 500; }
+
+/* ── Status description tooltip (popover card) ── */
+.column-title-wrap {
+  position: relative;
+  display: inline-flex; align-items: center; gap: 5px;
+  outline: none;
+}
+.column-info {
+  display: inline-flex; align-items: center; color: #57565A;
+  cursor: help; transition: color 0.15s;
+}
+.column-title-wrap:hover .column-info,
+.column-title-wrap:focus-visible .column-info { color: #766Be8; }
+
+.column-tooltip {
+  position: absolute; top: calc(100% + 10px); left: -4px;
+  z-index: 20;
+  display: flex; flex-direction: column; gap: 6px;
+  width: max-content; min-width: 180px; max-width: 260px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, #232329 0%, #1B1B1F 100%);
+  border: 1px solid #33333B; border-radius: 10px;
+  box-shadow: 0 12px 32px -8px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.3);
+  text-align: left;
+  opacity: 0; transform: translateY(6px) scale(0.98); transform-origin: top left;
+  pointer-events: none;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+
+  // top edge accent + arrow
+  &::before {
+    content: ''; position: absolute; top: -1px; left: 12px; right: 12px; height: 2px;
+    background: linear-gradient(90deg, transparent, #6155DD88, transparent);
+    border-radius: 2px;
+  }
+  &::after {
+    content: ''; position: absolute; bottom: 100%; left: 16px;
+    border: 6px solid transparent; border-bottom-color: #232329;
+    filter: drop-shadow(0 -1px 0 #33333B);
+  }
+}
+.column-tooltip-head {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12px; font-weight: 600; color: #F4F3F0;
+  letter-spacing: 0.01em;
+}
+.column-tooltip-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.04);
+}
+.column-tooltip-body {
+  font-size: 12px; font-weight: 400; line-height: 1.5; color: #A8A7A2;
+  white-space: normal;
+}
+
+.column-title-wrap:hover .column-tooltip,
+.column-title-wrap:focus-visible .column-tooltip {
+  opacity: 1; transform: translateY(0) scale(1);
+}
 .column-header-actions { display: flex; align-items: center; gap: 6px; }
 
 .column-add-btn {
