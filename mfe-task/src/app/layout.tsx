@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import 'react-loading-skeleton/dist/skeleton.css';
@@ -15,8 +16,9 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const theme = cookies().get('taskflow_theme')?.value === 'light' ? 'light' : 'dark';
   return (
-    <html lang="en" className={inter.className}>
+    <html lang="en" className={inter.className} data-theme={theme}>
       <body className="bg-bg-900 text-text-100 antialiased">
         <QueryProvider>
           <ToastProvider />

@@ -2,7 +2,7 @@
 
 import Skeleton, { SkeletonTheme } from 'react-loading-skeleton';
 
-const theme = { baseColor: '#222227', highlightColor: '#2C2C32' };
+const theme = { baseColor: 'var(--color-bg-700)', highlightColor: 'var(--color-bg-600)' };
 
 export function PeopleSkeleton() {
   return (
@@ -35,25 +35,38 @@ export function PeopleSkeleton() {
         </div>
 
         {/* Member rows */}
-        <div className="bg-bg-700 rounded-xl border border-border-subtle overflow-hidden">
-          <div className="divide-y divide-border-subtle">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 px-5 py-4">
-                <Skeleton circle width={36} height={36} />
-                <div className="flex-1 space-y-1">
-                  <Skeleton width={130} height={13} />
-                  <Skeleton width={180} height={11} />
-                </div>
-                <Skeleton width={80} height={11} />
-                <div className="flex gap-1">
-                  {Array.from({ length: 2 }).map((__, j) => (
-                    <Skeleton key={j} width={60} height={22} borderRadius={4} />
-                  ))}
-                </div>
-                <Skeleton circle width={28} height={28} />
+        <PeopleRowsSkeleton />
+      </div>
+    </SkeletonTheme>
+  );
+}
+
+// Rows-only skeleton for an already-rendered member list that's re-fetching
+// (page change, search, team filter) — the header/stats/filters stay put, only
+// the row area swaps to this instead of blurring the stale rows.
+export function PeopleRowsSkeleton() {
+  return (
+    <SkeletonTheme {...theme}>
+      <div className="bg-bg-700 rounded-card border border-border-subtle overflow-hidden">
+        <div className="divide-y divide-border-subtle">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 px-5 py-3.5">
+              <Skeleton circle width={36} height={36} />
+              <div className="w-44 shrink-0 space-y-1">
+                <Skeleton width={110} height={13} />
+                <Skeleton width={150} height={11} />
               </div>
-            ))}
-          </div>
+              <div className="w-32 shrink-0 hidden lg:block">
+                <Skeleton width={70} height={11} />
+              </div>
+              <div className="flex-1 flex gap-1.5">
+                {Array.from({ length: 2 }).map((__, j) => (
+                  <Skeleton key={j} width={60} height={18} borderRadius={999} />
+                ))}
+              </div>
+              <Skeleton width={64} height={18} borderRadius={999} />
+            </div>
+          ))}
         </div>
       </div>
     </SkeletonTheme>

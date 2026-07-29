@@ -26,6 +26,7 @@ export const queryKeys = {
   archivedTasks: {
     list: (params: { teamId: string; page?: number; limit?: number; statusId?: string; search?: string }) =>
       ['archived-tasks', 'list', params] as const,
+    detail: (id: string) => ['archived-tasks', 'detail', id] as const,
   },
   comments: {
     all: () => ['comments'] as const,

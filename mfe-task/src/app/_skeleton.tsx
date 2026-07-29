@@ -2,7 +2,7 @@
 
 import Skeleton, { SkeletonTheme } from 'react-loading-skeleton';
 
-const theme = { baseColor: '#222227', highlightColor: '#2C2C32' };
+const theme = { baseColor: 'var(--color-bg-700)', highlightColor: 'var(--color-bg-600)' };
 
 export function TaskListSkeleton() {
   return (
@@ -53,9 +53,10 @@ export function TaskListSkeleton() {
   );
 }
 
-// Rows-only skeleton for the Archived tab on TeamTaskBoardScreen — the tabs/header
-// are already rendered by that point, only the task rows are still loading.
-export function ArchivedTasksSkeleton() {
+// Rows-only skeleton for an already-rendered task list that's re-fetching (page
+// change, tab switch, search, filter reset) — the header/tabs/filters stay put,
+// only the row area swaps to this instead of blurring the stale rows.
+export function TaskRowsSkeleton() {
   return (
     <SkeletonTheme {...theme}>
       <div className="bg-bg-700 rounded-card border border-border-subtle overflow-hidden">

@@ -29,10 +29,10 @@ interface BoardSummary {
 // Dot colour + display label for the well-known statuses; unknown statuses fall
 // back to a neutral dot and their raw label from the API.
 const STATUS_DOT: Record<string, string> = {
-  todo: '#6E6C6A',
-  inprogress: '#6155DD',
-  inreview: '#E09D34',
-  done: '#32B173',
+  todo: 'var(--color-text-300)',
+  inprogress: 'var(--color-accent)',
+  inreview: 'var(--color-status-amber)',
+  done: 'var(--color-status-green)',
 };
 const STATUS_LABEL: Record<string, string> = {
   todo: 'To Do',
@@ -156,7 +156,7 @@ export class DashboardComponent implements OnInit {
       statuses: entries.map(e => ({
         label: STATUS_LABEL[e.key] ?? e.label,
         count: e.count,
-        color: STATUS_DOT[e.key] ?? '#6E6C6A',
+        color: STATUS_DOT[e.key] ?? 'var(--color-text-300)',
       })),
       assignees,
     };

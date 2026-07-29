@@ -35,10 +35,10 @@ function formatDate() {
 
 function TasksPreview() {
   const rows = [
-    { dot: '#DC4949', title: 'Implement authentication flow',  badge: 'In Progress', badgeBg: '#261F42', badgeColor: '#766Be8' },
-    { dot: '#E09D34', title: 'Design onboarding screens',      badge: 'Review',      badgeBg: '#2A2210', badgeColor: '#E09D34' },
-    { dot: '#DC4949', title: 'Fix navigation bug on mobile',   badge: 'In Progress', badgeBg: '#261F42', badgeColor: '#766Be8' },
-    { dot: '#393940', title: 'Write API documentation',        badge: 'To Do',       badgeBg: '#222227', badgeColor: '#6E6C6A' },
+    { dot: 'var(--color-status-red)', title: 'Implement authentication flow',  badge: 'In Progress', badgeBg: 'var(--color-accent-bg)', badgeColor: 'var(--color-accent-hover)' },
+    { dot: 'var(--color-status-amber)', title: 'Design onboarding screens',      badge: 'Review',      badgeBg: 'var(--color-amber-bg)', badgeColor: 'var(--color-status-amber)' },
+    { dot: 'var(--color-status-red)', title: 'Fix navigation bug on mobile',   badge: 'In Progress', badgeBg: 'var(--color-accent-bg)', badgeColor: 'var(--color-accent-hover)' },
+    { dot: 'var(--color-bg-500)', title: 'Write API documentation',        badge: 'To Do',       badgeBg: 'var(--color-bg-700)', badgeColor: 'var(--color-text-300)' },
   ];
 
   return (
@@ -57,7 +57,7 @@ function TasksPreview() {
 
       {/* Mini stats */}
       <div className="grid grid-cols-4 gap-1.5">
-        {['#766Be8', '#E09D34', '#E09D34', '#32B173'].map((c, i) => (
+        {['var(--color-accent-hover)', 'var(--color-status-amber)', 'var(--color-status-amber)', 'var(--color-status-green)'].map((c, i) => (
           <div key={i} className="bg-bg-800 rounded border border-border-subtle p-1.5">
             <div className="h-1 w-5 bg-text-300 rounded-full opacity-40 mb-1" />
             <div className="h-3" style={{ color: c }}>
@@ -97,23 +97,23 @@ function TasksPreview() {
 function BoardPreview() {
   const cols = [
     {
-      title: 'To Do',     dot: '#6E6C6A',
+      title: 'To Do',     dot: 'var(--color-text-300)',
       cards: [
-        { label: 'feature', labelColor: '#766Be8', dot: '#E09D34' },
-        { label: 'bug',     labelColor: '#DC4949', dot: '#DC4949' },
+        { label: 'feature', labelColor: 'var(--color-accent-hover)', dot: 'var(--color-status-amber)' },
+        { label: 'bug',     labelColor: 'var(--color-status-red)', dot: 'var(--color-status-red)' },
       ],
     },
     {
-      title: 'In Progress', dot: '#6155DD',
+      title: 'In Progress', dot: 'var(--color-accent)',
       cards: [
-        { label: 'feature', labelColor: '#766Be8', dot: '#DC4949' },
-        { label: 'infra',   labelColor: '#32B173', dot: '#E09D34' },
+        { label: 'feature', labelColor: 'var(--color-accent-hover)', dot: 'var(--color-status-red)' },
+        { label: 'infra',   labelColor: 'var(--color-status-green)', dot: 'var(--color-status-amber)' },
       ],
     },
     {
-      title: 'Done', dot: '#32B173',
+      title: 'Done', dot: 'var(--color-status-green)',
       cards: [
-        { label: 'infra',   labelColor: '#32B173', dot: '#DC4949' },
+        { label: 'infra',   labelColor: 'var(--color-status-green)', dot: 'var(--color-status-red)' },
       ],
     },
   ];
@@ -148,7 +148,7 @@ function BoardPreview() {
                 <div className="flex items-center justify-between">
                   <div
                     className="text-[7px] font-medium px-1 py-px rounded-full"
-                    style={{ background: card.labelColor + '22', color: card.labelColor }}
+                    style={{ background: `color-mix(in srgb, ${card.labelColor} 13%, transparent)`, color: card.labelColor }}
                   >
                     {card.label}
                   </div>
@@ -158,7 +158,7 @@ function BoardPreview() {
                 <div className="h-1 w-3/4 bg-text-300 rounded-full opacity-20" />
                 <div className="flex items-center justify-between mt-0.5">
                   <div className="h-1 w-6 bg-text-300 rounded-full opacity-30 font-mono" />
-                  <div className="w-3 h-3 rounded-full bg-accent-bg" style={{ fontSize: 5, color: '#6155DD', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>AC</div>
+                  <div className="w-3 h-3 rounded-full bg-accent-bg" style={{ fontSize: 5, color: 'var(--color-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>AC</div>
                 </div>
               </div>
             ))}
@@ -190,13 +190,13 @@ function AppCard({ href, icon, title, description, cta, preview, delay, variant,
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 260, damping: 28, delay }}
-      whileHover={{ y: -3, boxShadow: `0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px ${accentColor}33` }}
+      whileHover={{ y: -3, boxShadow: `var(--shadow-elevated), 0 0 0 1px color-mix(in srgb, ${accentColor} 20%, transparent)` }}
     >
       {/* Preview area */}
       <div className="relative h-52 bg-bg-900 overflow-hidden">
         {/* Gradient overlay at bottom so preview fades into card body */}
         <div className="absolute inset-x-0 bottom-0 h-16 z-10"
-          style={{ background: 'linear-gradient(to bottom, transparent, #222227)' }} />
+          style={{ background: 'linear-gradient(to bottom, transparent, var(--color-bg-700))' }} />
         {/* Subtle top accent line */}
         <div className="absolute top-0 inset-x-0 h-[2px] z-10" style={{ background: accentColor }} />
         <motion.div
@@ -214,7 +214,7 @@ function AppCard({ href, icon, title, description, cta, preview, delay, variant,
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: accentColor + '22', color: accentColor }}>
+              style={{ background: `color-mix(in srgb, ${accentColor} 13%, transparent)`, color: accentColor }}>
               {icon}
             </div>
             <div>
@@ -238,11 +238,11 @@ function AppCard({ href, icon, title, description, cta, preview, delay, variant,
             style={
               variant === 'primary'
                 ? { background: accentColor, color: '#fff' }
-                : { background: 'transparent', border: `1px solid #2C2C32`, color: '#F4F3F0' }
+                : { background: 'transparent', border: `1px solid var(--color-border-subtle)`, color: 'var(--color-text-100)' }
             }
             whileHover={
               variant === 'primary'
-                ? { scale: 1.02, boxShadow: `0 0 20px ${accentColor}55` }
+                ? { scale: 1.02, boxShadow: `0 0 20px color-mix(in srgb, ${accentColor} 33%, transparent)` }
                 : { scale: 1.02, borderColor: accentColor, color: accentColor }
             }
             whileTap={{ scale: 0.98 }}
@@ -306,7 +306,7 @@ export default function WelcomeScreen() {
         <div className="grid grid-cols-2 gap-5">
           <AppCard
             href="/tasks"
-            accentColor="#6155DD"
+            accentColor="var(--color-accent)"
             variant="primary"
             icon={
               <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
@@ -322,7 +322,7 @@ export default function WelcomeScreen() {
           />
           <AppCard
             href="/board"
-            accentColor="#32B173"
+            accentColor="var(--color-status-green)"
             variant="secondary"
             icon={
               <svg width="18" height="18" viewBox="0 0 16 16" fill="none">

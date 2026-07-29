@@ -5,6 +5,13 @@
   <title>MfeBoard</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    (function () {
+      var m = document.cookie.match(/(?:^|;)\s*taskflow_theme=([^;]+)/);
+      var theme = m && decodeURIComponent(m[1]) === 'light' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
   <link rel="alternate icon" type="image/x-icon" href="favicon.ico">
 </head>

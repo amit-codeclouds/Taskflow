@@ -7,7 +7,7 @@ import AppSelect, { type SelectOption } from '@/components/ui/AppSelect';
 import { useMyTasks, TASKS_PAGE_LIMIT } from '@/lib/hooks/useTasks';
 import { useTeamsList } from '@/lib/hooks/useTeams';
 import { useBoardStatuses, useBoardStatusesMap } from '@/lib/hooks/useBoardStatuses';
-import { TaskListSkeleton } from '@/app/_skeleton';
+import { TaskListSkeleton, TaskRowsSkeleton } from '@/app/_skeleton';
 import { TaskRow } from './TaskRow';
 import type { ApiTask } from '@/lib/types/tasks.types';
 
@@ -109,7 +109,7 @@ export default function TaskListScreen() {
         <Link href={newTaskHref}>
           <motion.button
             className="flex items-center gap-2 bg-accent text-white text-sm font-medium px-4 py-2 rounded-lg"
-            whileHover={{ scale: 1.02, boxShadow: '0 0 16px rgba(97,85,221,0.3)' }}
+            whileHover={{ scale: 1.02, boxShadow: '0 0 16px var(--overlay-accent-hover)' }}
             whileTap={{ scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
           >
@@ -183,25 +183,29 @@ export default function TaskListScreen() {
       )}
 
       {/* Task list */}
-      <div className={`bg-bg-700 rounded-card border border-border-subtle overflow-visible transition-opacity ${isFetching ? 'opacity-60' : ''}`}>
-        <AnimatePresence mode="popLayout">
-          {filteredTasks.map((task, i) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              index={i}
-              isLast={i === filteredTasks.length - 1}
-              statusName={statusNameFor(task)}
-            />
-          ))}
-        </AnimatePresence>
+      {isFetching ? (
+        <TaskRowsSkeleton />
+      ) : (
+        <div className="bg-bg-700 rounded-card border border-border-subtle overflow-visible">
+          <AnimatePresence mode="popLayout">
+            {filteredTasks.map((task, i) => (
+              <TaskRow
+                key={task.id}
+                task={task}
+                index={i}
+                isLast={i === filteredTasks.length - 1}
+                statusName={statusNameFor(task)}
+              />
+            ))}
+          </AnimatePresence>
 
-        {filteredTasks.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <p className="text-text-300 text-sm">No tasks match your filters.</p>
-          </div>
-        )}
-      </div>
+          {filteredTasks.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <p className="text-text-300 text-sm">No tasks match your filters.</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Pagination */}
       {(paged?.total ?? 0) > 0 && (

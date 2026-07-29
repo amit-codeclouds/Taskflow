@@ -33,4 +33,11 @@ export const archivedTasksService = {
     });
     return normalizePage<ApiArchivedTask>(data, page, limit);
   },
+
+  async getById(taskId: string): Promise<ApiArchivedTask> {
+    const { data } = await apiClient.get<unknown>(`/migrate/task/archived/${taskId}`);
+    return (data && typeof data === 'object' && 'result' in (data as object))
+      ? (data as { result: ApiArchivedTask }).result
+      : (data as ApiArchivedTask);
+  },
 };

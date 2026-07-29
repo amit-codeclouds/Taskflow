@@ -20,15 +20,22 @@ import { TeamService } from '../../core/services/team/team.service';
 import { ConfirmationModalComponent } from '../../shared/modal/confirmation-modal/confirmation-modal.component';
 
 // Palette used to colour columns by position (the API statuses carry no colour).
-const COLUMN_PALETTE = ['#6E6C6A', '#6155DD', '#32B173', '#E09D34', '#DC4949', '#6a9eef'];
+const COLUMN_PALETTE = [
+  'var(--color-text-300)',
+  'var(--color-accent)',
+  'var(--color-status-green)',
+  'var(--color-status-amber)',
+  'var(--color-status-red)',
+  '#6a9eef',
+];
 
 const LABEL_COLORS: Record<string, string> = {
-  feature: '#766Be8',
-  bug: '#DC4949',
+  feature: 'var(--color-accent-hover)',
+  bug: 'var(--color-status-red)',
   design: '#6a9eef',
   docs: '#6a9eef',
-  infra: '#32B173',
-  refactor: '#E09D34',
+  infra: 'var(--color-status-green)',
+  refactor: 'var(--color-status-amber)',
 };
 
 function initialsFromName(name?: string | null): string {
@@ -125,7 +132,7 @@ export class BoardComponent implements OnInit {
       title: task.title,
       priority: (task.priority?.toLowerCase() as Task['priority']) ?? 'medium',
       label: task.label ?? '',
-      labelColor: LABEL_COLORS[(task.label ?? '').toLowerCase()] ?? '#766Be8',
+      labelColor: LABEL_COLORS[(task.label ?? '').toLowerCase()] ?? 'var(--color-accent-hover)',
       assignees: (task.assignees ?? [])
         .map(a => ({
           initials: a.avatarInitials?.trim() || initialsFromName(a.name),

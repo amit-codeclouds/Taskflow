@@ -2,7 +2,7 @@
 
 import Skeleton, { SkeletonTheme } from 'react-loading-skeleton';
 
-const theme = { baseColor: '#222227', highlightColor: '#2C2C32' };
+const theme = { baseColor: 'var(--color-bg-700)', highlightColor: 'var(--color-bg-600)' };
 
 export function TeamDetailSkeleton() {
   return (

@@ -13,14 +13,14 @@ export function getSelectStyles<T extends SelectOption = SelectOption>(
 ): StylesConfig<T, false> {
   const { hasError = false, size = 'md' } = opts;
   const minHeight   = size === 'sm' ? '36px' : '40px';
-  const borderColor = hasError ? '#DC4949' : '#2C2C32';
-  const focusBorder = hasError ? '#DC4949' : '#6155DD';
+  const borderColor = hasError ? 'var(--color-status-red)' : 'var(--color-border-subtle)';
+  const focusBorder = hasError ? 'var(--color-status-red)' : 'var(--color-accent)';
 
   return {
     control: (base, state) => ({
       ...base,
       minHeight,
-      background:   '#222227',
+      background:   'var(--color-bg-700)',
       borderColor:  state.isFocused ? focusBorder : borderColor,
       borderRadius: '8px',
       boxShadow:    'none',
@@ -29,33 +29,33 @@ export function getSelectStyles<T extends SelectOption = SelectOption>(
     }),
     menu: (base) => ({
       ...base,
-      background:   '#222227',
-      border:       '1px solid #2C2C32',
+      background:   'var(--color-bg-700)',
+      border:       '1px solid var(--color-border-subtle)',
       borderRadius: '8px',
-      boxShadow:    '0 4px 16px rgba(0,0,0,0.5)',
+      boxShadow:    'var(--shadow-elevated)',
       marginTop:    '4px',
       zIndex:       9999,
     }),
     menuList: (base) => ({ ...base, padding: '4px' }),
     option: (base, { isFocused, isSelected }) => ({
       ...base,
-      background:   isSelected ? '#261F42' : isFocused ? '#2C2C32' : 'transparent',
-      color:        isSelected ? '#766BE8' : '#ABAAA5',
+      background:   isSelected ? 'var(--color-accent-bg)' : isFocused ? 'var(--color-bg-600)' : 'transparent',
+      color:        isSelected ? 'var(--color-accent-hover)' : 'var(--color-text-200)',
       borderRadius: '6px',
       fontSize:     '14px',
       cursor:       'pointer',
       padding:      '8px 12px',
     }),
-    singleValue:        (base) => ({ ...base, color: '#F4F3F0', fontSize: '14px' }),
-    multiValue:         (base) => ({ ...base, background: '#261F42', borderRadius: '6px', border: '1px solid rgba(97,85,221,0.25)', margin: '2px 3px' }),
-    multiValueLabel:    (base) => ({ ...base, color: '#766BE8', fontSize: '13px', padding: '2px 6px' }),
-    multiValueRemove:   (base) => ({ ...base, color: '#766BE8', borderRadius: '0 6px 6px 0', ':hover': { background: '#DC4949', color: '#fff' } }),
-    input:              (base) => ({ ...base, color: '#F4F3F0', fontSize: '14px' }),
-    placeholder:        (base) => ({ ...base, color: '#6E6C6A', fontSize: '14px' }),
+    singleValue:        (base) => ({ ...base, color: 'var(--color-text-100)', fontSize: '14px' }),
+    multiValue:         (base) => ({ ...base, background: 'var(--color-accent-bg)', borderRadius: '6px', border: '1px solid rgba(97,85,221,0.25)', margin: '2px 3px' }),
+    multiValueLabel:    (base) => ({ ...base, color: 'var(--color-accent-hover)', fontSize: '13px', padding: '2px 6px' }),
+    multiValueRemove:   (base) => ({ ...base, color: 'var(--color-accent-hover)', borderRadius: '0 6px 6px 0', ':hover': { background: 'var(--color-status-red)', color: '#fff' } }),
+    input:              (base) => ({ ...base, color: 'var(--color-text-100)', fontSize: '14px' }),
+    placeholder:        (base) => ({ ...base, color: 'var(--color-text-300)', fontSize: '14px' }),
     menuPortal:         (base) => ({ ...base, zIndex: 9999 }),
     indicatorSeparator: ()     => ({ display: 'none' }),
-    dropdownIndicator:  (base) => ({ ...base, color: '#6E6C6A', padding: '0 8px' }),
-    clearIndicator:     (base) => ({ ...base, color: '#6E6C6A' }),
+    dropdownIndicator:  (base) => ({ ...base, color: 'var(--color-text-300)', padding: '0 8px' }),
+    clearIndicator:     (base) => ({ ...base, color: 'var(--color-text-300)' }),
     valueContainer:     (base) => ({ ...base, padding: size === 'sm' ? '0 6px' : '2px 8px' }),
   };
 }
