@@ -1,7 +1,7 @@
 {
   "routes": [
-    { "handle": "filesystem" },
     { "src": "/board/(.*)", "dest": "/$1" },
+    { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

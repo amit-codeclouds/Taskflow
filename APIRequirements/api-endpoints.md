@@ -850,6 +850,7 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | DashboardComponent (`/board` landing) — "My Boards" team cards | `GET /api/teams` via `BoardService.getTeams()` — returns `ApiTeam[]`. Card assignees come from `members[].avatarInitials`; the To Do / In Progress / Done counts and total come from each team's `statusTaskCounts`. No static data |
 | Topbar team-switcher dropdown (Board MFE only) | `GET /api/teams` |
 | Kanban columns + tasks (BoardComponent) | `GET /api/tasks/team/:teamId/board` via `TeamService.getTeamBoard()` — response mapped to columns/tasks in the component; no static data |
+| Column header status description tooltip (BoardComponent) | `GET /api/tasks/team/:teamId/board` — `columns[].description` shown on hover/focus of each status title (info icon). No extra request |
 | Column "Load more" tasks | `GET /api/board/:teamId/status/:statusId/tasks?page&limit` |
 | "+ Add Status" modal submit (dashboard card → CreateStatusComponent) | `POST /api/board-statuses/create` via `TeamService.createStatus()` — body `{ name, description, position, teamId, isArchievable }`. ✅ confirmed live (401 unauth) |
 | Edit status (✎) modal submit | `PATCH /api/board/:teamId/statuses/:statusId` |

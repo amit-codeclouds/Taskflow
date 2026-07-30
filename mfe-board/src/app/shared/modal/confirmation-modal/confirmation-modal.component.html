@@ -8,6 +8,7 @@
 
     <div class="modal-actions">
       <button
+        *ngIf="showCancel"
         type="button"
         class="modal-btn modal-btn--ghost"
         (click)="onCancel()"
