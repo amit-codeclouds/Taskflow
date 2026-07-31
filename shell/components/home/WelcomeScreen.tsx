@@ -1,22 +1,20 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ClipboardList, Clock3, CheckCircle2, Kanban } from 'lucide-react';
+import { ClipboardList, Archive, Users, Building2 } from 'lucide-react';
 import StatCard from '@/components/ui/stat-card';
-import Badge from '@/components/ui/Badge';
+import { useUserStats } from '@/lib/hooks/useUserStats';
+import { useMe } from '@/lib/hooks/useMe';
+import type { MeStats } from '@/lib/types/auth.types';
 
-const STATS = [
-  { icon: ClipboardList, label: 'Total Tasks',  value: '142', trend: '+12%',     trendPositive: true,  color: 'text-accent',       delay: 0    },
-  { icon: Clock3,        label: 'In Progress',  value: '28',  trend: '+3 today', trendPositive: true,  color: 'text-status-amber', delay: 0.08 },
-  { icon: CheckCircle2,  label: 'Completed',    value: '96',  trend: '67%',      trendPositive: true,  color: 'text-status-green', delay: 0.16 },
-  { icon: Kanban,        label: 'Board Items',  value: '18',  trend: '4 cols',   trendPositive: true,  color: 'text-text-200',     delay: 0.24 },
-];
-
-const PHASES = [
-  { number: 0, label: 'MFE Foundation',   status: 'Active',  variant: 'active'  as const },
-  { number: 1, label: 'Identity + Tasks', status: 'Next',    variant: 'next'    as const },
-  { number: 2, label: 'Board + Kanban',   status: 'Planned', variant: 'planned' as const },
-];
+// Presentation config for each stat card; the value is derived from GET /auth/me/stats.
+// Every accessor is null-safe and defaults missing keys to 0.
+const STAT_CONFIG = [
+  { icon: ClipboardList, label: 'Total Tasks',     color: 'text-accent',       delay: 0,    value: (s?: MeStats) => (s?.taskCount?.activeTasks ?? 0) + (s?.taskCount?.archieveTask ?? 0) },
+  { icon: Archive,       label: 'Archived Task',   color: 'text-status-amber', delay: 0.08, value: (s?: MeStats) => s?.taskCount?.archieveTask ?? 0 },
+  { icon: Users,         label: 'Total Team',      color: 'text-status-green', delay: 0.16, value: (s?: MeStats) => s?.teamCount ?? 0 },
+  { icon: Building2,     label: 'Total Workspace', color: 'text-text-200',     delay: 0.24, value: (s?: MeStats) => s?.workspaceCount ?? 0 },
+] as const;
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -262,6 +260,9 @@ function AppCard({ href, icon, title, description, cta, preview, delay, variant,
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function WelcomeScreen() {
+  const { data: stats } = useUserStats();
+  const { data: me } = useMe();
+
   return (
     <div className="max-w-5xl mx-auto flex flex-col gap-8">
 
@@ -277,7 +278,7 @@ export default function WelcomeScreen() {
             Phase 0 · MFE Foundation
           </span>
           <h1 className="text-3xl font-semibold text-text-100 leading-tight">
-            {getGreeting()}, Arkabrata
+            {getGreeting()}{me?.name ? `, ${me.name}` : ''}
           </h1>
           <p className="text-sm text-text-300">Here&apos;s what&apos;s happening today.</p>
         </div>
@@ -286,8 +287,15 @@ export default function WelcomeScreen() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-4 gap-4">
-        {STATS.map((stat) => (
-          <StatCard key={stat.label} {...stat} />
+        {STAT_CONFIG.map((stat) => (
+          <StatCard
+            key={stat.label}
+            icon={stat.icon}
+            label={stat.label}
+            color={stat.color}
+            delay={stat.delay}
+            value={String(stat.value(stats))}
+          />
         ))}
       </div>
 
@@ -337,47 +345,6 @@ export default function WelcomeScreen() {
             preview={<BoardPreview />}
             delay={0.4}
           />
-        </div>
-      </div>
-
-      {/* Project timeline */}
-      <div className="pt-4 border-t border-border-subtle">
-        <motion.p
-          className="text-2xs text-text-300 tracking-widest uppercase mb-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-        >
-          Project Timeline
-        </motion.p>
-        <div className="grid grid-cols-3 gap-4">
-          {PHASES.map((phase, index) => (
-            <motion.div
-              key={phase.number}
-              className={`flex flex-col gap-2 p-4 rounded-xl border ${
-                phase.variant === 'active'
-                  ? 'bg-green-bg border-status-green/20'
-                  : 'bg-bg-700 border-border-subtle'
-              }`}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.52 + index * 0.08 }}
-            >
-              <div className="flex items-center justify-between">
-                <span className={`text-2xs font-medium tracking-widest uppercase ${
-                  phase.variant === 'active' ? 'text-status-green' : 'text-text-300'
-                }`}>
-                  Phase {phase.number}
-                </span>
-                <Badge label={phase.status} variant={phase.variant} />
-              </div>
-              <p className={`text-sm font-medium ${
-                phase.variant === 'active' ? 'text-status-green' : 'text-text-300'
-              }`}>
-                {phase.label}
-              </p>
-            </motion.div>
-          ))}
         </div>
       </div>
 

@@ -12,6 +12,7 @@ import { useUpdateUser } from '@/lib/hooks/useUsers';
 import { SettingsSkeleton } from '@/app/(shell)/settings/_skeleton';
 import { getInitials } from '@/lib/initials';
 import { getTheme, setTheme, type Theme } from '@/lib/theme';
+import ComingSoon from '@/components/ui/ComingSoon';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -26,24 +27,6 @@ function formatRole(role: string): string {
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-// ─── Toggle ───────────────────────────────────────────────────────────────────
-
-function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      onClick={() => onChange(!value)}
-      style={{ height: 22, width: 40 }}
-      className={`relative rounded-full transition-colors shrink-0 ${value ? 'bg-accent' : 'bg-bg-500'}`}
-    >
-      <motion.div
-        className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm"
-        animate={{ left: value ? 20 : 4 }}
-        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-      />
-    </button>
-  );
 }
 
 // ─── Section ──────────────────────────────────────────────────────────────────
@@ -155,10 +138,6 @@ export default function SettingsScreen() {
     router.refresh();
   }
 
-  const [notifs, setNotifs] = useState({
-    taskAssigned: true, commentAdded: true, dueSoon: true, statusChanged: false,
-  });
-
   function handleSave() {
     if (!me) return;
     updateUser.mutate({ id: me.id, name: name.trim(), title: role.trim() });
@@ -233,7 +212,7 @@ export default function SettingsScreen() {
         ).map(({ key, label, hint }) => (
           <Field key={key} label={label} hint={hint}>
             <div className="flex justify-end">
-              <Toggle value={notifs[key]} onChange={v => setNotifs(prev => ({ ...prev, [key]: v }))} />
+              <ComingSoon />
             </div>
           </Field>
         ))}
@@ -250,7 +229,7 @@ export default function SettingsScreen() {
           <div className="flex justify-end">
             <button className="h-9 px-4 rounded-lg bg-bg-600 border border-border-subtle text-sm text-text-200 hover:text-text-100 hover:bg-bg-500 transition-colors">
               Change password
-              <span className="ml-2 text-2xs text-text-300 bg-bg-800 px-1.5 py-px rounded-full">Coming soon</span>
+              <ComingSoon className="ml-2" />
             </button>
           </div>
         </Field>
