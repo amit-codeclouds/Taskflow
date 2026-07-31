@@ -110,6 +110,7 @@ Every endpoint — success or failure — returns this wrapper.
 | POST | `/api/auth/login` | Public | Email + password → sets session cookies |
 | POST | `/api/auth/logout` | Auth | Clears all session cookies |
 | GET | `/api/auth/me` | Auth | Returns current user |
+| GET | `/api/auth/me/stats` | Auth | Aggregate task stats for the current user. Consumed by `authService.meStats()` |
 
 ### `POST /api/auth/signup`
 **Request**
@@ -157,6 +158,24 @@ Sets `taskflow_session` (httpOnly) + `taskflow_name` + `taskflow_email` + `taskf
 }
 ```
 `workspaces[]` and `teams[]` are the authoritative membership arrays on the User. All workspace and team access decisions are derived from these two arrays.
+
+### `GET /api/auth/me/stats`
+Aggregate stats for the current authenticated user.
+**Response `200`**
+```json
+{
+  "result": {
+    "workspaceCount": 1,
+    "teamCount": 3,
+    "taskCount": {
+      "activeTasks": 1,
+      "archieveTask": 6
+    }
+  }
+}
+```
+> Source: `shell/lib/types/auth.types.ts` (`MeStats`). Consumed by `authService.meStats()`.
+> `archieveTask` spelling mirrors the backend. WelcomeScreen derives **Total Tasks** = `activeTasks + archieveTask`.
 
 ---
 
@@ -773,7 +792,7 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 
 | Frontend element | Endpoint |
 |---|---|
-| WelcomeScreen — 4 stat cards (Total Tasks, In Progress, Completed, Board Items) | `GET /api/dashboard/stats` |
+| WelcomeScreen — 4 stat cards (Total Tasks, Archived Task, Total Team, Total Workspace) | `GET /api/auth/me/stats` via `useUserStats()` → `authService.meStats()`. Total Tasks = `taskCount.activeTasks + taskCount.archieveTask`, Archived Task = `taskCount.archieveTask`, Total Team = `teamCount`, Total Workspace = `workspaceCount`. No trend badges |
 | WelcomeScreen — App showcase cards (Tasks, Board) | client navigation only — `<a>` cross-zone links |
 | WelcomeScreen — Project Timeline phases | static / no API needed |
 | TeamsScreen — 3 stat cards (Total Teams, Total Members, Pending Invites) | `GET /api/teams/stats` |

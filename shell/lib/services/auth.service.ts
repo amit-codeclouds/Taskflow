@@ -1,5 +1,5 @@
 import apiClient from '@/lib/http/client';
-import type { LoginPayload, SignupPayload, MeResponse } from '@/lib/types/auth.types';
+import type { LoginPayload, SignupPayload, MeResponse, MeStats } from '@/lib/types/auth.types';
 
 export const authService = {
   // Login and signup go through Next.js proxy so it can set the httpOnly refresh cookie
@@ -35,6 +35,12 @@ export const authService = {
     const { data } = await apiClient.get<{ result: MeResponse } | MeResponse>('/auth/me');
     // Backend wraps responses: { status, code, result: {...} }
     return (data as { result: MeResponse }).result ?? (data as MeResponse);
+  },
+
+  async meStats(): Promise<MeStats> {
+    const { data } = await apiClient.get<{ result: MeStats } | MeStats>('/auth/me/stats');
+    // Backend wraps responses: { status, code, result: {...} }
+    return (data as { result: MeStats }).result ?? (data as MeStats);
   },
 
   async logout(): Promise<void> {

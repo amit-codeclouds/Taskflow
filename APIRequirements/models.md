@@ -51,6 +51,28 @@ interface User {
 
 ---
 
+## MeStats (API response shape — `GET /api/auth/me/stats`)
+
+> Aggregate stats for the current user.
+> Source: `shell/lib/types/auth.types.ts` (`MeStats`).
+
+```ts
+interface MeStats {
+  workspaceCount: number;
+  teamCount: number;
+  taskCount: {
+    activeTasks: number;
+    archieveTask: number;  // spelling mirrors the backend response
+  };
+}
+```
+
+> WelcomeScreen stat cards: **Total Tasks** = `activeTasks + archieveTask`,
+> **Archived Task** = `archieveTask`, **Total Team** = `teamCount`,
+> **Total Workspace** = `workspaceCount`.
+
+---
+
 ## Workspace
 
 ```ts
