@@ -39,3 +39,13 @@ export interface MeResponse {
   workspaces?: UserWorkspaceMembership[];
   teams?: UserTeamMembership[];
 }
+
+// Aggregate stats for the current user — GET /auth/me/stats.
+export interface MeStats {
+  workspaceCount: number;
+  teamCount: number;
+  taskCount: {
+    activeTasks: number;
+    archieveTask: number;   // spelling mirrors the backend response
+  };
+}
