@@ -195,3 +195,25 @@
   font-size: 11px;
   color: var(--color-text-300);
 }
+
+/* Skeleton loading — matches the react-loading-skeleton theme used in the other
+   apps: base var(--color-bg-700), highlight var(--color-border-subtle), 1.5s shimmer sweep. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--color-bg-700);
+  border-radius: 4px;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, var(--color-border-subtle), transparent);
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}

@@ -125,7 +125,7 @@ export default function Topbar() {
             whileHover={{ scale: 1.01 }}
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
           >
-            <Avatar initials={initials} avatarUrl={user.avatarUrl} name={user.name} size="sm" />
+            <Avatar initials={initials} avatarUrl={user.avatarUrl} name={user.name} size="sm" loading={user.isPending} />
             <span className="text-text-300">
               <ChevronDownIcon open={open} />
             </span>

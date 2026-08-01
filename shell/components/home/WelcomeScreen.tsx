@@ -274,9 +274,6 @@ export default function WelcomeScreen() {
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       >
         <div className="flex flex-col gap-2">
-          <span className="inline-flex items-center gap-1.5 bg-accent-bg text-accent-hover text-2xs font-medium px-3 py-1 rounded-full w-fit">
-            Phase 0 · MFE Foundation
-          </span>
           <h1 className="text-3xl font-semibold text-text-100 leading-tight">
             {getGreeting()}{me?.name ? `, ${me.name}` : ''}
           </h1>

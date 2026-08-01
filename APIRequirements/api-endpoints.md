@@ -106,18 +106,25 @@ Every endpoint — success or failure — returns this wrapper.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | `/api/auth/signup` | Public | Register — name + email + title + password → sets session cookies |
+| POST | `/api/auth/signup` | Public | Register — name + email + title + password + workspaceName → sets session cookies |
 | POST | `/api/auth/login` | Public | Email + password → sets session cookies |
 | POST | `/api/auth/logout` | Auth | Clears all session cookies |
 | GET | `/api/auth/me` | Auth | Returns current user |
 | GET | `/api/auth/me/stats` | Auth | Aggregate task stats for the current user. Consumed by `authService.meStats()` |
 
 ### `POST /api/auth/signup`
+
+Collected over a **2-step form** in the Shell: step 1 captures account credentials
+(name, email, password), step 2 captures role + workspace. Both steps submit together
+as a single request on final submit — there is no partial-signup API call.
+
 **Request**
 ```json
-{ "name": "string", "email": "string", "password": "string", "title": "string (optional)" }
+{ "name": "string", "email": "string", "password": "string", "title": "string", "workspaceName": "string" }
 ```
-`title` is the resolved designation — if the user selected "Other" on the form, the free-text value is sent here, never the string `"Other"`.
+`title` is the resolved designation — if the user selected "Other" on the form, the free-text value is sent here, never the string `"Other"`. `title` is required (step 2 cannot be submitted without a role selected).
+
+`workspaceName` is required and defaults to `"<name>'s Workspace"` when the user reaches step 2 — the field is pre-filled and editable, with a note in the UI clarifying it is the default name and can be changed later. This becomes the `name` of the `Workspace` row auto-created for the new user (see `models.md`).
 
 **Response `201`**
 ```json
@@ -149,7 +156,7 @@ Sets `taskflow_session` (httpOnly) + `taskflow_name` + `taskflow_email` + `taskf
   "avatarInitials": "AC",
   "avatarUrl": null,
   "workspaces": [
-    { "workspaceId": "ws_1", "role": "owner", "status": "active", "joinedAt": "2026-06-01T00:00:00Z" }
+    { "workspaceId": "ws_1", "name": "Arkabrata Das's Workspace", "role": "owner", "status": "active", "joinedAt": "2026-06-01T00:00:00Z" }
   ],
   "teams": [
     { "teamId": "team_1", "workspaceId": "ws_1", "role": "admin",     "joinedAt": "2026-06-01T00:00:00Z" },
@@ -821,12 +828,13 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | SettingsScreen — Profile (name, title) read | `GET /api/auth/me` |
 | SettingsScreen — Profile save | `PATCH /api/users/:id` |
 | SettingsScreen — Notification toggles save | `PATCH /api/preferences` |
-| Sidebar — workspace indicator (owner name) | derived from `taskflow_name` cookie — no API call |
+| Sidebar — workspace indicator (workspace name) | `GET /api/auth/me` (`workspaces[0].name`) |
 | Sidebar — user card (name, initials) | `GET /api/auth/me` |
 | Topbar — bell icon | _commented out — not yet wired_ |
 | Topbar — avatar | `GET /api/auth/me` |
 | LoginForm — submit | `POST /api/auth/login` |
-| SignupForm — submit | `POST /api/auth/signup` |
+| SignupForm — step 1 "Continue" (name, email, password, confirm) | (client-side validation only, no API call) |
+| SignupForm — step 2 "Create account" submit (title + workspaceName) | `POST /api/auth/signup` |
 
 ### Task MFE (`mfe-task/`)
 
@@ -853,7 +861,7 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | TaskDetailScreen — CommentComposer submit | `POST /api/comments?taskId=:id` |
 | TaskDetailScreen — CommentItem edit (own comment only) | `PUT /api/comments/:commentId` |
 | TaskDetailScreen — CommentItem delete (own comment only, ConfirmProvider modal) | `DELETE /api/comments/:commentId` |
-| Sidebar / Topbar — user card | derived from `taskflow_name`/`taskflow_email` cookies — no API call yet (`GET /api/auth/me` not wired in Task MFE) |
+| Sidebar / Topbar — user card + workspace indicator | `GET /api/auth/me` (`workspaces[0].name` for the workspace indicator) |
 | TeamTaskBoardScreen (`/tasks/listview?teamid=`) — status tabs + per-tab task list | `GET /api/tasks/team/:teamId/board` via `boardService.getTeamBoard()`; tabs come from `columns[]`, no separate board-statuses call |
 | TeamTaskBoardScreen — task row Edit/Delete visibility | client-side only — `TaskRow` shows Edit + Delete for a task only when the signed-in user is one of its `assignees`; everyone else gets View only (no API) |
 | TeamTaskBoardScreen — Archived tab (with tooltip explaining its purpose) | `GET /api/migrate/task/archived?teamId=&page=&limit=&search=` via `archivedTasksService.list()`; rows render read-only (no view/edit/delete — no archived-task detail page exists yet in Task MFE) |
@@ -881,7 +889,7 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | Archived Tasks table — "View Task" eye icon per row | navigates to `/archived-task/:taskId` (Angular router, same zone) → `ArchivedTaskdetailsComponent` |
 | Archived Task Details (ArchivedTaskdetailsComponent) — number, title, priority, label, progress, dates, assignees, description | `GET /api/migrate/task/archived/:taskId` via `TeamService.getArchivedTask()`. Description rendered from CKEditor HTML via `[innerHTML]` |
 | Task card "↗" open icon | navigates to `/tasks/:id` |
-| Sidebar — user card | `GET /api/auth/me` |
+| Sidebar — user card + workspace indicator | `GET /api/auth/me` (`workspaces[0].name` for the workspace indicator) |
 | Topbar — notification bell | `GET /api/notifications` |
 
 > **CORS / same-origin proxy**: the Board MFE calls all backend endpoints as relative `/api/*`

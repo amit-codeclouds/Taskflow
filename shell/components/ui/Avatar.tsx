@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import Image from 'next/image';
+import Skeleton from 'react-loading-skeleton';
 
 const MotionImage = motion(Image);
 
@@ -10,11 +11,25 @@ interface AvatarProps {
   avatarUrl?: string;
   name?: string;
   size?: 'sm' | 'md';
+  loading?: boolean;
 }
 
-export default function Avatar({ initials, avatarUrl, name, size = 'md' }: AvatarProps) {
+export default function Avatar({ initials, avatarUrl, name, size = 'md', loading = false }: AvatarProps) {
   const sizeClass = size === 'sm' ? 'w-8 h-8 text-xs' : 'w-9 h-9 text-sm';
   const px = size === 'sm' ? 32 : 36;
+
+  if (loading) {
+    return (
+      <Skeleton
+        circle
+        width={px}
+        height={px}
+        className={`${sizeClass} shrink-0`}
+        baseColor="var(--color-bg-700)"
+        highlightColor="var(--color-bg-600)"
+      />
+    );
+  }
 
   if (avatarUrl) {
     return (
