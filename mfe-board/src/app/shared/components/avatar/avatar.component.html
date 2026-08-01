@@ -1,2 +1,3 @@
-<img *ngIf="avatarUrl" [src]="avatarUrl" [alt]="name || 'Profile photo'" class="avatar-circle" />
-<div *ngIf="!avatarUrl" class="avatar-circle avatar-circle--initials">{{ initials }}</div>
+<div *ngIf="loading" class="avatar-circle skeleton"></div>
+<img *ngIf="!loading && avatarUrl" [src]="avatarUrl" [alt]="name || 'Profile photo'" class="avatar-circle" />
+<div *ngIf="!loading && !avatarUrl" class="avatar-circle avatar-circle--initials">{{ initials }}</div>

@@ -63,7 +63,7 @@ interface Workspace {
 }
 ```
 
-> A workspace is auto-created for every new user. Multi-workspace support is a future scope — the table is already structured for it.
+> A workspace is auto-created for every new user. `name` is user-supplied at signup (step 2 of `SignupForm`, field `workspaceName`) and pre-filled with the default `"<name>'s Workspace"` — not server-generated. Multi-workspace support is a future scope — the table is already structured for it.
 
 ---
 

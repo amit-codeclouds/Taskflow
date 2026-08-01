@@ -9,6 +9,7 @@ export interface SignupPayload {
   password: string;
   confirmPassword: string;
   title: string;
+  workspaceName: string;
 }
 
 export interface UserTeamMembership {

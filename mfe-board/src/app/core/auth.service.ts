@@ -42,6 +42,7 @@ function getInitials(name?: string | null): string {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   readonly user = signal<AuthUser>(EMPTY_USER);
+  readonly loading = signal(true);
   private loaded = false;
 
   constructor(private http: HttpClient) {}
@@ -65,10 +66,12 @@ export class AuthService {
           avatarUrl: data.avatarUrl,
           workspaceName: workspace?.name ?? '',
         });
+        this.loading.set(false);
       },
       error: () => {
         // Leave the empty-user fallback in place — sidebar/topbar render generic
         // placeholders until a session exists.
+        this.loading.set(false);
       },
     });
   }

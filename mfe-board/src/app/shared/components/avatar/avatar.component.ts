@@ -20,4 +20,5 @@ export class AvatarComponent {
   @Input() avatarUrl?: string;
   @Input() initials = '??';
   @Input() name = '';
+  @Input() loading = false;
 }

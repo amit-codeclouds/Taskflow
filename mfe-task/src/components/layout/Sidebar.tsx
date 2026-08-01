@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, ListChecks, KanbanSquare, Users, ChevronRight, User, Settings } from 'lucide-react';
+import Skeleton from 'react-loading-skeleton';
 import Logo from '@/components/ui/Logo';
 import Avatar from '@/components/ui/Avatar';
 import { useAuth } from '@/lib/useAuth';
@@ -136,12 +137,21 @@ export default function Sidebar() {
       {/* Workspace indicator */}
       <div className="px-3 pt-3 pb-1 shrink-0">
         <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-bg-700 border border-border-subtle">
-          <div className="w-5 h-5 rounded bg-accent flex items-center justify-center text-white shrink-0" style={{ fontSize: 10, fontWeight: 700 }}>
-            {user.initials?.[0] ?? 'W'}
-          </div>
-          <p className="text-xs font-medium text-text-100 truncate">
-            {user.name ? `${user.name.split(' ')[0]}'s Workspace` : 'My Workspace'}
-          </p>
+          {user.isPending ? (
+            <>
+              <Skeleton width={20} height={20} borderRadius={6} baseColor="var(--color-bg-700)" highlightColor="var(--color-bg-600)" />
+              <Skeleton width={120} height={12} baseColor="var(--color-bg-700)" highlightColor="var(--color-bg-600)" containerClassName="flex-1" />
+            </>
+          ) : (
+            <>
+              <div className="w-5 h-5 rounded bg-accent flex items-center justify-center text-white shrink-0" style={{ fontSize: 10, fontWeight: 700 }}>
+                {user.initials?.[0] ?? 'W'}
+              </div>
+              <p className="text-xs font-medium text-text-100 truncate">
+                {user.workspaceName || 'My Workspace'}
+              </p>
+            </>
+          )}
         </div>
       </div>
 
@@ -191,12 +201,21 @@ export default function Sidebar() {
         <div className="mx-4 h-px bg-border-subtle" />
         <a href="/settings" className="block">
           <motion.div className="h-[68px] flex items-center gap-3 px-4 cursor-pointer hover:bg-bg-700 transition-colors" whileHover={{ x: 2 }}>
-            <Avatar initials={user.initials || '??'} avatarUrl={user.avatarUrl} name={user.name} size="sm" />
-            <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-sm font-medium text-text-100 truncate capitalize">
-                {user.name || 'User'}
-              </span>
-              <span className="text-2xs text-text-300 truncate">{user.email || ''}</span>
+            <Avatar initials={user.initials || '??'} avatarUrl={user.avatarUrl} name={user.name} size="sm" loading={user.isPending} />
+            <div className="flex flex-col min-w-0 flex-1 gap-1">
+              {user.isPending ? (
+                <>
+                  <Skeleton width={90} height={11} />
+                  <Skeleton width={130} height={10} />
+                </>
+              ) : (
+                <>
+                  <span className="text-sm font-medium text-text-100 truncate capitalize">
+                    {user.name || 'User'}
+                  </span>
+                  <span className="text-2xs text-text-300 truncate">{user.email || ''}</span>
+                </>
+              )}
             </div>
             <Settings size={13} className="text-text-300 shrink-0" strokeWidth={1.5} />
           </motion.div>
