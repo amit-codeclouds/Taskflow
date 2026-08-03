@@ -73,6 +73,28 @@ interface MeStats {
 
 ---
 
+## UserSettings (API response shape — `GET /api/auth/me/settings`, `PUT /api/users/:id/settings`)
+
+> Per-user archiving preference. `userId` is the owning user's id — used as the `:id` path
+> param when saving via `PUT /api/users/:id/settings`.
+> Source: `shell/lib/types/users.types.ts` (`UserSettings`, `UpdateUserSettingsPayload`).
+
+```ts
+interface UserSettings {
+  userId: string;
+  daysToArchieve: number;  // spelling mirrors the backend response
+}
+
+interface UpdateUserSettingsPayload {
+  daysToArchieve: number;
+}
+```
+
+> Drives the **Task Archiving** section on `SettingsScreen` — the number of days after
+> which a task marked with an archived-designated status is moved to the archive table.
+
+---
+
 ## Workspace
 
 ```ts

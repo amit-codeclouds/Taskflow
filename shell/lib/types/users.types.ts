@@ -25,3 +25,14 @@ export interface AvatarUploadResponse {
   avatarUrl: string;
   avatarPublicId: string;
 }
+
+// Matches UserSettingsResponseDto — GET /auth/me/settings, PUT /users/{userId}/settings
+export interface UserSettings {
+  userId: string;
+  daysToArchieve: number; // spelling mirrors the backend response
+}
+
+// Matches UpdateUserSettingsRequestDto — PUT /users/{id}/settings
+export interface UpdateUserSettingsPayload {
+  daysToArchieve: number;
+}

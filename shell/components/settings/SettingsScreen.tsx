@@ -3,16 +3,20 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
 import {
   User, Palette, Bell, Shield, Check, Camera,
-  Building2, Users, Crown, Clock,
+  Building2, Users, Crown, Clock, Archive,
 } from 'lucide-react';
 import { useMe } from '@/lib/hooks/useMe';
 import { useUpdateUser } from '@/lib/hooks/useUsers';
+import { useMySettings, useUpdateUserSettings } from '@/lib/hooks/useSettings';
 import { SettingsSkeleton } from '@/app/(shell)/settings/_skeleton';
 import { getInitials } from '@/lib/initials';
 import { getTheme, setTheme, type Theme } from '@/lib/theme';
 import ComingSoon from '@/components/ui/ComingSoon';
+import InfoTooltip from '@/components/ui/InfoTooltip';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -58,11 +62,16 @@ function Section({
   );
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({ label, hint, tooltip, children }: {
+  label: string; hint?: string; tooltip?: string; children: React.ReactNode;
+}) {
   return (
     <div className="flex items-start justify-between gap-8 py-4 px-6 border-b border-border-subtle last:border-0">
-      <div className="w-48 shrink-0">
-        <p className="text-sm text-text-100">{label}</p>
+      <div className="w-96 shrink-0">
+        <div className="flex items-center gap-1.5">
+          <p className="text-sm text-text-100">{label}</p>
+          {tooltip && <InfoTooltip text={tooltip} />}
+        </div>
         {hint && <p className="text-xs text-text-300 mt-0.5 leading-relaxed">{hint}</p>}
       </div>
       <div className="flex-1">{children}</div>
@@ -116,9 +125,30 @@ export default function SettingsScreen() {
   const updateUser = useUpdateUser();
   const router = useRouter();
 
+  const { data: mySettings, isPending: settingsPending } = useMySettings();
+  const updateSettings = useUpdateUserSettings();
+
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
   const [theme, setThemeState] = useState<Theme>('dark');
+
+  const archiveFormik = useFormik({
+    enableReinitialize: true,
+    initialValues: {
+      daysToArchieve: mySettings ? String(mySettings.daysToArchieve) : '',
+    },
+    validationSchema: Yup.object({
+      daysToArchieve: Yup.string()
+        .required('Required')
+        .matches(/^[1-9]\d*$/, 'Enter a whole number greater than 0'),
+    }),
+    onSubmit: (values) => {
+      if (!mySettings) return;
+      updateSettings.mutate({ id: mySettings.userId, daysToArchieve: Number(values.daysToArchieve) });
+    },
+  });
+
+  const daysError = !!archiveFormik.touched.daysToArchieve && !!archiveFormik.errors.daysToArchieve;
 
   useEffect(() => {
     if (me) {
@@ -242,6 +272,58 @@ export default function SettingsScreen() {
             <span className="text-2xs text-status-green bg-green-bg px-2 py-0.5 rounded-full font-medium">Current</span>
           </div>
         </Field>
+      </Section>
+
+      {/* ── Task Archiving ── */}
+      <Section
+        icon={<Archive size={15} strokeWidth={1.5} />}
+        title="Task Archiving"
+        description="Control when completed tasks move to the archive."
+        delay={0.3}
+      >
+        <form onSubmit={archiveFormik.handleSubmit} noValidate>
+          <Field
+            label="Archive after"
+            hint="Tasks marked as Archived move to the archive table after this many days."
+            tooltip="This setting only applies to tasks in teams where you're set as an admin. It has no effect on tasks in teams where you're not an admin."
+          >
+            <div className="flex justify-end">
+              <div className="flex flex-col items-end gap-1.5">
+                <div
+                  className={`flex items-center justify-between w-40 h-9 pl-3 pr-3 bg-bg-600 border rounded-lg transition-colors ${
+                    daysError
+                      ? 'border-status-red'
+                      : 'border-border-subtle focus-within:border-accent'
+                  }`}
+                >
+                  <input
+                    id="daysToArchieve"
+                    type="text"
+                    inputMode="numeric"
+                    disabled={settingsPending}
+                    {...archiveFormik.getFieldProps('daysToArchieve')}
+                    className="flex-1 min-w-0 bg-transparent text-sm text-text-100 focus:outline-none disabled:opacity-60"
+                  />
+                  <span className="text-sm text-text-300 shrink-0 pl-3">days</span>
+                </div>
+                {daysError && (
+                  <p className="text-xs text-status-red">{archiveFormik.errors.daysToArchieve}</p>
+                )}
+              </div>
+            </div>
+          </Field>
+          <div className="flex items-center justify-end gap-3 px-6 py-4">
+            <motion.button
+              type="submit"
+              disabled={settingsPending || updateSettings.isPending}
+              className="flex items-center gap-2 h-9 px-5 rounded-lg bg-accent text-white text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+              whileHover={updateSettings.isPending ? undefined : { scale: 1.02, boxShadow: '0 0 16px var(--overlay-accent-hover)' }}
+              whileTap={updateSettings.isPending ? undefined : { scale: 0.98 }}
+            >
+              {updateSettings.isPending ? 'Saving…' : 'Save settings'}
+            </motion.button>
+          </div>
+        </form>
       </Section>
 
     </div>
