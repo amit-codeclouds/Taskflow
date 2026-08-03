@@ -21,6 +21,7 @@ CREATE TABLE users (
   avatar_initials  CHAR(2)     NOT NULL,             -- e.g. 'AC'
   avatar_url       TEXT,
   password_hash    TEXT        NOT NULL,
+  days_to_archieve INTEGER     NOT NULL DEFAULT 2,   -- days after which an archived-status task moves to the archive table; column name mirrors the API's `daysToArchieve` spelling
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

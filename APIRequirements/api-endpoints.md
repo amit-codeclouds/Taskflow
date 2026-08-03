@@ -111,6 +111,7 @@ Every endpoint — success or failure — returns this wrapper.
 | POST | `/api/auth/logout` | Auth | Clears all session cookies |
 | GET | `/api/auth/me` | Auth | Returns current user |
 | GET | `/api/auth/me/stats` | Auth | Aggregate task stats for the current user. Consumed by `authService.meStats()` |
+| GET | `/api/auth/me/settings` | Auth | Current user's settings (resolved server-side via the JWT `sub` claim). Consumed by `authService.meSettings()` |
 
 ### `POST /api/auth/signup`
 
@@ -183,6 +184,22 @@ Aggregate stats for the current authenticated user.
 ```
 > Source: `shell/lib/types/auth.types.ts` (`MeStats`). Consumed by `authService.meStats()`.
 > `archieveTask` spelling mirrors the backend. WelcomeScreen derives **Total Tasks** = `activeTasks + archieveTask`.
+
+### `GET /api/auth/me/settings`
+Fetches the authenticated user's settings — no `:id` needed, resolved from the JWT `sub` claim.
+The response's `userId` is what the Shell then uses as the `:id` path param for
+`PUT /api/users/:id/settings` below.
+**Response `200`**
+```json
+{
+  "result": {
+    "userId": "8208e9b4-6d08-45fb-921e-65e6238e4ab6",
+    "daysToArchieve": 2
+  }
+}
+```
+> Source: `shell/lib/types/users.types.ts` (`UserSettings`). Consumed by `authService.meSettings()` via `useMySettings()`.
+> `daysToArchieve` spelling mirrors the backend. Number of days after which a task marked with an archived-designated status is moved to the archive table.
 
 ---
 
@@ -711,6 +728,8 @@ Returns `422` if attempting to remove the only `admin`.
 | GET | `/api/users` | Auth | List users (for assignee picker) |
 | GET | `/api/users/:id` | Auth | Get user profile |
 | PATCH | `/api/users/:id` | Auth | Update own profile |
+| GET | `/api/users/:id/settings` | Auth | Get a user's settings by id |
+| PUT | `/api/users/:id/settings` | Auth | Update a user's settings. Consumed by `usersService.updateSettings()` |
 
 ### `GET /api/users`
 **Response `200`**
@@ -721,6 +740,27 @@ Returns `422` if attempting to remove the only `admin`.
   ]
 }
 ```
+
+### `PUT /api/users/:id/settings`
+Updates the target user's settings. `daysToArchieve` is required — the number of days after
+which a task marked with an archived-designated status is moved to the archive table.
+Drives the **Task Archiving** section on `SettingsScreen` — `:id` is the current user's own
+`userId` (taken from the `GET /api/auth/me/settings` response), never a `/api/auth/me` call.
+
+**Request**
+```json
+{ "daysToArchieve": 2 }
+```
+**Response `200`**
+```json
+{
+  "result": {
+    "userId": "8208e9b4-6d08-45fb-921e-65e6238e4ab6",
+    "daysToArchieve": 2
+  }
+}
+```
+> Source: `shell/lib/types/users.types.ts` (`UserSettings`, `UpdateUserSettingsPayload`). Consumed by `useUpdateUserSettings()` → `usersService.updateSettings()`.
 
 ---
 
@@ -828,6 +868,8 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | SettingsScreen — Profile (name, title) read | `GET /api/auth/me` |
 | SettingsScreen — Profile save | `PATCH /api/users/:id` |
 | SettingsScreen — Notification toggles save | `PATCH /api/preferences` |
+| SettingsScreen — Task Archiving section (Formik) — "Archive after N days" field, read | `GET /api/auth/me/settings` via `useMySettings()` → `authService.meSettings()` (not `/api/auth/me` — this section shows no user identity data) |
+| SettingsScreen — Task Archiving section — "Save settings" button | `PUT /api/users/:id/settings` via `useUpdateUserSettings()` → `usersService.updateSettings()`, `:id` = `userId` from the settings read response |
 | Sidebar — workspace indicator (workspace name) | `GET /api/auth/me` (`workspaces[0].name`) |
 | Sidebar — user card (name, initials) | `GET /api/auth/me` |
 | Topbar — bell icon | _commented out — not yet wired_ |
