@@ -6,6 +6,15 @@ import Link from 'next/link';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { useState } from 'react';
+import toast from 'react-hot-toast';
+import { otpService } from '@/lib/services/otp.service';
+import { usersService } from '@/lib/services/users.service';
+import OtpModal from '@/components/Modals/OtpModal';
+import NewPasswordModal from '@/components/Modals/NewPasswordModal';
+import ForgotPasswordEmailModal from '@/components/Modals/ForgotPasswordEmailModal';
+
+const FORGOT_PASSWORD_OTP_EVENT = 'forgotpassword' as const;
+type ForgotPasswordStep = 'closed' | 'email' | 'otp' | 'newPassword';
 
 const schema = Yup.object({
   email:    Yup.string().email('Enter a valid email address').required('Email is required'),
@@ -38,6 +47,8 @@ function EyeClosedIcon() {
 export default function LoginForm() {
   const router   = useRouter();
   const [showPw, setShowPw] = useState(false);
+  const [forgotStep, setForgotStep] = useState<ForgotPasswordStep>('closed');
+  const [forgotEmail, setForgotEmail] = useState('');
 
   const formik = useFormik({
     initialValues: { email: '', password: '' },
@@ -64,6 +75,19 @@ export default function LoginForm() {
       }
     },
   });
+
+  function generateForgotPasswordOtp(email: string) {
+    return otpService.generate({
+      email,
+      event: FORGOT_PASSWORD_OTP_EVENT,
+      description: 'OTP for password reset',
+    });
+  }
+
+  function closeForgotFlow() {
+    setForgotStep('closed');
+    setForgotEmail('');
+  }
 
   return (
     <div className="min-h-screen bg-bg-900 flex items-center justify-center px-4">
@@ -121,7 +145,16 @@ export default function LoginForm() {
 
             {/* Password */}
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="password" className="text-xs font-medium text-text-200">Password</label>
+              <div className="flex items-center justify-between">
+                <label htmlFor="password" className="text-xs font-medium text-text-200">Password</label>
+                <button
+                  type="button"
+                  onClick={() => setForgotStep('email')}
+                  className="text-xs font-medium text-accent hover:text-accent-hover transition-colors"
+                >
+                  Forgot password?
+                </button>
+              </div>
               <div className="relative">
                 <input
                   id="password"
@@ -178,6 +211,42 @@ export default function LoginForm() {
           </Link>
         </p>
       </motion.div>
+
+      {forgotStep === 'email' && (
+        <ForgotPasswordEmailModal
+          onSubmit={async (email) => {
+            await generateForgotPasswordOtp(email);
+            setForgotEmail(email);
+            setForgotStep('otp');
+          }}
+          onClose={closeForgotFlow}
+        />
+      )}
+
+      {forgotStep === 'otp' && (
+        <OtpModal
+          email={forgotEmail}
+          title="Verify your email"
+          onVerify={(otp) =>
+            otpService.verify({ email: forgotEmail, event: FORGOT_PASSWORD_OTP_EVENT, otp }).then(() => {})
+          }
+          onSuccess={() => setForgotStep('newPassword')}
+          onResend={() => generateForgotPasswordOtp(forgotEmail)}
+          onClose={closeForgotFlow}
+        />
+      )}
+
+      {forgotStep === 'newPassword' && (
+        <NewPasswordModal
+          onSubmit={async (values) => {
+            await usersService.changePassword({ email: forgotEmail, ...values });
+            closeForgotFlow();
+            toast.success('Password updated — please sign in.');
+            formik.setFieldValue('email', forgotEmail);
+          }}
+          onClose={closeForgotFlow}
+        />
+      )}
     </div>
   );
 }

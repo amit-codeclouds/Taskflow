@@ -17,6 +17,15 @@ import { getInitials } from '@/lib/initials';
 import { getTheme, setTheme, type Theme } from '@/lib/theme';
 import ComingSoon from '@/components/ui/ComingSoon';
 import InfoTooltip from '@/components/ui/InfoTooltip';
+import toast from 'react-hot-toast';
+import { otpService } from '@/lib/services/otp.service';
+import { usersService } from '@/lib/services/users.service';
+import { extractErrorMessage } from '@/lib/http/extractError';
+import OtpModal from '@/components/Modals/OtpModal';
+import NewPasswordModal from '@/components/Modals/NewPasswordModal';
+
+const CHANGE_PASSWORD_OTP_EVENT = 'changepassword' as const;
+type ChangePasswordStep = 'closed' | 'otp' | 'newPassword';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -131,6 +140,8 @@ export default function SettingsScreen() {
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
   const [theme, setThemeState] = useState<Theme>('dark');
+  const [changePwStep, setChangePwStep] = useState<ChangePasswordStep>('closed');
+  const [isRequestingPwOtp, setIsRequestingPwOtp] = useState(false);
 
   const archiveFormik = useFormik({
     enableReinitialize: true,
@@ -171,6 +182,28 @@ export default function SettingsScreen() {
   function handleSave() {
     if (!me) return;
     updateUser.mutate({ id: me.id, name: name.trim(), title: role.trim() });
+  }
+
+  function generateChangePasswordOtp() {
+    if (!me) return Promise.reject(new Error('Not signed in'));
+    return otpService.generate({
+      email: me.email,
+      event: CHANGE_PASSWORD_OTP_EVENT,
+      description: 'OTP for password change',
+    });
+  }
+
+  async function handleChangePasswordClick() {
+    if (!me || isRequestingPwOtp) return;
+    setIsRequestingPwOtp(true);
+    try {
+      await generateChangePasswordOtp();
+      setChangePwStep('otp');
+    } catch (err) {
+      toast.error(extractErrorMessage(err, 'Could not send a verification code. Please try again.'));
+    } finally {
+      setIsRequestingPwOtp(false);
+    }
   }
 
   if (isPending) return <SettingsSkeleton />;
@@ -257,9 +290,12 @@ export default function SettingsScreen() {
       >
         <Field label="Password" hint="Last changed: never">
           <div className="flex justify-end">
-            <button className="h-9 px-4 rounded-lg bg-bg-600 border border-border-subtle text-sm text-text-200 hover:text-text-100 hover:bg-bg-500 transition-colors">
-              Change password
-              <ComingSoon className="ml-2" />
+            <button
+              onClick={handleChangePasswordClick}
+              disabled={isRequestingPwOtp}
+              className="h-9 px-4 rounded-lg bg-bg-600 border border-border-subtle text-sm text-text-200 hover:text-text-100 hover:bg-bg-500 transition-colors disabled:opacity-60"
+            >
+              {isRequestingPwOtp ? 'Sending code…' : 'Change password'}
             </button>
           </div>
         </Field>
@@ -326,6 +362,27 @@ export default function SettingsScreen() {
         </form>
       </Section>
 
+      {changePwStep === 'otp' && me && (
+        <OtpModal
+          email={me.email}
+          title="Verify your email"
+          onVerify={(otp) => otpService.verify({ email: me.email, event: CHANGE_PASSWORD_OTP_EVENT, otp }).then(() => {})}
+          onSuccess={() => setChangePwStep('newPassword')}
+          onResend={generateChangePasswordOtp}
+          onClose={() => setChangePwStep('closed')}
+        />
+      )}
+
+      {changePwStep === 'newPassword' && me && (
+        <NewPasswordModal
+          onSubmit={async (values) => {
+            await usersService.changePassword({ email: me.email, ...values });
+            setChangePwStep('closed');
+            toast.success('Password updated!');
+          }}
+          onClose={() => setChangePwStep('closed')}
+        />
+      )}
     </div>
   );
 }

@@ -36,3 +36,13 @@ export interface UserSettings {
 export interface UpdateUserSettingsPayload {
   daysToArchieve: number;
 }
+
+// Matches ChangePasswordRequestDto — PUT /users/change-password
+// Identifies the account by email (not an :id path param) — used both by an
+// authenticated user changing their own password and by the anonymous Forgot
+// Password flow. newPassword and confirmPassword must match (6-100 characters).
+export interface ChangePasswordPayload {
+  email: string;
+  newPassword: string;
+  confirmPassword: string;
+}

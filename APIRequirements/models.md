@@ -95,6 +95,61 @@ interface UpdateUserSettingsPayload {
 
 ---
 
+## Otp (API request/response shapes — `POST /api/otp/generate`, `POST /api/otp/verify`)
+
+> Not a persisted model on the frontend — documents the request/response contract for the
+> OTP-gated Signup, Forgot Password, and Change Password flows.
+> Source: `shell/lib/types/otp.types.ts`.
+
+```ts
+type OtpEvent = 'signup' | 'forgotpassword' | 'deleteaccount' | 'changepassword';
+
+interface GenerateOtpPayload {
+  email: string;
+  event: OtpEvent;
+  description?: string;
+}
+
+interface VerifyOtpPayload {
+  email: string;
+  event: OtpEvent;
+  otp: string;
+}
+
+interface VerifyOtpResult {
+  verified?: boolean;
+  event?: OtpEvent;
+}
+```
+
+> ✅ Confirmed live for `event: "forgotpassword"` — the response contains **no `userId`**.
+> Password changes therefore resolve the account by email (`ChangePasswordPayload` below)
+> rather than by id.
+
+---
+
+## ChangePasswordPayload (API request shape — `PUT /api/users/change/password`)
+
+> Identifies the account by `email` in the body rather than an `:id` path param. Shared by
+> both password-change flows: **Settings → Change Password** (authenticated — bearer token
+> sent, `email` is the current user's own) and **Login → Forgot Password** (anonymous — no
+> bearer token, `email` is whatever the user entered on the login page).
+> Source: `shell/lib/types/users.types.ts`.
+
+```ts
+interface ChangePasswordPayload {
+  email: string;
+  newPassword: string;     // 6-100 characters
+  confirmPassword: string; // must match newPassword
+}
+```
+
+> Both password models are called after OTP verification. Signup does **not** use either —
+> it calls `POST /api/auth/signup` instead. See `api-endpoints.md`'s OTP Service section for
+> the full flow.
+
+---
+
 ## Workspace
 
 ```ts
