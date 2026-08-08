@@ -203,6 +203,80 @@ The response's `userId` is what the Shell then uses as the `:id` path param for
 
 ---
 
+## OTP Service  `/api/otp`
+
+> Backed by the .NET backend's Postman collection ("Taskflow DOTNET Backend" → Otp folder).
+> Both endpoints are **anonymous** — no session cookie / bearer token required. Gates three
+> flows in the Shell before the "real" mutation runs: Signup, Login → Forgot Password, and
+> Settings → Change Password.
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/api/otp/generate?platform={bool}` | Public | Generate + email a 6-digit OTP for `email` + `event` |
+| POST | `/api/otp/verify` | Public | Verify a previously generated OTP for `email` + `event` |
+
+### `POST /api/otp/generate`
+**Query params**
+```
+platform=true|false   (required)
+```
+`platform` tells the backend whether the account already exists: **`false`** for
+`event: "signup"` (the user isn't created yet), **`true`** for every other event
+(`forgotpassword`, `changepassword`, `deleteaccount` all act on an existing account).
+Derived automatically from `event` in `otpService.generate()` — callers never pass it directly.
+
+**Request**
+```json
+{ "email": "user@example.com", "event": "signup", "description": "OTP for account signup verification" }
+```
+`event` is one of: `signup` | `forgotpassword` | `deleteaccount` | `changepassword`. `description` is optional, free text shown for logging/audit purposes.
+
+**Response `200`** — no body payload needed by the frontend beyond success/failure.
+
+### `POST /api/otp/verify`
+**Request**
+```json
+{ "email": "user@example.com", "event": "signup", "otp": "123456" }
+```
+**Response `200`** — ✅ confirmed live (captured via DevTools Network tab for `event: "forgotpassword"`):
+```json
+{
+  "status": true,
+  "code": 200,
+  "result": { "verified": true, "event": "forgotpassword" },
+  "message": "OTP verified successfully.",
+  "errors": [],
+  "dev_message": "",
+  "requestId": "",
+  "timestamp": "2026-08-08T17:06:47.9875114Z"
+}
+```
+**No `userId` is returned.** The account isn't identified by this call — see the
+Forgot Password flow below for how the password reset resolves the account instead.
+
+### Flow: Signup (OTP-gated)
+1. User fills the 2-step Signup form and submits step 2.
+2. Shell calls `POST /api/otp/generate` with `event: "signup"` — **not** `POST /api/auth/signup` directly.
+3. On success, an OTP modal (6 boxes) opens. User enters the code and submits.
+4. Shell calls `POST /api/otp/verify` with `event: "signup"`.
+5. Only on verify success does the Shell call `POST /api/auth/signup` with the form payload collected in step 1.
+
+### Flow: Login → Forgot Password
+1. User clicks "Forgot password?" on the Login page and enters their email.
+2. Shell calls `POST /api/otp/generate` with `event: "forgotpassword"`.
+3. OTP modal opens; on verify, Shell calls `POST /api/otp/verify` with `event: "forgotpassword"`. The response confirms `verified: true` only — no account identifier.
+4. A "set new password" modal opens (`newPassword` + `confirmPassword`). Submitting calls `PUT /api/users/change/password` with `{ email, newPassword, confirmPassword }` in the body and **no** `Authorization` header, since the user is never logged in during this flow.
+
+### Flow: Settings → Change Password
+1. User (already authenticated) clicks "Change password" in Settings → Security.
+2. Shell calls `POST /api/otp/generate` with `event: "changepassword"` using the current user's email (from `GET /api/auth/me`).
+3. OTP modal opens; on verify, Shell calls `POST /api/otp/verify` with `event: "changepassword"`.
+4. A "set new password" modal opens. Submitting calls `PUT /api/users/change/password` with `{ email, newPassword, confirmPassword }` — same endpoint as the Forgot Password flow, using the current user's own email. The bearer token is attached automatically like any other authenticated call, but the backend identifies the account by `email` in the body either way.
+
+> Source: `shell/lib/types/otp.types.ts`, `shell/lib/services/otp.service.ts`, `shell/components/Modals/OtpModal.tsx`, `shell/components/Modals/NewPasswordModal.tsx`, `shell/components/Modals/ForgotPasswordEmailModal.tsx`.
+
+---
+
 ## Task Service  `/api/tasks`
 
 > Drives the **Task MFE** (`mfe-task`) — list view, detail, create/edit form.
@@ -730,6 +804,7 @@ Returns `422` if attempting to remove the only `admin`.
 | PATCH | `/api/users/:id` | Auth | Update own profile |
 | GET | `/api/users/:id/settings` | Auth | Get a user's settings by id |
 | PUT | `/api/users/:id/settings` | Auth | Update a user's settings. Consumed by `usersService.updateSettings()` |
+| PUT | `/api/users/change/password` | Public\* | Change a password after OTP verification, identified by `email` in the body (not `:id`). Shared by Settings → Change Password and Login → Forgot Password. Consumed by `usersService.changePassword()` |
 
 ### `GET /api/users`
 **Response `200`**
@@ -761,6 +836,23 @@ Drives the **Task Archiving** section on `SettingsScreen` — `:id` is the curre
 }
 ```
 > Source: `shell/lib/types/users.types.ts` (`UserSettings`, `UpdateUserSettingsPayload`). Consumed by `useUpdateUserSettings()` → `usersService.updateSettings()`.
+
+### `PUT /api/users/change/password`
+Changes a password after OTP verification. `newPassword` and `confirmPassword` must match
+(6–100 characters). Identifies the account by `email` in the body rather than an `:id` path
+param — `POST /api/otp/verify` confirmed live returns only `{ verified, event }`, no `userId`,
+so this endpoint has to resolve the account itself. Shared by two flows:
+
+- **Settings → Change Password** — after `POST /api/otp/verify` with `event: "changepassword"`. Caller is authenticated; the bearer token is attached automatically like any other call, but `email` is still the current user's own email (from `GET /api/auth/me`).
+- **Login → Forgot Password** — after `POST /api/otp/verify` with `event: "forgotpassword"`. Caller is **not** authenticated — no `Authorization` header is sent, since the user hasn't logged in.
+
+**Request**
+```json
+{ "email": "user@example.com", "newPassword": "NewSecret123", "confirmPassword": "NewSecret123" }
+```
+**Response `200`** — no payload needed by the frontend beyond success/failure.
+
+> Source: `shell/lib/types/users.types.ts` (`ChangePasswordPayload`). Consumed by `usersService.changePassword()`.
 
 ---
 
@@ -868,6 +960,7 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | SettingsScreen — Profile (name, title) read | `GET /api/auth/me` |
 | SettingsScreen — Profile save | `PATCH /api/users/:id` |
 | SettingsScreen — Notification toggles save | `PATCH /api/preferences` |
+| SettingsScreen — Security section, "Change password" button | `POST /api/otp/generate` (`event: "changepassword"`) → OtpModal → `POST /api/otp/verify` → NewPasswordModal → `PUT /api/users/change/password` (`email` = current user's own email) |
 | SettingsScreen — Task Archiving section (Formik) — "Archive after N days" field, read | `GET /api/auth/me/settings` via `useMySettings()` → `authService.meSettings()` (not `/api/auth/me` — this section shows no user identity data) |
 | SettingsScreen — Task Archiving section — "Save settings" button | `PUT /api/users/:id/settings` via `useUpdateUserSettings()` → `usersService.updateSettings()`, `:id` = `userId` from the settings read response |
 | Sidebar — workspace indicator (workspace name) | `GET /api/auth/me` (`workspaces[0].name`) |
@@ -875,8 +968,12 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | Topbar — bell icon | _commented out — not yet wired_ |
 | Topbar — avatar | `GET /api/auth/me` |
 | LoginForm — submit | `POST /api/auth/login` |
+| LoginForm — "Forgot password?" link → ForgotPasswordEmailModal submit | `POST /api/otp/generate` (`event: "forgotpassword"`) |
+| LoginForm — OtpModal verify (forgot-password flow) | `POST /api/otp/verify` (`event: "forgotpassword"`) |
+| LoginForm — NewPasswordModal submit (forgot-password flow) | `PUT /api/users/change/password` (email in body, no bearer token) |
 | SignupForm — step 1 "Continue" (name, email, password, confirm) | (client-side validation only, no API call) |
-| SignupForm — step 2 "Create account" submit (title + workspaceName) | `POST /api/auth/signup` |
+| SignupForm — step 2 "Create account" submit (title + workspaceName) | `POST /api/otp/generate` (`event: "signup"`) — **not** signup directly |
+| SignupForm — OtpModal verify (signup flow) | `POST /api/otp/verify` (`event: "signup"`) → on success, `POST /api/auth/signup` with the full form payload |
 
 ### Task MFE (`mfe-task/`)
 
