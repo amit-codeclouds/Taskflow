@@ -870,6 +870,8 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | SettingsScreen — Notification toggles save | `PATCH /api/preferences` |
 | SettingsScreen — Task Archiving section (Formik) — "Archive after N days" field, read | `GET /api/auth/me/settings` via `useMySettings()` → `authService.meSettings()` (not `/api/auth/me` — this section shows no user identity data) |
 | SettingsScreen — Task Archiving section — "Save settings" button | `PUT /api/users/:id/settings` via `useUpdateUserSettings()` → `usersService.updateSettings()`, `:id` = `userId` from the settings read response |
+| `/chat` — ChatPage, full-bleed `<iframe>` embedding the external chatbot app (`NEXT_PUBLIC_CHATBOT_URL`, default `https://taskflow-chatbot-six.vercel.app`) | _no backend dependency — third-party origin owns its own API calls; nothing proxied through our gateway_ |
+| Sidebar — "Chat" link (Workspace group) → `/chat` | (navigation only) |
 | Sidebar — workspace indicator (workspace name) | `GET /api/auth/me` (`workspaces[0].name`) |
 | Sidebar — user card (name, initials) | `GET /api/auth/me` |
 | Topbar — bell icon | _commented out — not yet wired_ |
