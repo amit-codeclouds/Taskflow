@@ -194,12 +194,19 @@ The response's `userId` is what the Shell then uses as the `:id` path param for
 {
   "result": {
     "userId": "8208e9b4-6d08-45fb-921e-65e6238e4ab6",
-    "daysToArchieve": 2
+    "daysToArchieve": 2,
+    "notificationOnMemberAddToWorkspace": false,
+    "notificationOnMemberAddToTeam": false,
+    "notificationOnTaskAssignment": false,
+    "isTeamMemberNotificationEnabled": false,
+    "isWorkspaceMemberNotificationEnabled": false,
+    "isTaskCreationNotificationEnabled": false
   }
 }
 ```
 > Source: `shell/lib/types/users.types.ts` (`UserSettings`). Consumed by `authService.meSettings()` via `useMySettings()`.
 > `daysToArchieve` spelling mirrors the backend. Number of days after which a task marked with an archived-designated status is moved to the archive table.
+> The remaining six booleans back the **Notifications** section — `notificationOn*` fields fire when this user is added/assigned; `is*NotificationEnabled` fields fire when there's activity in a workspace/team/task this user created.
 
 ---
 
@@ -817,21 +824,39 @@ Returns `422` if attempting to remove the only `admin`.
 ```
 
 ### `PUT /api/users/:id/settings`
-Updates the target user's settings. `daysToArchieve` is required — the number of days after
-which a task marked with an archived-designated status is moved to the archive table.
-Drives the **Task Archiving** section on `SettingsScreen` — `:id` is the current user's own
+Updates the target user's settings. All fields are optional. `:id` is the current user's own
 `userId` (taken from the `GET /api/auth/me/settings` response), never a `/api/auth/me` call.
+
+`SettingsScreen` uses a single Formik form spanning the **Notifications** section (6 boolean
+toggles, split into "Notifications for you" and "Notifications for your workspaces & teams")
+and the **Task Archiving** section (`daysToArchieve` — the number of days after which a task
+marked with an archived-designated status is moved to the archive table). One centralized
+"Save settings" button submits all 7 fields together in a single request.
 
 **Request**
 ```json
-{ "daysToArchieve": 2 }
+{
+  "daysToArchieve": 2,
+  "notificationOnMemberAddToWorkspace": true,
+  "notificationOnMemberAddToTeam": true,
+  "notificationOnTaskAssignment": true,
+  "isWorkspaceMemberNotificationEnabled": false,
+  "isTeamMemberNotificationEnabled": false,
+  "isTaskCreationNotificationEnabled": false
+}
 ```
 **Response `200`**
 ```json
 {
   "result": {
     "userId": "8208e9b4-6d08-45fb-921e-65e6238e4ab6",
-    "daysToArchieve": 2
+    "daysToArchieve": 2,
+    "notificationOnMemberAddToWorkspace": true,
+    "notificationOnMemberAddToTeam": true,
+    "notificationOnTaskAssignment": true,
+    "isTeamMemberNotificationEnabled": false,
+    "isWorkspaceMemberNotificationEnabled": false,
+    "isTaskCreationNotificationEnabled": false
   }
 }
 ```
@@ -954,15 +979,14 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | PeopleScreen — team filter dropdown | `GET /api/people?teamId=...` |
 | PeopleScreen — status filter dropdown | `GET /api/people?status=active\|pending` |
 | PeopleScreen — "Invite to workspace" button → InviteModal submit | `POST /api/people/invite` |
-| PeopleScreen — "Resend" action (pending member row) | `POST /api/people/invite` (re-send to same email → 200, resets expiry) |
-| PeopleScreen — "Remove" action (active member) | `DELETE /api/people/:userId` |
-| PeopleScreen — "Remove" action (pending member — cancel invite) | `DELETE /api/people/:userId` |
+| PeopleScreen — row "⋮" menu → "Resend invite" (pending member only) | `POST /api/people/invite` (re-send to same email → 200, resets expiry) |
+| PeopleScreen — row "⋮" menu → "Remove" (active member) | `DELETE /api/people/:userId` |
+| PeopleScreen — row "⋮" menu → "Cancel invite" (pending member) | `DELETE /api/people/:userId` |
 | SettingsScreen — Profile (name, title) read | `GET /api/auth/me` |
 | SettingsScreen — Profile save | `PATCH /api/users/:id` |
-| SettingsScreen — Notification toggles save | `PATCH /api/preferences` |
 | SettingsScreen — Security section, "Change password" button | `POST /api/otp/generate` (`event: "changepassword"`) → OtpModal → `POST /api/otp/verify` → NewPasswordModal → `PUT /api/users/change/password` (`email` = current user's own email) |
-| SettingsScreen — Task Archiving section (Formik) — "Archive after N days" field, read | `GET /api/auth/me/settings` via `useMySettings()` → `authService.meSettings()` (not `/api/auth/me` — this section shows no user identity data) |
-| SettingsScreen — Task Archiving section — "Save settings" button | `PUT /api/users/:id/settings` via `useUpdateUserSettings()` → `usersService.updateSettings()`, `:id` = `userId` from the settings read response |
+| SettingsScreen — Notifications section (6 toggles, split "Notifications for you" / "Notifications for your workspaces & teams") + Task Archiving section ("Archive after N days" field), read | `GET /api/auth/me/settings` via `useMySettings()` → `authService.meSettings()` |
+| SettingsScreen — single centralized "Save settings" button (one Formik form spanning both the Notifications and Task Archiving sections) | `PUT /api/users/:id/settings` via `useUpdateUserSettings()` → `usersService.updateSettings()`, submitting all 6 notification booleans + `daysToArchieve` in one request, `:id` = `userId` from the settings read response |
 | `/chat` — ChatPage, full-bleed `<iframe>` embedding the external chatbot app (`NEXT_PUBLIC_CHATBOT_URL`, default `https://taskflow-chatbot-six.vercel.app`) | _no backend dependency — third-party origin owns its own API calls; nothing proxied through our gateway_ |
 | Sidebar — "Chat" link (Workspace group) → `/chat` | (navigation only) |
 | Sidebar — workspace indicator (workspace name) | `GET /api/auth/me` (`workspaces[0].name`) |
@@ -983,7 +1007,7 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 |---|---|
 | TaskListScreen — task list ("My Tasks") | `GET /api/tasks/my` |
 | TaskListScreen — search box | `GET /api/tasks/my?search=...` |
-| TaskListScreen — team filter dropdown | `GET /api/teams` (options), `GET /api/tasks/my?teamId=...` (filter) |
+| TaskListScreen — team filter dropdown ("All Teams" + one option per team the user is assigned to, each option showing its member count) | `GET /api/teams?exclude_workspace=true` (options — teams the user is assigned to, matching `Sidebar`/`TaskFormScreen`/`TeamTaskBoardScreen`; `memberCount` derived client-side from the `members[]` array), `GET /api/tasks/my?teamId=...` (filter) |
 | TaskListScreen — dynamic status tabs (shown once a single team is selected) | `GET /api/board-statuses/team/:teamId`; tab click filters the fetched page client-side by `statusId` |
 | TaskListScreen — status badge on each row | resolved via `GET /api/board-statuses/team/:teamId` for the row's team (batched across the page's unique teams with `useBoardStatusesMap`) |
 | TaskListScreen — pagination (Previous/Next) | `GET /api/tasks/my?page=...` |
