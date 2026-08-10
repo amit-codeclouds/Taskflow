@@ -12,7 +12,7 @@ Taskflow uses **httpOnly session cookies** for authentication. The cookie is set
 
 | # | Story |
 |---|---|
-| US-AUTH-1 | As a new user I can sign up with my name, email, designation, and password |
+| US-AUTH-1 | As a new user I can sign up over 2 steps with my name, email, and password, then my designation and workspace name |
 | US-AUTH-2 | As a returning user I can log in with email and password |
 | US-AUTH-3 | As a logged-in user my session persists across page refreshes |
 | US-AUTH-4 | As a logged-in user I can log out and my session is cleared |
@@ -22,35 +22,57 @@ Taskflow uses **httpOnly session cookies** for authentication. The cookie is set
 
 ## Signup Flow
 
+The signup form is a **2-step wizard** in a single component (`SignupForm.tsx`), backed by
+one Formik instance — both steps validate against one combined Yup schema, but "Continue"
+on step 1 only validates the step-1 fields before advancing.
+
 ```
-User fills name + email + designation + password
-          │
-          ▼
-POST /api/auth/signup
-          │
-      ┌───┴───┐
-      │ Valid │ → 201 Created
-      │       │   Set-Cookie: taskflow_session=<token>; Path=/; HttpOnly; SameSite=Lax
-      │       │   Set-Cookie: taskflow_name=<name>; Path=/; SameSite=Lax
-      │       │   Set-Cookie: taskflow_email=<email>; Path=/; SameSite=Lax
-      │       │   Set-Cookie: taskflow_title=<title>; Path=/; SameSite=Lax
-      │       │   → redirect to /
-      └───────┘
-          │
-      ┌───┴──────┐
-      │ Invalid  │ → 422 Unprocessable
-      │          │   Response: { ok: false, errors: [...] }
-      │          │   → inline errors, no redirect
-      └──────────┘
+Step 1 — Account details            Step 2 — Role & workspace
+┌─────────────────────────┐         ┌─────────────────────────────┐
+│ name                    │         │ title (designation, req.)   │
+│ email                   │  Next → │ workspaceName (req., pre-    │
+│ password                │         │   filled with default,      │
+│ confirmPassword         │  ← Back │   editable, note shown)      │
+└─────────────────────────┘         └─────────────────────────────┘
+                                                  │
+                                                  ▼
+                                     POST /api/auth/signup
+                                                  │
+                                            ┌───┴───┐
+                                            │ Valid │ → 201 Created
+                                            │       │   Set-Cookie: taskflow_session=<token>; Path=/; HttpOnly; SameSite=Lax
+                                            │       │   Set-Cookie: taskflow_name=<name>; Path=/; SameSite=Lax
+                                            │       │   Set-Cookie: taskflow_email=<email>; Path=/; SameSite=Lax
+                                            │       │   Set-Cookie: taskflow_title=<title>; Path=/; SameSite=Lax
+                                            │       │   → redirect to /
+                                            └───────┘
+                                                  │
+                                            ┌───┴──────┐
+                                            │ Invalid  │ → 422 Unprocessable
+                                            │          │   Response: { ok: false, errors: [...] }
+                                            │          │   → inline errors, no redirect
+                                            └──────────┘
 ```
 
 ### Designation field
 
-A **React Select** dropdown (dark-themed via `lib/selectStyles.ts`). Selecting "Other" reveals a free-text input.
+A **React Select** dropdown (dark-themed via `lib/selectStyles.ts`), shown on step 2. **Required** —
+the form cannot advance to submission without a role selected. Selecting "Other" reveals a
+free-text input.
 
 **Allowed values**: Engineer · Designer · Product Manager · QA Engineer · DevOps · Team Lead · Manager · Director · Founder · Other
 
 When "Other" is selected: the free-text value is sent as `title`. The dropdown value `"Other"` is never persisted.
+
+### Workspace name field
+
+A plain text input on step 2, **required**. Pre-filled the moment the user advances past
+step 1 with the default `"<name>'s Workspace"` (derived from the step-1 `name` value), but
+freely editable. A helper note under the field reads:
+
+> This is your default workspace name — you can rename it anytime after signing up.
+
+This becomes the `name` of the `Workspace` row auto-created for the new user.
 
 ---
 
@@ -104,10 +126,12 @@ All routes except `/login`, `/signup`, and `/api/auth/login` + `/api/auth/signup
   "name": "Arkabrata Das",
   "email": "arko@example.com",
   "password": "hunter2",
-  "title": "Engineer"
+  "title": "Engineer",
+  "workspaceName": "Arkabrata Das's Workspace"
 }
 ```
-`title` is optional. When the user selected "Other" on the form, the free-text value is sent here — never the string `"Other"`.
+`title` is required. When the user selected "Other" on the form, the free-text value is sent here — never the string `"Other"`.
+`workspaceName` is required — pre-filled with the default shown above, editable by the user.
 
 **Success (201)**
 ```json
@@ -172,7 +196,8 @@ Sets `taskflow_session` (httpOnly) + `taskflow_name` + `taskflow_email` + `taskf
 | `name` | Required, min 2 characters |
 | `email` | Required, valid email format |
 | `password` | Required, min 6 characters |
-| `title` | Optional. If "Other" selected: custom text required, min 2 characters |
+| `title` | Required. If "Other" selected: custom text required, min 2 characters |
+| `workspaceName` | Required, min 2 characters. Pre-filled with `"<name>'s Workspace"`, editable |
 
 ---
 

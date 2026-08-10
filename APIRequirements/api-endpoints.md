@@ -106,18 +106,26 @@ Every endpoint — success or failure — returns this wrapper.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | `/api/auth/signup` | Public | Register — name + email + title + password → sets session cookies |
+| POST | `/api/auth/signup` | Public | Register — name + email + title + password + workspaceName → sets session cookies |
 | POST | `/api/auth/login` | Public | Email + password → sets session cookies |
 | POST | `/api/auth/logout` | Auth | Clears all session cookies |
 | GET | `/api/auth/me` | Auth | Returns current user |
 | GET | `/api/auth/me/stats` | Auth | Aggregate task stats for the current user. Consumed by `authService.meStats()` |
+| GET | `/api/auth/me/settings` | Auth | Current user's settings (resolved server-side via the JWT `sub` claim). Consumed by `authService.meSettings()` |
 
 ### `POST /api/auth/signup`
+
+Collected over a **2-step form** in the Shell: step 1 captures account credentials
+(name, email, password), step 2 captures role + workspace. Both steps submit together
+as a single request on final submit — there is no partial-signup API call.
+
 **Request**
 ```json
-{ "name": "string", "email": "string", "password": "string", "title": "string (optional)" }
+{ "name": "string", "email": "string", "password": "string", "title": "string", "workspaceName": "string" }
 ```
-`title` is the resolved designation — if the user selected "Other" on the form, the free-text value is sent here, never the string `"Other"`.
+`title` is the resolved designation — if the user selected "Other" on the form, the free-text value is sent here, never the string `"Other"`. `title` is required (step 2 cannot be submitted without a role selected).
+
+`workspaceName` is required and defaults to `"<name>'s Workspace"` when the user reaches step 2 — the field is pre-filled and editable, with a note in the UI clarifying it is the default name and can be changed later. This becomes the `name` of the `Workspace` row auto-created for the new user (see `models.md`).
 
 **Response `201`**
 ```json
@@ -149,7 +157,7 @@ Sets `taskflow_session` (httpOnly) + `taskflow_name` + `taskflow_email` + `taskf
   "avatarInitials": "AC",
   "avatarUrl": null,
   "workspaces": [
-    { "workspaceId": "ws_1", "role": "owner", "status": "active", "joinedAt": "2026-06-01T00:00:00Z" }
+    { "workspaceId": "ws_1", "name": "Arkabrata Das's Workspace", "role": "owner", "status": "active", "joinedAt": "2026-06-01T00:00:00Z" }
   ],
   "teams": [
     { "teamId": "team_1", "workspaceId": "ws_1", "role": "admin",     "joinedAt": "2026-06-01T00:00:00Z" },
@@ -176,6 +184,96 @@ Aggregate stats for the current authenticated user.
 ```
 > Source: `shell/lib/types/auth.types.ts` (`MeStats`). Consumed by `authService.meStats()`.
 > `archieveTask` spelling mirrors the backend. WelcomeScreen derives **Total Tasks** = `activeTasks + archieveTask`.
+
+### `GET /api/auth/me/settings`
+Fetches the authenticated user's settings — no `:id` needed, resolved from the JWT `sub` claim.
+The response's `userId` is what the Shell then uses as the `:id` path param for
+`PUT /api/users/:id/settings` below.
+**Response `200`**
+```json
+{
+  "result": {
+    "userId": "8208e9b4-6d08-45fb-921e-65e6238e4ab6",
+    "daysToArchieve": 2
+  }
+}
+```
+> Source: `shell/lib/types/users.types.ts` (`UserSettings`). Consumed by `authService.meSettings()` via `useMySettings()`.
+> `daysToArchieve` spelling mirrors the backend. Number of days after which a task marked with an archived-designated status is moved to the archive table.
+
+---
+
+## OTP Service  `/api/otp`
+
+> Backed by the .NET backend's Postman collection ("Taskflow DOTNET Backend" → Otp folder).
+> Both endpoints are **anonymous** — no session cookie / bearer token required. Gates three
+> flows in the Shell before the "real" mutation runs: Signup, Login → Forgot Password, and
+> Settings → Change Password.
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/api/otp/generate?platform={bool}` | Public | Generate + email a 6-digit OTP for `email` + `event` |
+| POST | `/api/otp/verify` | Public | Verify a previously generated OTP for `email` + `event` |
+
+### `POST /api/otp/generate`
+**Query params**
+```
+platform=true|false   (required)
+```
+`platform` tells the backend whether the account already exists: **`false`** for
+`event: "signup"` (the user isn't created yet), **`true`** for every other event
+(`forgotpassword`, `changepassword`, `deleteaccount` all act on an existing account).
+Derived automatically from `event` in `otpService.generate()` — callers never pass it directly.
+
+**Request**
+```json
+{ "email": "user@example.com", "event": "signup", "description": "OTP for account signup verification" }
+```
+`event` is one of: `signup` | `forgotpassword` | `deleteaccount` | `changepassword`. `description` is optional, free text shown for logging/audit purposes.
+
+**Response `200`** — no body payload needed by the frontend beyond success/failure.
+
+### `POST /api/otp/verify`
+**Request**
+```json
+{ "email": "user@example.com", "event": "signup", "otp": "123456" }
+```
+**Response `200`** — ✅ confirmed live (captured via DevTools Network tab for `event: "forgotpassword"`):
+```json
+{
+  "status": true,
+  "code": 200,
+  "result": { "verified": true, "event": "forgotpassword" },
+  "message": "OTP verified successfully.",
+  "errors": [],
+  "dev_message": "",
+  "requestId": "",
+  "timestamp": "2026-08-08T17:06:47.9875114Z"
+}
+```
+**No `userId` is returned.** The account isn't identified by this call — see the
+Forgot Password flow below for how the password reset resolves the account instead.
+
+### Flow: Signup (OTP-gated)
+1. User fills the 2-step Signup form and submits step 2.
+2. Shell calls `POST /api/otp/generate` with `event: "signup"` — **not** `POST /api/auth/signup` directly.
+3. On success, an OTP modal (6 boxes) opens. User enters the code and submits.
+4. Shell calls `POST /api/otp/verify` with `event: "signup"`.
+5. Only on verify success does the Shell call `POST /api/auth/signup` with the form payload collected in step 1.
+
+### Flow: Login → Forgot Password
+1. User clicks "Forgot password?" on the Login page and enters their email.
+2. Shell calls `POST /api/otp/generate` with `event: "forgotpassword"`.
+3. OTP modal opens; on verify, Shell calls `POST /api/otp/verify` with `event: "forgotpassword"`. The response confirms `verified: true` only — no account identifier.
+4. A "set new password" modal opens (`newPassword` + `confirmPassword`). Submitting calls `PUT /api/users/change/password` with `{ email, newPassword, confirmPassword }` in the body and **no** `Authorization` header, since the user is never logged in during this flow.
+
+### Flow: Settings → Change Password
+1. User (already authenticated) clicks "Change password" in Settings → Security.
+2. Shell calls `POST /api/otp/generate` with `event: "changepassword"` using the current user's email (from `GET /api/auth/me`).
+3. OTP modal opens; on verify, Shell calls `POST /api/otp/verify` with `event: "changepassword"`.
+4. A "set new password" modal opens. Submitting calls `PUT /api/users/change/password` with `{ email, newPassword, confirmPassword }` — same endpoint as the Forgot Password flow, using the current user's own email. The bearer token is attached automatically like any other authenticated call, but the backend identifies the account by `email` in the body either way.
+
+> Source: `shell/lib/types/otp.types.ts`, `shell/lib/services/otp.service.ts`, `shell/components/Modals/OtpModal.tsx`, `shell/components/Modals/NewPasswordModal.tsx`, `shell/components/Modals/ForgotPasswordEmailModal.tsx`.
 
 ---
 
@@ -704,6 +802,9 @@ Returns `422` if attempting to remove the only `admin`.
 | GET | `/api/users` | Auth | List users (for assignee picker) |
 | GET | `/api/users/:id` | Auth | Get user profile |
 | PATCH | `/api/users/:id` | Auth | Update own profile |
+| GET | `/api/users/:id/settings` | Auth | Get a user's settings by id |
+| PUT | `/api/users/:id/settings` | Auth | Update a user's settings. Consumed by `usersService.updateSettings()` |
+| PUT | `/api/users/change/password` | Public\* | Change a password after OTP verification, identified by `email` in the body (not `:id`). Shared by Settings → Change Password and Login → Forgot Password. Consumed by `usersService.changePassword()` |
 
 ### `GET /api/users`
 **Response `200`**
@@ -714,6 +815,44 @@ Returns `422` if attempting to remove the only `admin`.
   ]
 }
 ```
+
+### `PUT /api/users/:id/settings`
+Updates the target user's settings. `daysToArchieve` is required — the number of days after
+which a task marked with an archived-designated status is moved to the archive table.
+Drives the **Task Archiving** section on `SettingsScreen` — `:id` is the current user's own
+`userId` (taken from the `GET /api/auth/me/settings` response), never a `/api/auth/me` call.
+
+**Request**
+```json
+{ "daysToArchieve": 2 }
+```
+**Response `200`**
+```json
+{
+  "result": {
+    "userId": "8208e9b4-6d08-45fb-921e-65e6238e4ab6",
+    "daysToArchieve": 2
+  }
+}
+```
+> Source: `shell/lib/types/users.types.ts` (`UserSettings`, `UpdateUserSettingsPayload`). Consumed by `useUpdateUserSettings()` → `usersService.updateSettings()`.
+
+### `PUT /api/users/change/password`
+Changes a password after OTP verification. `newPassword` and `confirmPassword` must match
+(6–100 characters). Identifies the account by `email` in the body rather than an `:id` path
+param — `POST /api/otp/verify` confirmed live returns only `{ verified, event }`, no `userId`,
+so this endpoint has to resolve the account itself. Shared by two flows:
+
+- **Settings → Change Password** — after `POST /api/otp/verify` with `event: "changepassword"`. Caller is authenticated; the bearer token is attached automatically like any other call, but `email` is still the current user's own email (from `GET /api/auth/me`).
+- **Login → Forgot Password** — after `POST /api/otp/verify` with `event: "forgotpassword"`. Caller is **not** authenticated — no `Authorization` header is sent, since the user hasn't logged in.
+
+**Request**
+```json
+{ "email": "user@example.com", "newPassword": "NewSecret123", "confirmPassword": "NewSecret123" }
+```
+**Response `200`** — no payload needed by the frontend beyond success/failure.
+
+> Source: `shell/lib/types/users.types.ts` (`ChangePasswordPayload`). Consumed by `usersService.changePassword()`.
 
 ---
 
@@ -821,12 +960,22 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | SettingsScreen — Profile (name, title) read | `GET /api/auth/me` |
 | SettingsScreen — Profile save | `PATCH /api/users/:id` |
 | SettingsScreen — Notification toggles save | `PATCH /api/preferences` |
-| Sidebar — workspace indicator (owner name) | derived from `taskflow_name` cookie — no API call |
+| SettingsScreen — Security section, "Change password" button | `POST /api/otp/generate` (`event: "changepassword"`) → OtpModal → `POST /api/otp/verify` → NewPasswordModal → `PUT /api/users/change/password` (`email` = current user's own email) |
+| SettingsScreen — Task Archiving section (Formik) — "Archive after N days" field, read | `GET /api/auth/me/settings` via `useMySettings()` → `authService.meSettings()` (not `/api/auth/me` — this section shows no user identity data) |
+| SettingsScreen — Task Archiving section — "Save settings" button | `PUT /api/users/:id/settings` via `useUpdateUserSettings()` → `usersService.updateSettings()`, `:id` = `userId` from the settings read response |
+| `/chat` — ChatPage, full-bleed `<iframe>` embedding the external chatbot app (`NEXT_PUBLIC_CHATBOT_URL`, default `https://taskflow-chatbot-six.vercel.app`) | _no backend dependency — third-party origin owns its own API calls; nothing proxied through our gateway_ |
+| Sidebar — "Chat" link (Workspace group) → `/chat` | (navigation only) |
+| Sidebar — workspace indicator (workspace name) | `GET /api/auth/me` (`workspaces[0].name`) |
 | Sidebar — user card (name, initials) | `GET /api/auth/me` |
 | Topbar — bell icon | _commented out — not yet wired_ |
 | Topbar — avatar | `GET /api/auth/me` |
 | LoginForm — submit | `POST /api/auth/login` |
-| SignupForm — submit | `POST /api/auth/signup` |
+| LoginForm — "Forgot password?" link → ForgotPasswordEmailModal submit | `POST /api/otp/generate` (`event: "forgotpassword"`) |
+| LoginForm — OtpModal verify (forgot-password flow) | `POST /api/otp/verify` (`event: "forgotpassword"`) |
+| LoginForm — NewPasswordModal submit (forgot-password flow) | `PUT /api/users/change/password` (email in body, no bearer token) |
+| SignupForm — step 1 "Continue" (name, email, password, confirm) | (client-side validation only, no API call) |
+| SignupForm — step 2 "Create account" submit (title + workspaceName) | `POST /api/otp/generate` (`event: "signup"`) — **not** signup directly |
+| SignupForm — OtpModal verify (signup flow) | `POST /api/otp/verify` (`event: "signup"`) → on success, `POST /api/auth/signup` with the full form payload |
 
 ### Task MFE (`mfe-task/`)
 
@@ -853,7 +1002,7 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | TaskDetailScreen — CommentComposer submit | `POST /api/comments?taskId=:id` |
 | TaskDetailScreen — CommentItem edit (own comment only) | `PUT /api/comments/:commentId` |
 | TaskDetailScreen — CommentItem delete (own comment only, ConfirmProvider modal) | `DELETE /api/comments/:commentId` |
-| Sidebar / Topbar — user card | derived from `taskflow_name`/`taskflow_email` cookies — no API call yet (`GET /api/auth/me` not wired in Task MFE) |
+| Sidebar / Topbar — user card + workspace indicator | `GET /api/auth/me` (`workspaces[0].name` for the workspace indicator) |
 | TeamTaskBoardScreen (`/tasks/listview?teamid=`) — status tabs + per-tab task list | `GET /api/tasks/team/:teamId/board` via `boardService.getTeamBoard()`; tabs come from `columns[]`, no separate board-statuses call |
 | TeamTaskBoardScreen — task row Edit/Delete visibility | client-side only — `TaskRow` shows Edit + Delete for a task only when the signed-in user is one of its `assignees`; everyone else gets View only (no API) |
 | TeamTaskBoardScreen — Archived tab (with tooltip explaining its purpose) | `GET /api/migrate/task/archived?teamId=&page=&limit=&search=` via `archivedTasksService.list()`; rows render read-only (no view/edit/delete — no archived-task detail page exists yet in Task MFE) |
@@ -881,7 +1030,7 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | Archived Tasks table — "View Task" eye icon per row | navigates to `/archived-task/:taskId` (Angular router, same zone) → `ArchivedTaskdetailsComponent` |
 | Archived Task Details (ArchivedTaskdetailsComponent) — number, title, priority, label, progress, dates, assignees, description | `GET /api/migrate/task/archived/:taskId` via `TeamService.getArchivedTask()`. Description rendered from CKEditor HTML via `[innerHTML]` |
 | Task card "↗" open icon | navigates to `/tasks/:id` |
-| Sidebar — user card | `GET /api/auth/me` |
+| Sidebar — user card + workspace indicator | `GET /api/auth/me` (`workspaces[0].name` for the workspace indicator) |
 | Topbar — notification bell | `GET /api/notifications` |
 
 > **CORS / same-origin proxy**: the Board MFE calls all backend endpoints as relative `/api/*`

@@ -1,4 +1,5 @@
 import { Component, signal } from '@angular/core';
+import { NgIf } from '@angular/common';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
@@ -7,7 +8,7 @@ import { AvatarComponent } from '../../shared/components/avatar/avatar.component
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [AvatarComponent],
+  imports: [NgIf, AvatarComponent],
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss'
 })
@@ -43,10 +44,7 @@ export class SidebarComponent {
     this.isTaskBoardActive.set(!isDashboard);
   }
 
-  // Matches shell/mfe-task's own Sidebar label exactly — derived from first name,
-  // not the real workspace name (both apps do this the same way).
   get workspaceLabel(): string {
-    const name = this.auth.user().name;
-    return name ? `${name.split(' ')[0]}'s Workspace` : 'My Workspace';
+    return this.auth.user().workspaceName || 'My Workspace';
   }
 }

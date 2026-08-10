@@ -1,5 +1,5 @@
 import apiClient from '@/lib/http/client';
-import type { User, UpdateUserPayload, AvatarUploadResponse } from '@/lib/types/users.types';
+import type { User, UpdateUserPayload, AvatarUploadResponse, UserSettings, UpdateUserSettingsPayload, ChangePasswordPayload } from '@/lib/types/users.types';
 
 export const usersService = {
   async list(params?: { search?: string; limit?: number; page?: number; workspaceId?: string }): Promise<User[]> {
@@ -33,5 +33,17 @@ export const usersService = {
   async deleteAvatar(): Promise<{ avatarInitials: string }> {
     const { data } = await apiClient.delete<{ result: { Initials: string } }>('/users/avatar');
     return { avatarInitials: data.result.Initials };
+  },
+
+  async updateSettings(id: string, payload: UpdateUserSettingsPayload): Promise<UserSettings> {
+    const { data } = await apiClient.put<{ result: UserSettings }>(`/users/${id}/settings`, payload);
+    return data.result;
+  },
+
+  // Identifies the account by email, not an :id path param — used for both
+  // Settings → Change Password (authenticated) and Login → Forgot Password
+  // (anonymous, no bearer token).
+  async changePassword(payload: ChangePasswordPayload): Promise<void> {
+    await apiClient.put('/users/change/password', payload);
   },
 };

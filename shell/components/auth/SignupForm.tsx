@@ -2,12 +2,17 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import Select from 'react-select';
 import { getSelectStyles, type SelectOption } from '@/lib/selectStyles';
+import { otpService } from '@/lib/services/otp.service';
+import { authService } from '@/lib/services/auth.service';
+import { extractErrorMessage } from '@/lib/http/extractError';
+import type { SignupPayload } from '@/lib/types/auth.types';
+import OtpModal from '@/components/Modals/OtpModal';
 
 type TitleOption = SelectOption;
 
@@ -24,19 +29,22 @@ const TITLE_OPTIONS: TitleOption[] = [
   { value: 'Other',           label: 'Other'           },
 ];
 
+const STEP1_FIELDS = ['name', 'email', 'password', 'confirmPassword'] as const;
+
 const schema = Yup.object({
   name:  Yup.string().min(2, 'Name must be at least 2 characters').required('Full name is required'),
   email: Yup.string().email('Enter a valid email address').required('Email is required'),
-  title: Yup.string(),
+  password: Yup.string().min(6, 'Password must be at least 6 characters').required('Password is required'),
+  confirmPassword: Yup.string()
+    .oneOf([Yup.ref('password')], 'Passwords must match')
+    .required('Confirm your password'),
+  title: Yup.string().required('Please select your role'),
   customTitle: Yup.string().when('title', {
     is:        'Other',
     then:      (s) => s.min(2, 'Must be at least 2 characters').required('Please describe your role'),
     otherwise: (s) => s.notRequired(),
   }),
-  password: Yup.string().min(6, 'Password must be at least 6 characters').required('Password is required'),
-  confirmPassword: Yup.string()
-    .oneOf([Yup.ref('password')], 'Passwords must match')
-    .required('Confirm your password'),
+  workspaceName: Yup.string().min(2, 'Workspace name must be at least 2 characters').required('Workspace name is required'),
 });
 
 type FormValues = Yup.InferType<typeof schema>;
@@ -45,6 +53,11 @@ function inputClass(touched: boolean, error?: string) {
   return `h-10 px-3 rounded-lg bg-bg-700 border text-sm text-text-100 placeholder:text-text-300 focus:outline-none transition-colors w-full ${
     touched && error ? 'border-status-red focus:border-status-red' : 'border-border-subtle focus:border-accent'
   }`;
+}
+
+function defaultWorkspaceName(name: string) {
+  const trimmed = name.trim();
+  return trimmed ? `${trimmed}'s Workspace` : '';
 }
 
 function EyeOpenIcon() {
@@ -64,38 +77,44 @@ function EyeClosedIcon() {
   );
 }
 
+const SIGNUP_OTP_EVENT = 'signup' as const;
+
 export default function SignupForm() {
   const router  = useRouter();
+  const [step, setStep] = useState<1 | 2>(1);
   const [showPw, setShowPw]         = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [otpOpen, setOtpOpen] = useState(false);
+  const [pendingSignup, setPendingSignup] = useState<SignupPayload | null>(null);
 
   const formik = useFormik<FormValues>({
-    initialValues: { name: '', email: '', title: '', customTitle: '', password: '', confirmPassword: '' },
+    initialValues: {
+      name: '', email: '', password: '', confirmPassword: '',
+      title: '', customTitle: '', workspaceName: '',
+    },
     validationSchema: schema,
     onSubmit: async (values, { setStatus, setSubmitting }) => {
       setStatus(null);
       const finalTitle = values.title === 'Other' ? (values.customTitle ?? '') : (values.title ?? '');
+      const payload: SignupPayload = {
+        name:            values.name,
+        email:           values.email,
+        password:        values.password,
+        confirmPassword: values.confirmPassword,
+        title:           finalTitle,
+        workspaceName:   values.workspaceName,
+      };
       try {
-        const res  = await fetch('/api/auth/signup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name:            values.name,
-            email:           values.email,
-            password:        values.password,
-            confirmPassword: values.confirmPassword,
-            title:           finalTitle,
-          }),
+        // Create-account only runs after the emailed OTP is verified — see OtpModal below.
+        await otpService.generate({
+          email: payload.email,
+          event: SIGNUP_OTP_EVENT,
+          description: 'OTP for account signup verification',
         });
-        const data = await res.json();
-        if (!res.ok) {
-          setStatus(data.message || data.error || data.title || 'Account creation failed. Please try again.');
-          return;
-        }
-        // Signup returns user info only (no tokens) — redirect to login
-        router.push('/login?registered=1');
-      } catch {
-        setStatus('Network error — please try again.');
+        setPendingSignup(payload);
+        setOtpOpen(true);
+      } catch (err) {
+        setStatus(extractErrorMessage(err, 'Could not send a verification code. Please try again.'));
       } finally {
         setSubmitting(false);
       }
@@ -105,6 +124,31 @@ export default function SignupForm() {
   const titleTouched  = !!formik.touched.title;
   const titleError    = formik.errors.title as string | undefined;
   const isOther       = formik.values.title === 'Other';
+
+  const goToStep2 = async () => {
+    const errors = await formik.validateForm();
+    const hasStep1Errors = STEP1_FIELDS.some((field) => !!errors[field]);
+    if (hasStep1Errors) {
+      formik.setTouched({
+        ...formik.touched,
+        name: true, email: true, password: true, confirmPassword: true,
+      });
+      return;
+    }
+    if (!formik.values.workspaceName) {
+      formik.setFieldValue('workspaceName', defaultWorkspaceName(formik.values.name));
+    }
+    setStep(2);
+  };
+
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    if (step === 1) {
+      e.preventDefault();
+      goToStep2();
+      return;
+    }
+    formik.handleSubmit(e);
+  };
 
   return (
     <div className="min-h-screen bg-bg-900 flex items-center justify-center px-4">
@@ -138,163 +182,233 @@ export default function SignupForm() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: 'spring', stiffness: 260, damping: 28, delay: 0.08 }}
         >
-          <div className="mb-6">
+          <div className="mb-5">
             <h1 className="text-xl font-semibold text-text-100">Create an account</h1>
-            <p className="text-sm text-text-300 mt-1">Join your team on Taskflow</p>
+            <p className="text-sm text-text-300 mt-1">
+              {step === 1 ? 'Join your team on Taskflow' : 'Set up your workspace'}
+            </p>
           </div>
 
-          <form onSubmit={formik.handleSubmit} className="flex flex-col gap-4" noValidate>
-            {/* Full name */}
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="name" className="text-xs font-medium text-text-200">Full name</label>
-              <input
-                id="name"
-                type="text"
-                autoComplete="name"
-                placeholder="Arkabrata Das"
-                {...formik.getFieldProps('name')}
-                className={inputClass(!!formik.touched.name, formik.errors.name)}
-              />
-              {formik.touched.name && formik.errors.name && (
-                <p className="text-xs text-status-red">{formik.errors.name}</p>
-              )}
-            </div>
+          {/* Step indicator */}
+          <div className="flex items-center gap-2 mb-6">
+            <div className={`h-1 flex-1 rounded-full transition-colors ${step >= 1 ? 'bg-accent' : 'bg-bg-700'}`} />
+            <div className={`h-1 flex-1 rounded-full transition-colors ${step >= 2 ? 'bg-accent' : 'bg-bg-700'}`} />
+          </div>
+          <p className="text-xs text-text-300 -mt-4 mb-5">
+            Step {step} of 2 · {step === 1 ? 'Account details' : 'Role & workspace'}
+          </p>
 
-            {/* Email */}
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="email" className="text-xs font-medium text-text-200">Email address</label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                placeholder="you@example.com"
-                {...formik.getFieldProps('email')}
-                className={inputClass(!!formik.touched.email, formik.errors.email)}
-              />
-              {formik.touched.email && formik.errors.email && (
-                <p className="text-xs text-status-red">{formik.errors.email}</p>
-              )}
-            </div>
-
-            {/* Designation */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-text-200">
-                Designation <span className="text-text-300 font-normal">(optional)</span>
-              </label>
-              <Select<TitleOption, false>
-                inputId="title"
-                options={TITLE_OPTIONS}
-                value={TITLE_OPTIONS.find(o => o.value === formik.values.title) ?? null}
-                onChange={(opt) => {
-                  formik.setFieldValue('title', opt?.value ?? '');
-                  formik.setFieldValue('customTitle', '');
-                }}
-                onBlur={() => formik.setFieldTouched('title', true)}
-                styles={getSelectStyles({ hasError: titleTouched && !!titleError })}
-                placeholder="What describes your role?"
-                isClearable
-                instanceId="title-select"
-              />
-              {titleTouched && titleError && (
-                <p className="text-xs text-status-red">{titleError}</p>
-              )}
-
-              {isOther && (
+          <form onSubmit={handleFormSubmit} className="flex flex-col gap-4" noValidate>
+            <AnimatePresence mode="wait" initial={false}>
+              {step === 1 ? (
                 <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+                  key="step1"
+                  className="flex flex-col gap-4"
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -12 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 >
-                  <input
-                    id="customTitle"
-                    type="text"
-                    autoFocus
-                    placeholder="Describe your role…"
-                    {...formik.getFieldProps('customTitle')}
-                    className={inputClass(!!formik.touched.customTitle, formik.errors.customTitle)}
-                  />
-                  {formik.touched.customTitle && formik.errors.customTitle && (
-                    <p className="text-xs text-status-red mt-1">{formik.errors.customTitle}</p>
+                  {/* Full name */}
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="name" className="text-xs font-medium text-text-200">Full name</label>
+                    <input
+                      id="name"
+                      type="text"
+                      autoComplete="name"
+                      placeholder="Arkabrata Das"
+                      {...formik.getFieldProps('name')}
+                      className={inputClass(!!formik.touched.name, formik.errors.name)}
+                    />
+                    {formik.touched.name && formik.errors.name && (
+                      <p className="text-xs text-status-red">{formik.errors.name}</p>
+                    )}
+                  </div>
+
+                  {/* Email */}
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="email" className="text-xs font-medium text-text-200">Email address</label>
+                    <input
+                      id="email"
+                      type="email"
+                      autoComplete="email"
+                      placeholder="you@example.com"
+                      {...formik.getFieldProps('email')}
+                      className={inputClass(!!formik.touched.email, formik.errors.email)}
+                    />
+                    {formik.touched.email && formik.errors.email && (
+                      <p className="text-xs text-status-red">{formik.errors.email}</p>
+                    )}
+                  </div>
+
+                  {/* Password */}
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="password" className="text-xs font-medium text-text-200">Password</label>
+                    <div className="relative">
+                      <input
+                        id="password"
+                        type={showPw ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        placeholder="Min. 6 characters"
+                        {...formik.getFieldProps('password')}
+                        className={inputClass(!!formik.touched.password, formik.errors.password) + ' pr-10'}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPw(s => !s)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-300 hover:text-text-200 transition-colors"
+                        tabIndex={-1}
+                      >
+                        {showPw ? <EyeClosedIcon /> : <EyeOpenIcon />}
+                      </button>
+                    </div>
+                    {formik.touched.password && formik.errors.password && (
+                      <p className="text-xs text-status-red">{formik.errors.password}</p>
+                    )}
+                  </div>
+
+                  {/* Confirm password */}
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="confirmPassword" className="text-xs font-medium text-text-200">Confirm password</label>
+                    <div className="relative">
+                      <input
+                        id="confirmPassword"
+                        type={showConfirmPw ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        placeholder="Re-enter your password"
+                        {...formik.getFieldProps('confirmPassword')}
+                        className={inputClass(!!formik.touched.confirmPassword, formik.errors.confirmPassword) + ' pr-10'}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPw(s => !s)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-300 hover:text-text-200 transition-colors"
+                        tabIndex={-1}
+                      >
+                        {showConfirmPw ? <EyeClosedIcon /> : <EyeOpenIcon />}
+                      </button>
+                    </div>
+                    {formik.touched.confirmPassword && formik.errors.confirmPassword && (
+                      <p className="text-xs text-status-red">{formik.errors.confirmPassword}</p>
+                    )}
+                  </div>
+
+                  {/* Continue */}
+                  <motion.button
+                    type="submit"
+                    className="h-10 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors mt-1"
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  >
+                    Continue
+                  </motion.button>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="step2"
+                  className="flex flex-col gap-4"
+                  initial={{ opacity: 0, x: 12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 12 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                >
+                  {/* Designation */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-medium text-text-200">Designation</label>
+                    <Select<TitleOption, false>
+                      inputId="title"
+                      options={TITLE_OPTIONS}
+                      value={TITLE_OPTIONS.find(o => o.value === formik.values.title) ?? null}
+                      onChange={(opt) => {
+                        formik.setFieldValue('title', opt?.value ?? '');
+                        formik.setFieldValue('customTitle', '');
+                      }}
+                      onBlur={() => formik.setFieldTouched('title', true)}
+                      styles={getSelectStyles({ hasError: titleTouched && !!titleError })}
+                      placeholder="What describes your role?"
+                      isClearable
+                      instanceId="title-select"
+                    />
+                    {titleTouched && titleError && (
+                      <p className="text-xs text-status-red">{titleError}</p>
+                    )}
+
+                    {isOther && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+                      >
+                        <input
+                          id="customTitle"
+                          type="text"
+                          autoFocus
+                          placeholder="Describe your role…"
+                          {...formik.getFieldProps('customTitle')}
+                          className={inputClass(!!formik.touched.customTitle, formik.errors.customTitle)}
+                        />
+                        {formik.touched.customTitle && formik.errors.customTitle && (
+                          <p className="text-xs text-status-red mt-1">{formik.errors.customTitle}</p>
+                        )}
+                      </motion.div>
+                    )}
+                  </div>
+
+                  {/* Workspace name */}
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="workspaceName" className="text-xs font-medium text-text-200">Workspace name</label>
+                    <input
+                      id="workspaceName"
+                      type="text"
+                      autoComplete="off"
+                      placeholder="e.g. Arkabrata Das's Workspace"
+                      {...formik.getFieldProps('workspaceName')}
+                      className={inputClass(!!formik.touched.workspaceName, formik.errors.workspaceName)}
+                    />
+                    {formik.touched.workspaceName && formik.errors.workspaceName && (
+                      <p className="text-xs text-status-red">{formik.errors.workspaceName}</p>
+                    )}
+                    <p className="text-xs text-text-300">
+                      This is your default workspace name — you can rename it anytime after signing up.
+                    </p>
+                  </div>
+
+                  {/* Server error */}
+                  {formik.status && (
+                    <motion.p
+                      className="text-xs text-status-red bg-red-bg px-3 py-2 rounded-lg"
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    >
+                      {formik.status}
+                    </motion.p>
                   )}
+
+                  {/* Back + Submit */}
+                  <div className="flex gap-3 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className="h-10 px-4 rounded-lg border border-border-subtle text-text-200 text-sm font-medium hover:bg-bg-700 transition-colors"
+                    >
+                      Back
+                    </button>
+                    <motion.button
+                      type="submit"
+                      disabled={formik.isSubmitting}
+                      className="h-10 flex-1 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      whileHover={formik.isSubmitting ? undefined : { scale: 1.01 }}
+                      whileTap={formik.isSubmitting ? undefined : { scale: 0.99 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    >
+                      {formik.isSubmitting ? 'Creating account…' : 'Create account'}
+                    </motion.button>
+                  </div>
                 </motion.div>
               )}
-            </div>
-
-            {/* Password */}
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="password" className="text-xs font-medium text-text-200">Password</label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPw ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  placeholder="Min. 6 characters"
-                  {...formik.getFieldProps('password')}
-                  className={inputClass(!!formik.touched.password, formik.errors.password) + ' pr-10'}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPw(s => !s)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-300 hover:text-text-200 transition-colors"
-                  tabIndex={-1}
-                >
-                  {showPw ? <EyeClosedIcon /> : <EyeOpenIcon />}
-                </button>
-              </div>
-              {formik.touched.password && formik.errors.password && (
-                <p className="text-xs text-status-red">{formik.errors.password}</p>
-              )}
-            </div>
-
-            {/* Confirm password */}
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="confirmPassword" className="text-xs font-medium text-text-200">Confirm password</label>
-              <div className="relative">
-                <input
-                  id="confirmPassword"
-                  type={showConfirmPw ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  placeholder="Re-enter your password"
-                  {...formik.getFieldProps('confirmPassword')}
-                  className={inputClass(!!formik.touched.confirmPassword, formik.errors.confirmPassword) + ' pr-10'}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPw(s => !s)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-300 hover:text-text-200 transition-colors"
-                  tabIndex={-1}
-                >
-                  {showConfirmPw ? <EyeClosedIcon /> : <EyeOpenIcon />}
-                </button>
-              </div>
-              {formik.touched.confirmPassword && formik.errors.confirmPassword && (
-                <p className="text-xs text-status-red">{formik.errors.confirmPassword}</p>
-              )}
-            </div>
-
-            {/* Server error */}
-            {formik.status && (
-              <motion.p
-                className="text-xs text-status-red bg-red-bg px-3 py-2 rounded-lg"
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                {formik.status}
-              </motion.p>
-            )}
-
-            {/* Submit */}
-            <motion.button
-              type="submit"
-              disabled={formik.isSubmitting}
-              className="h-10 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed mt-1"
-              whileHover={formik.isSubmitting ? undefined : { scale: 1.01 }}
-              whileTap={formik.isSubmitting ? undefined : { scale: 0.99 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            >
-              {formik.isSubmitting ? 'Creating account…' : 'Create account'}
-            </motion.button>
+            </AnimatePresence>
           </form>
         </motion.div>
 
@@ -306,6 +420,29 @@ export default function SignupForm() {
           </Link>
         </p>
       </motion.div>
+
+      {otpOpen && pendingSignup && (
+        <OtpModal
+          email={pendingSignup.email}
+          title="Verify your email"
+          onVerify={async (otp) => {
+            await otpService.verify({ email: pendingSignup.email, event: SIGNUP_OTP_EVENT, otp });
+            await authService.signup(pendingSignup);
+          }}
+          onSuccess={() => {
+            setOtpOpen(false);
+            router.push('/login?registered=1');
+          }}
+          onResend={() =>
+            otpService.generate({
+              email: pendingSignup.email,
+              event: SIGNUP_OTP_EVENT,
+              description: 'OTP for account signup verification',
+            })
+          }
+          onClose={() => setOtpOpen(false)}
+        />
+      )}
     </div>
   );
 }
