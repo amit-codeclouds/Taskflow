@@ -33,11 +33,27 @@ function RefreshIcon({ spinning }: { spinning?: boolean }) {
     </svg>
   );
 }
+interface TeamFilterOption extends SelectOption { memberCount?: number }
+
+function TeamFilterOptionLabel(opt: TeamFilterOption, meta: { context: 'menu' | 'value' }) {
+  if (meta.context === 'value' || opt.value === 'all') {
+    return <span className="text-sm text-text-100">{opt.label}</span>;
+  }
+  return (
+    <div className="flex flex-col">
+      <span className="text-sm text-text-100">{opt.label}</span>
+      <span className="text-2xs text-text-300">
+        {opt.memberCount ?? 0} member{(opt.memberCount ?? 0) === 1 ? '' : 's'}
+      </span>
+    </div>
+  );
+}
+
 export default function TaskListScreen() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [teamFilter, setTeamFilter] = useState<SelectOption>({ value: 'all', label: 'All Teams' });
+  const [teamFilter, setTeamFilter] = useState<TeamFilterOption>({ value: 'all', label: 'All Teams' });
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   useEffect(() => {
@@ -48,10 +64,12 @@ export default function TaskListScreen() {
   useEffect(() => { setPage(1); }, [debouncedSearch, teamFilter.value]);
   useEffect(() => { setStatusFilter('all'); }, [teamFilter.value]);
 
-  const { data: teams = [] } = useTeamsList();
-  const teamOptions: SelectOption[] = [
+  // Teams the current user is assigned to (matches Sidebar / TaskFormScreen / TeamTaskBoardScreen),
+  // not just the teams belonging to their own workspace.
+  const { data: teams = [] } = useTeamsList({ excludeWorkspace: true });
+  const teamOptions: TeamFilterOption[] = [
     { value: 'all', label: 'All Teams' },
-    ...teams.map((t) => ({ value: t.id, label: t.name, color: t.color })),
+    ...teams.map((t) => ({ value: t.id, label: t.name, color: t.color, memberCount: t.memberCount })),
   ];
 
   const isTeamScoped = teamFilter.value !== 'all';
@@ -145,7 +163,8 @@ export default function TaskListScreen() {
             instanceId="team-filter"
             options={teamOptions}
             value={teamFilter}
-            onChange={(opt) => opt && setTeamFilter(opt as SelectOption)}
+            onChange={(opt) => opt && setTeamFilter(opt as TeamFilterOption)}
+            formatOptionLabel={TeamFilterOptionLabel as any}
             isSearchable={false}
           />
         </div>
