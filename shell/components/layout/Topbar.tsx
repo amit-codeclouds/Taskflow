@@ -11,7 +11,7 @@ import Avatar from '@/components/ui/Avatar';
 function getPageInfo(pathname: string): { title: string; subtitle: string } {
   if (pathname.startsWith('/tasks'))    return { title: 'Tasks',    subtitle: 'Manage your work' };
   if (pathname.startsWith('/board'))    return { title: 'Board',    subtitle: 'Visualise your workflow' };
-  if (pathname.startsWith('/chat'))     return { title: 'Chat',     subtitle: 'Ask the Taskflow assistant' };
+  if (pathname.startsWith('/chat'))     return { title: 'Chat',     subtitle: 'Your personal Taskflow assistant 🙏' };
   if (pathname.startsWith('/teams'))    return { title: 'Teams',    subtitle: 'Your team members' };
   if (pathname.startsWith('/people'))   return { title: 'People',   subtitle: 'Contacts and roles' };
   if (pathname.startsWith('/settings')) return { title: 'Settings', subtitle: 'Preferences' };

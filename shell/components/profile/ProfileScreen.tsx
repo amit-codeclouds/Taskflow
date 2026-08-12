@@ -1,8 +1,11 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef } from 'react';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
+import Select from 'react-select';
 import {
   User, Palette, Bell, Shield, Check, Camera,
   Building2, Users, Crown, Clock, Loader2, Trash2,
@@ -15,6 +18,8 @@ import {
 } from '@/lib/hooks/useUsers';
 import { SettingsSkeleton } from '@/app/(shell)/settings/_skeleton';
 import { getInitials } from '@/lib/initials';
+import { getSelectStyles } from '@/lib/selectStyles';
+import { TITLE_OPTIONS, type TitleOption } from '@/lib/titleOptions';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -351,28 +356,45 @@ function TeamsCard({ me }: { me: ReturnType<typeof useMe>['data'] }) {
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
+// A user's saved title might not match any TITLE_OPTIONS value (e.g. it was
+// entered as free text before this dropdown existed) — fall back to "Other"
+// with the raw value pre-filled into the custom-title input.
+function deriveTitleFields(title: string | undefined): { title: string; customTitle: string } {
+  if (!title) return { title: '', customTitle: '' };
+  return TITLE_OPTIONS.some(o => o.value === title)
+    ? { title, customTitle: '' }
+    : { title: 'Other', customTitle: title };
+}
+
 export default function ProfileScreen() {
   const { data: me, isPending } = useMe();
   const updateUser = useUpdateUser();
 
-  const [name, setName] = useState('');
-  const [role, setRole] = useState('');
-
-  useEffect(() => {
-    if (me) {
-      setName(me.name ?? '');
-      setRole(me.title ?? '');
-    }
-  }, [me]);
-
-  const [notifs, setNotifs] = useState({
-    taskAssigned: true, commentAdded: true, dueSoon: true, statusChanged: false,
+  const formik = useFormik({
+    enableReinitialize: true,
+    initialValues: {
+      name: me?.name ?? '',
+      ...deriveTitleFields(me?.title),
+    },
+    validationSchema: Yup.object({
+      name:  Yup.string().trim().min(2, 'Name must be at least 2 characters').required('Full name is required'),
+      title: Yup.string().required('Please select your designation'),
+      customTitle: Yup.string().when('title', {
+        is:        'Other',
+        then:      (s) => s.min(2, 'Must be at least 2 characters').required('Please describe your role'),
+        otherwise: (s) => s.notRequired(),
+      }),
+    }),
+    onSubmit: (values) => {
+      if (!me) return;
+      const finalTitle = values.title === 'Other' ? values.customTitle.trim() : values.title;
+      updateUser.mutate({ id: me.id, name: values.name.trim(), title: finalTitle });
+    },
   });
 
-  function handleSave() {
-    if (!me) return;
-    updateUser.mutate({ id: me.id, name: name.trim(), title: role.trim() });
-  }
+  const titleTouched = !!formik.touched.title;
+  const titleError   = formik.errors.title;
+  const isOtherTitle = formik.values.title === 'Other';
 
   if (isPending) return <SettingsSkeleton />;
 
@@ -402,38 +424,72 @@ export default function ProfileScreen() {
       <Section
         icon={<User size={15} strokeWidth={1.5} />}
         title="Edit Profile"
-        description="Update your display name and title."
+        description="Update your display name and designation."
         delay={0.14}
       >
-        <Field label="Full name" hint="Displayed across the workspace.">
-          <input
-            type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            className="w-full h-9 px-3 bg-bg-600 border border-border-subtle rounded-lg text-sm text-text-100 placeholder:text-text-300 focus:outline-none focus:border-accent transition-colors"
-          />
-        </Field>
-        <Field label="Email" hint="Cannot be changed here.">
-          <input
-            type="email"
-            value={me?.email ?? ''}
-            disabled
-            className="w-full h-9 px-3 bg-bg-800 border border-border-subtle rounded-lg text-sm text-text-300 cursor-not-allowed opacity-60"
-          />
-        </Field>
-        <Field label="Role / Title" hint="Visible to teammates.">
-          <input
-            type="text"
-            value={role}
-            onChange={e => setRole(e.target.value)}
-            className="w-full h-9 px-3 bg-bg-600 border border-border-subtle rounded-lg text-sm text-text-100 placeholder:text-text-300 focus:outline-none focus:border-accent transition-colors"
-          />
-        </Field>
-        <div className="flex items-center justify-end gap-3 px-6 py-4">
-          <AnimatePresence mode="wait">
+        <form onSubmit={formik.handleSubmit} noValidate>
+          <Field label="Full name" hint="Displayed across the workspace.">
+            <input
+              type="text"
+              {...formik.getFieldProps('name')}
+              className="w-full h-9 px-3 bg-bg-600 border border-border-subtle rounded-lg text-sm text-text-100 placeholder:text-text-300 focus:outline-none focus:border-accent transition-colors"
+            />
+            {formik.touched.name && formik.errors.name && (
+              <p className="text-xs text-status-red mt-1">{formik.errors.name}</p>
+            )}
+          </Field>
+          <Field label="Email" hint="Cannot be changed here.">
+            <input
+              type="email"
+              value={me?.email ?? ''}
+              disabled
+              className="w-full h-9 px-3 bg-bg-800 border border-border-subtle rounded-lg text-sm text-text-300 cursor-not-allowed opacity-60"
+            />
+          </Field>
+          <Field label="Designation" hint="Visible to teammates across the workspace.">
+            <Select<TitleOption, false>
+              inputId="title"
+              options={TITLE_OPTIONS}
+              value={TITLE_OPTIONS.find(o => o.value === formik.values.title) ?? null}
+              onChange={(opt) => {
+                formik.setFieldValue('title', opt?.value ?? '');
+                formik.setFieldValue('customTitle', '');
+              }}
+              onBlur={() => formik.setFieldTouched('title', true)}
+              styles={getSelectStyles({ size: 'sm', hasError: titleTouched && !!titleError })}
+              placeholder="What describes your role?"
+              isClearable
+              instanceId="profile-title-select"
+              menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
+              menuPosition="fixed"
+            />
+            {titleTouched && titleError && (
+              <p className="text-xs text-status-red mt-1">{titleError}</p>
+            )}
+
+            {isOtherTitle && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+                className="mt-2"
+              >
+                <input
+                  type="text"
+                  placeholder="Describe your role…"
+                  {...formik.getFieldProps('customTitle')}
+                  className="w-full h-9 px-3 bg-bg-600 border border-border-subtle rounded-lg text-sm text-text-100 placeholder:text-text-300 focus:outline-none focus:border-accent transition-colors"
+                />
+                {formik.touched.customTitle && formik.errors.customTitle && (
+                  <p className="text-xs text-status-red mt-1">{formik.errors.customTitle}</p>
+                )}
+              </motion.div>
+            )}
+          </Field>
+          <div className="flex items-center justify-end gap-3 px-6 py-4">
             <motion.button
-              key="save"
-              onClick={handleSave}
+              type="submit"
               disabled={updateUser.isPending}
               className="flex items-center gap-2 h-9 px-5 rounded-lg bg-accent text-white text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
               whileHover={updateUser.isPending ? undefined : { scale: 1.02, boxShadow: '0 0 16px var(--overlay-accent-hover)' }}
@@ -441,8 +497,8 @@ export default function ProfileScreen() {
             >
               {updateUser.isPending ? 'Saving…' : 'Save changes'}
             </motion.button>
-          </AnimatePresence>
-        </div>
+          </div>
+        </form>
       </Section>
     </div>
   );

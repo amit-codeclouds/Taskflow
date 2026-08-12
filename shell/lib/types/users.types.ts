@@ -30,11 +30,27 @@ export interface AvatarUploadResponse {
 export interface UserSettings {
   userId: string;
   daysToArchieve: number; // spelling mirrors the backend response
+  // "Notify me when..." — actions taken on this user (they're added/assigned).
+  notificationOnMemberAddToWorkspace: boolean;
+  notificationOnMemberAddToTeam: boolean;
+  notificationOnTaskAssignment: boolean;
+  // "Notify me when..." — activity inside workspaces/teams/tasks this user created.
+  isWorkspaceMemberNotificationEnabled: boolean;
+  isTeamMemberNotificationEnabled: boolean;
+  isTaskCreationNotificationEnabled: boolean;
 }
 
 // Matches UpdateUserSettingsRequestDto — PUT /users/{id}/settings
+// All fields optional — each settings sub-form (archiving, notifications) only
+// submits the fields it owns.
 export interface UpdateUserSettingsPayload {
-  daysToArchieve: number;
+  daysToArchieve?: number;
+  notificationOnMemberAddToWorkspace?: boolean;
+  notificationOnMemberAddToTeam?: boolean;
+  notificationOnTaskAssignment?: boolean;
+  isWorkspaceMemberNotificationEnabled?: boolean;
+  isTeamMemberNotificationEnabled?: boolean;
+  isTaskCreationNotificationEnabled?: boolean;
 }
 
 // Matches ChangePasswordRequestDto — PUT /users/change-password

@@ -22,6 +22,14 @@ CREATE TABLE users (
   avatar_url       TEXT,
   password_hash    TEXT        NOT NULL,
   days_to_archieve INTEGER     NOT NULL DEFAULT 2,   -- days after which an archived-status task moves to the archive table; column name mirrors the API's `daysToArchieve` spelling
+  -- "Notify me when..." toggles — actions taken on this user (they're added/assigned)
+  notification_on_member_add_to_workspace  BOOLEAN NOT NULL DEFAULT FALSE,
+  notification_on_member_add_to_team       BOOLEAN NOT NULL DEFAULT FALSE,
+  notification_on_task_assignment          BOOLEAN NOT NULL DEFAULT FALSE,
+  -- "Notify me when..." toggles — activity inside workspaces/teams/tasks this user created
+  is_workspace_member_notification_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  is_team_member_notification_enabled      BOOLEAN NOT NULL DEFAULT FALSE,
+  is_task_creation_notification_enabled    BOOLEAN NOT NULL DEFAULT FALSE,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

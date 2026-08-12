@@ -28,7 +28,7 @@ const validationSchema = Yup.object({
   statusId: Yup.string().required('Please select a status'),
   priority: Yup.string().oneOf(['High', 'Medium', 'Low'] as const).required(),
   label:    Yup.string().oneOf(['', 'Feature', 'Bug', 'Design', 'Docs', 'Infra', 'Refactor'] as const),
-  assigneeIds:        Yup.array().of(Yup.string()),
+  assigneeIds:        Yup.array().of(Yup.string()).min(1, 'Please select at least one assignee').required('Please select at least one assignee'),
   expectedCompletion: Yup.string(),
   progress: Yup.number()
     .min(0, 'Must be 0 – 100')
@@ -293,7 +293,7 @@ export default function TaskFormScreen({ taskId }: { taskId?: string }) {
       </motion.div>
 
       <Formik initialValues={initialValues} validationSchema={validationSchema} onSubmit={handleSubmit} enableReinitialize>
-        {({ values, setFieldValue, isSubmitting, touched, errors }) => (
+        {({ values, setFieldValue, setFieldTouched, isSubmitting, touched, errors }) => (
             <Form>
               <div className="flex flex-col gap-6">
 
@@ -501,7 +501,7 @@ export default function TaskFormScreen({ taskId }: { taskId?: string }) {
 
                   {/* Row 3: Assignees — full width, multi-select */}
                   <div>
-                    <label className={labelClass}>Assignees</label>
+                    <label className={labelClass}>Assignees <span className="text-status-red">*</span></label>
                     {peoplePending && values.teamId ? (
                       <Skeleton height={40} borderRadius={8} baseColor="var(--color-bg-700)" highlightColor="var(--color-bg-600)" />
                     ) : (
@@ -509,16 +509,19 @@ export default function TaskFormScreen({ taskId }: { taskId?: string }) {
                         isMulti
                         options={PERSON_OPTIONS}
                         value={PERSON_OPTIONS.filter(o => values.assigneeIds.includes(o.value))}
-                        onChange={opts =>
-                          setFieldValue('assigneeIds', opts ? (opts as PersonOption[]).map(o => o.value) : [])
-                        }
+                        onChange={opts => {
+                          setFieldValue('assigneeIds', opts ? (opts as PersonOption[]).map(o => o.value) : []);
+                        }}
+                        onBlur={() => setFieldTouched('assigneeIds', true)}
                         placeholder={values.teamId ? 'Assign to one or more people…' : 'Select a team first'}
                         isDisabled={!values.teamId}
                         formatOptionLabel={PersonOptionLabel as any}
                         maxMenuHeight={340}
                         components={{ MultiValueLabel: PersonMultiValueLabel as any }}
+                        hasError={!!(touched.assigneeIds && errors.assigneeIds)}
                       />
                     )}
+                    <FieldErr name="assigneeIds" />
                   </div>
                 </motion.div>
 

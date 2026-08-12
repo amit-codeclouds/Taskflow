@@ -38,7 +38,7 @@ export class CreateStatusComponent implements OnInit {
     this.form = this.fb.group({
       name: ['', [Validators.required, Validators.maxLength(50)]],
       description: [''],
-      position: [0, [Validators.required, Validators.min(0)]],
+      // position: [0, [Validators.required, Validators.min(0)]],
       teamId: [{ value: this.teamId, disabled: true }, Validators.required],
       isArchievable: [false],
     });
@@ -56,7 +56,8 @@ export class CreateStatusComponent implements OnInit {
     this.saving = true;
     this.errorMsg = '';
 
-    // getRawValue() includes the disabled teamId control.
+    // getRawValue() includes the disabled teamId control. `position` is deliberately
+    // absent — the server assigns the column order.
     const payload = this.form.getRawValue() as CreateStatusPayload;
 
     this.teamService.createStatus(payload).subscribe({
