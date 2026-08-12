@@ -15,8 +15,16 @@ import { useMySettings, useUpdateUserSettings } from '@/lib/hooks/useSettings';
 import { SettingsSkeleton } from '@/app/(shell)/settings/_skeleton';
 import { getInitials } from '@/lib/initials';
 import { getTheme, setTheme, type Theme } from '@/lib/theme';
-import ComingSoon from '@/components/ui/ComingSoon';
 import InfoTooltip from '@/components/ui/InfoTooltip';
+import toast from 'react-hot-toast';
+import { otpService } from '@/lib/services/otp.service';
+import { usersService } from '@/lib/services/users.service';
+import { extractErrorMessage } from '@/lib/http/extractError';
+import OtpModal from '@/components/Modals/OtpModal';
+import NewPasswordModal from '@/components/Modals/NewPasswordModal';
+
+const CHANGE_PASSWORD_OTP_EVENT = 'changepassword' as const;
+type ChangePasswordStep = 'closed' | 'otp' | 'newPassword';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -79,6 +87,41 @@ function Field({ label, hint, tooltip, children }: {
   );
 }
 
+// ─── Toggle ───────────────────────────────────────────────────────────────────
+
+function Toggle({ value, onChange, disabled }: {
+  value: boolean; onChange: (v: boolean) => void; disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={value}
+      onClick={() => onChange(!value)}
+      disabled={disabled}
+      style={{ height: 22, width: 40 }}
+      className={`relative rounded-full transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed ${value ? 'bg-accent' : 'bg-bg-500'}`}
+    >
+      <motion.div
+        className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm"
+        animate={{ left: value ? 20 : 4 }}
+        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+      />
+    </button>
+  );
+}
+
+// ─── SubHeading ───────────────────────────────────────────────────────────────
+
+function SubHeading({ title, description }: { title: string; description?: string }) {
+  return (
+    <div className="px-6 pt-5 pb-3 bg-bg-600/40">
+      <h3 className="text-xs font-semibold text-text-200 uppercase tracking-wide">{title}</h3>
+      {description && <p className="text-xs text-text-300 mt-1 leading-relaxed">{description}</p>}
+    </div>
+  );
+}
+
 // ─── ThemeOption ──────────────────────────────────────────────────────────────
 
 function ThemeOption({ label, active, disabled, preview, onClick }: {
@@ -131,24 +174,45 @@ export default function SettingsScreen() {
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
   const [theme, setThemeState] = useState<Theme>('dark');
+  const [changePwStep, setChangePwStep] = useState<ChangePasswordStep>('closed');
+  const [isRequestingPwOtp, setIsRequestingPwOtp] = useState(false);
 
-  const archiveFormik = useFormik({
+  // One centralized form + Save button for every settings field (notification
+  // toggles + archive days) — Security/password lives outside this form since
+  // it's an action, not a saved field.
+  const settingsFormik = useFormik({
     enableReinitialize: true,
     initialValues: {
       daysToArchieve: mySettings ? String(mySettings.daysToArchieve) : '',
+      notificationOnMemberAddToWorkspace: mySettings?.notificationOnMemberAddToWorkspace ?? false,
+      notificationOnMemberAddToTeam: mySettings?.notificationOnMemberAddToTeam ?? false,
+      notificationOnTaskAssignment: mySettings?.notificationOnTaskAssignment ?? false,
+      isWorkspaceMemberNotificationEnabled: mySettings?.isWorkspaceMemberNotificationEnabled ?? false,
+      isTeamMemberNotificationEnabled: mySettings?.isTeamMemberNotificationEnabled ?? false,
+      isTaskCreationNotificationEnabled: mySettings?.isTaskCreationNotificationEnabled ?? false,
     },
     validationSchema: Yup.object({
       daysToArchieve: Yup.string()
         .required('Required')
         .matches(/^[1-9]\d*$/, 'Enter a whole number greater than 0'),
+      notificationOnMemberAddToWorkspace: Yup.boolean().required(),
+      notificationOnMemberAddToTeam: Yup.boolean().required(),
+      notificationOnTaskAssignment: Yup.boolean().required(),
+      isWorkspaceMemberNotificationEnabled: Yup.boolean().required(),
+      isTeamMemberNotificationEnabled: Yup.boolean().required(),
+      isTaskCreationNotificationEnabled: Yup.boolean().required(),
     }),
     onSubmit: (values) => {
       if (!mySettings) return;
-      updateSettings.mutate({ id: mySettings.userId, daysToArchieve: Number(values.daysToArchieve) });
+      updateSettings.mutate({
+        id: mySettings.userId,
+        ...values,
+        daysToArchieve: Number(values.daysToArchieve),
+      });
     },
   });
 
-  const daysError = !!archiveFormik.touched.daysToArchieve && !!archiveFormik.errors.daysToArchieve;
+  const daysError = !!settingsFormik.touched.daysToArchieve && !!settingsFormik.errors.daysToArchieve;
 
   useEffect(() => {
     if (me) {
@@ -171,6 +235,28 @@ export default function SettingsScreen() {
   function handleSave() {
     if (!me) return;
     updateUser.mutate({ id: me.id, name: name.trim(), title: role.trim() });
+  }
+
+  function generateChangePasswordOtp() {
+    if (!me) return Promise.reject(new Error('Not signed in'));
+    return otpService.generate({
+      email: me.email,
+      event: CHANGE_PASSWORD_OTP_EVENT,
+      description: 'OTP for password change',
+    });
+  }
+
+  async function handleChangePasswordClick() {
+    if (!me || isRequestingPwOtp) return;
+    setIsRequestingPwOtp(true);
+    try {
+      await generateChangePasswordOtp();
+      setChangePwStep('otp');
+    } catch (err) {
+      toast.error(extractErrorMessage(err, 'Could not send a verification code. Please try again.'));
+    } finally {
+      setIsRequestingPwOtp(false);
+    }
   }
 
   if (isPending) return <SettingsSkeleton />;
@@ -225,41 +311,21 @@ export default function SettingsScreen() {
         </Field>
       </Section>
 
-      {/* ── Notifications ── */}
-      <Section
-        icon={<Bell size={15} strokeWidth={1.5} />}
-        title="Notifications"
-        description="Choose what activity triggers a notification."
-        delay={0.22}
-      >
-        {(
-          [
-            { key: 'taskAssigned',  label: 'Task assigned to you',  hint: 'When someone assigns a task to you.'      },
-            { key: 'commentAdded',  label: 'Comment on your task',  hint: 'When someone comments on a task you own.' },
-            { key: 'dueSoon',       label: 'Due date reminder',     hint: '24 hours before a task is due.'           },
-            { key: 'statusChanged', label: 'Status changes',        hint: 'When a task you follow changes status.'   },
-          ] as const
-        ).map(({ key, label, hint }) => (
-          <Field key={key} label={label} hint={hint}>
-            <div className="flex justify-end">
-              <ComingSoon />
-            </div>
-          </Field>
-        ))}
-      </Section>
-
       {/* ── Security ── */}
       <Section
         icon={<Shield size={15} strokeWidth={1.5} />}
         title="Security"
         description="Manage your password and active sessions."
-        delay={0.26}
+        delay={0.22}
       >
         <Field label="Password" hint="Last changed: never">
           <div className="flex justify-end">
-            <button className="h-9 px-4 rounded-lg bg-bg-600 border border-border-subtle text-sm text-text-200 hover:text-text-100 hover:bg-bg-500 transition-colors">
-              Change password
-              <ComingSoon className="ml-2" />
+            <button
+              onClick={handleChangePasswordClick}
+              disabled={isRequestingPwOtp}
+              className="h-9 px-4 rounded-lg bg-bg-600 border border-border-subtle text-sm text-text-200 hover:text-text-100 hover:bg-bg-500 transition-colors disabled:opacity-60"
+            >
+              {isRequestingPwOtp ? 'Sending code…' : 'Change password'}
             </button>
           </div>
         </Field>
@@ -274,6 +340,91 @@ export default function SettingsScreen() {
         </Field>
       </Section>
 
+      {/* ── Notifications + Task Archiving share one form and one Save button ── */}
+      <form onSubmit={settingsFormik.handleSubmit} noValidate className="flex flex-col gap-5">
+
+      {/* ── Notifications ── */}
+      <Section
+        icon={<Bell size={15} strokeWidth={1.5} />}
+        title="Notifications"
+        description="Choose what activity triggers a notification."
+        delay={0.26}
+      >
+        <SubHeading
+          title="Notifications for you"
+          description="Get notified when something happens to you personally."
+        />
+        {(
+          [
+            {
+              key: 'notificationOnMemberAddToWorkspace' as const,
+              label: 'Added to a workspace',
+              hint: 'When someone adds you to a workspace.',
+              tooltip: 'Turn this on to get notified whenever a workspace owner adds you as a member.',
+            },
+            {
+              key: 'notificationOnMemberAddToTeam' as const,
+              label: 'Added to a team',
+              hint: 'When someone adds you to a team.',
+              tooltip: 'Turn this on to get notified whenever a team lead adds you as a member.',
+            },
+            {
+              key: 'notificationOnTaskAssignment' as const,
+              label: 'Task assigned to you',
+              hint: 'When someone assigns a task to you.',
+              tooltip: 'Turn this on to get notified whenever a task is assigned to you, regardless of who assigns it.',
+            },
+          ]
+        ).map(({ key, label, hint, tooltip }) => (
+          <Field key={key} label={label} hint={hint} tooltip={tooltip}>
+            <div className="flex justify-end">
+              <Toggle
+                value={settingsFormik.values[key]}
+                onChange={(v) => settingsFormik.setFieldValue(key, v)}
+                disabled={settingsPending}
+              />
+            </div>
+          </Field>
+        ))}
+
+        <SubHeading
+          title="Notifications for your workspaces & teams"
+          description="Get notified about activity in the workspaces, teams, and tasks you created."
+        />
+        {(
+          [
+            {
+              key: 'isWorkspaceMemberNotificationEnabled' as const,
+              label: 'New workspace member',
+              hint: 'When someone joins a workspace you created.',
+              tooltip: 'Applies only to workspaces where you are the creator/owner.',
+            },
+            {
+              key: 'isTeamMemberNotificationEnabled' as const,
+              label: 'New team member',
+              hint: 'When someone joins a team you created.',
+              tooltip: 'Applies only to teams where you are the creator/owner.',
+            },
+            {
+              key: 'isTaskCreationNotificationEnabled' as const,
+              label: 'New task created',
+              hint: 'When a task is created in a workspace or team you own.',
+              tooltip: 'Applies only to tasks created inside a workspace or team you created.',
+            },
+          ]
+        ).map(({ key, label, hint, tooltip }) => (
+          <Field key={key} label={label} hint={hint} tooltip={tooltip}>
+            <div className="flex justify-end">
+              <Toggle
+                value={settingsFormik.values[key]}
+                onChange={(v) => settingsFormik.setFieldValue(key, v)}
+                disabled={settingsPending}
+              />
+            </div>
+          </Field>
+        ))}
+      </Section>
+
       {/* ── Task Archiving ── */}
       <Section
         icon={<Archive size={15} strokeWidth={1.5} />}
@@ -281,51 +432,79 @@ export default function SettingsScreen() {
         description="Control when completed tasks move to the archive."
         delay={0.3}
       >
-        <form onSubmit={archiveFormik.handleSubmit} noValidate>
-          <Field
-            label="Archive after"
-            hint="Tasks marked as Archived move to the archive table after this many days."
-            tooltip="This setting only applies to tasks in teams where you're set as an admin. It has no effect on tasks in teams where you're not an admin."
-          >
-            <div className="flex justify-end">
-              <div className="flex flex-col items-end gap-1.5">
-                <div
-                  className={`flex items-center justify-between w-40 h-9 pl-3 pr-3 bg-bg-600 border rounded-lg transition-colors ${
-                    daysError
-                      ? 'border-status-red'
-                      : 'border-border-subtle focus-within:border-accent'
-                  }`}
-                >
-                  <input
-                    id="daysToArchieve"
-                    type="text"
-                    inputMode="numeric"
-                    disabled={settingsPending}
-                    {...archiveFormik.getFieldProps('daysToArchieve')}
-                    className="flex-1 min-w-0 bg-transparent text-sm text-text-100 focus:outline-none disabled:opacity-60"
-                  />
-                  <span className="text-sm text-text-300 shrink-0 pl-3">days</span>
-                </div>
-                {daysError && (
-                  <p className="text-xs text-status-red">{archiveFormik.errors.daysToArchieve}</p>
-                )}
+        <Field
+          label="Archive after"
+          hint="Tasks marked as Archived move to the archive table after this many days."
+          tooltip="This setting only applies to tasks in teams where you're set as an admin. It has no effect on tasks in teams where you're not an admin."
+        >
+          <div className="flex justify-end">
+            <div className="flex flex-col items-end gap-1.5">
+              <div
+                className={`flex items-center justify-between w-40 h-9 pl-3 pr-3 bg-bg-600 border rounded-lg transition-colors ${
+                  daysError
+                    ? 'border-status-red'
+                    : 'border-border-subtle focus-within:border-accent'
+                }`}
+              >
+                <input
+                  id="daysToArchieve"
+                  type="text"
+                  inputMode="numeric"
+                  disabled={settingsPending}
+                  {...settingsFormik.getFieldProps('daysToArchieve')}
+                  className="flex-1 min-w-0 bg-transparent text-sm text-text-100 focus:outline-none disabled:opacity-60"
+                />
+                <span className="text-sm text-text-300 shrink-0 pl-3">days</span>
               </div>
+              {daysError && (
+                <p className="text-xs text-status-red">{settingsFormik.errors.daysToArchieve}</p>
+              )}
             </div>
-          </Field>
-          <div className="flex items-center justify-end gap-3 px-6 py-4">
-            <motion.button
-              type="submit"
-              disabled={settingsPending || updateSettings.isPending}
-              className="flex items-center gap-2 h-9 px-5 rounded-lg bg-accent text-white text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
-              whileHover={updateSettings.isPending ? undefined : { scale: 1.02, boxShadow: '0 0 16px var(--overlay-accent-hover)' }}
-              whileTap={updateSettings.isPending ? undefined : { scale: 0.98 }}
-            >
-              {updateSettings.isPending ? 'Saving…' : 'Save settings'}
-            </motion.button>
           </div>
-        </form>
+        </Field>
       </Section>
 
+      {/* ── One centralized Save button for everything above (notifications + archiving) ── */}
+      <motion.div
+        className="flex items-center justify-end gap-3"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 280, damping: 28, delay: 0.32 }}
+      >
+        <motion.button
+          type="submit"
+          disabled={settingsPending || updateSettings.isPending}
+          className="flex items-center gap-2 h-10 px-6 rounded-lg bg-accent text-white text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+          whileHover={updateSettings.isPending ? undefined : { scale: 1.02, boxShadow: '0 0 16px var(--overlay-accent-hover)' }}
+          whileTap={updateSettings.isPending ? undefined : { scale: 0.98 }}
+        >
+          {updateSettings.isPending ? 'Saving…' : 'Save settings'}
+        </motion.button>
+      </motion.div>
+
+      </form>
+
+      {changePwStep === 'otp' && me && (
+        <OtpModal
+          email={me.email}
+          title="Verify your email"
+          onVerify={(otp) => otpService.verify({ email: me.email, event: CHANGE_PASSWORD_OTP_EVENT, otp }).then(() => {})}
+          onSuccess={() => setChangePwStep('newPassword')}
+          onResend={generateChangePasswordOtp}
+          onClose={() => setChangePwStep('closed')}
+        />
+      )}
+
+      {changePwStep === 'newPassword' && me && (
+        <NewPasswordModal
+          onSubmit={async (values) => {
+            await usersService.changePassword({ email: me.email, ...values });
+            setChangePwStep('closed');
+            toast.success('Password updated!');
+          }}
+          onClose={() => setChangePwStep('closed')}
+        />
+      )}
     </div>
   );
 }

@@ -7,22 +7,13 @@ import Link from 'next/link';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import Select from 'react-select';
-import { getSelectStyles, type SelectOption } from '@/lib/selectStyles';
-
-type TitleOption = SelectOption;
-
-const TITLE_OPTIONS: TitleOption[] = [
-  { value: 'Engineer',        label: 'Engineer'        },
-  { value: 'Designer',        label: 'Designer'        },
-  { value: 'Product Manager', label: 'Product Manager' },
-  { value: 'QA Engineer',     label: 'QA Engineer'     },
-  { value: 'DevOps',          label: 'DevOps'          },
-  { value: 'Team Lead',       label: 'Team Lead'       },
-  { value: 'Manager',         label: 'Manager'         },
-  { value: 'Director',        label: 'Director'        },
-  { value: 'Founder',         label: 'Founder'         },
-  { value: 'Other',           label: 'Other'           },
-];
+import { getSelectStyles } from '@/lib/selectStyles';
+import { TITLE_OPTIONS, type TitleOption } from '@/lib/titleOptions';
+import { otpService } from '@/lib/services/otp.service';
+import { authService } from '@/lib/services/auth.service';
+import { extractErrorMessage } from '@/lib/http/extractError';
+import type { SignupPayload } from '@/lib/types/auth.types';
+import OtpModal from '@/components/Modals/OtpModal';
 
 const STEP1_FIELDS = ['name', 'email', 'password', 'confirmPassword'] as const;
 
@@ -72,11 +63,15 @@ function EyeClosedIcon() {
   );
 }
 
+const SIGNUP_OTP_EVENT = 'signup' as const;
+
 export default function SignupForm() {
   const router  = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
   const [showPw, setShowPw]         = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [otpOpen, setOtpOpen] = useState(false);
+  const [pendingSignup, setPendingSignup] = useState<SignupPayload | null>(null);
 
   const formik = useFormik<FormValues>({
     initialValues: {
@@ -87,28 +82,25 @@ export default function SignupForm() {
     onSubmit: async (values, { setStatus, setSubmitting }) => {
       setStatus(null);
       const finalTitle = values.title === 'Other' ? (values.customTitle ?? '') : (values.title ?? '');
+      const payload: SignupPayload = {
+        name:            values.name,
+        email:           values.email,
+        password:        values.password,
+        confirmPassword: values.confirmPassword,
+        title:           finalTitle,
+        workspaceName:   values.workspaceName,
+      };
       try {
-        const res  = await fetch('/api/auth/signup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name:            values.name,
-            email:           values.email,
-            password:        values.password,
-            confirmPassword: values.confirmPassword,
-            title:           finalTitle,
-            workspaceName:   values.workspaceName,
-          }),
+        // Create-account only runs after the emailed OTP is verified — see OtpModal below.
+        await otpService.generate({
+          email: payload.email,
+          event: SIGNUP_OTP_EVENT,
+          description: 'OTP for account signup verification',
         });
-        const data = await res.json();
-        if (!res.ok) {
-          setStatus(data.message || data.error || data.title || 'Account creation failed. Please try again.');
-          return;
-        }
-        // Signup returns user info only (no tokens) — redirect to login
-        router.push('/login?registered=1');
-      } catch {
-        setStatus('Network error — please try again.');
+        setPendingSignup(payload);
+        setOtpOpen(true);
+      } catch (err) {
+        setStatus(extractErrorMessage(err, 'Could not send a verification code. Please try again.'));
       } finally {
         setSubmitting(false);
       }
@@ -414,6 +406,29 @@ export default function SignupForm() {
           </Link>
         </p>
       </motion.div>
+
+      {otpOpen && pendingSignup && (
+        <OtpModal
+          email={pendingSignup.email}
+          title="Verify your email"
+          onVerify={async (otp) => {
+            await otpService.verify({ email: pendingSignup.email, event: SIGNUP_OTP_EVENT, otp });
+            await authService.signup(pendingSignup);
+          }}
+          onSuccess={() => {
+            setOtpOpen(false);
+            router.push('/login?registered=1');
+          }}
+          onResend={() =>
+            otpService.generate({
+              email: pendingSignup.email,
+              event: SIGNUP_OTP_EVENT,
+              description: 'OTP for account signup verification',
+            })
+          }
+          onClose={() => setOtpOpen(false)}
+        />
+      )}
     </div>
   );
 }

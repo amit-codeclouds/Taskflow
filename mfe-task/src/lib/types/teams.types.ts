@@ -3,4 +3,5 @@ export interface ApiTeam {
   id: string;
   name: string;
   color: string;
+  memberCount: number;
 }

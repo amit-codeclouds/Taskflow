@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserPlus, Search, UserCheck, Clock, Users, Trash2, RefreshCw, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { usePeopleList, usePeopleStats, useRemovePerson, PEOPLE_PAGE_LIMIT } from '@/lib/hooks/usePeople';
+import { UserPlus, Search, UserCheck, Clock, Users, Trash2, RefreshCw, Loader2, ChevronLeft, ChevronRight, MoreVertical } from 'lucide-react';
+import { usePeopleList, usePeopleStats, useInvitePerson, useRemovePerson, PEOPLE_PAGE_LIMIT } from '@/lib/hooks/usePeople';
 import { useTeamsList } from '@/lib/hooks/useTeams';
 import { PeopleSkeleton, PeopleRowsSkeleton } from '@/app/(shell)/people/_skeleton';
 import InviteModal from '@/components/Modals/InviteModal';
@@ -19,6 +20,98 @@ import { getInitials } from '@/lib/initials';
 const filterStyles = getSelectStyles({ size: 'sm' });
 
 // ─── MemberRow ────────────────────────────────────────────────────────────────
+
+function RowActionsMenu({
+  isPending,
+  onRemove,
+  onResend,
+}: {
+  isPending: boolean;
+  onRemove: () => void;
+  onResend: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; right: number } | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => setMounted(true), []);
+
+  function openMenu() {
+    const rect = btnRef.current?.getBoundingClientRect();
+    if (rect) setCoords({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    setOpen(true);
+  }
+
+  // Rendered via a portal (see below), so it can't be clipped by the member
+  // list's `overflow-hidden` card — position is computed from the trigger's
+  // viewport rect instead of relying on CSS containment.
+  useEffect(() => {
+    if (!open) return;
+    function onMouseDown(e: MouseEvent) {
+      const target = e.target as Node;
+      if (btnRef.current?.contains(target) || panelRef.current?.contains(target)) return;
+      setOpen(false);
+    }
+    function onDismiss() { setOpen(false); }
+    document.addEventListener('mousedown', onMouseDown);
+    window.addEventListener('scroll', onDismiss, true);
+    window.addEventListener('resize', onDismiss);
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown);
+      window.removeEventListener('scroll', onDismiss, true);
+      window.removeEventListener('resize', onDismiss);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        onClick={() => (open ? setOpen(false) : openMenu())}
+        title="More actions"
+        className={`w-8 h-8 flex items-center justify-center rounded-lg text-text-300 hover:text-text-100 hover:bg-bg-500 transition-colors ${open ? 'bg-bg-500 text-text-100' : ''}`}
+      >
+        <MoreVertical size={15} strokeWidth={1.8} />
+      </button>
+
+      {mounted && createPortal(
+        <AnimatePresence>
+          {open && coords && (
+            <motion.div
+              ref={panelRef}
+              className="fixed w-44 bg-bg-800 rounded-xl border border-border-subtle shadow-elevated z-50 overflow-hidden py-1"
+              style={{ top: coords.top, right: coords.right }}
+              initial={{ opacity: 0, y: -6, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.96 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            >
+              {isPending && (
+                <button
+                  onClick={() => { setOpen(false); onResend(); }}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-text-200 hover:bg-bg-700 hover:text-text-100 transition-colors"
+                >
+                  <RefreshCw size={13} strokeWidth={1.8} />
+                  Resend invite
+                </button>
+              )}
+              <button
+                onClick={() => { setOpen(false); onRemove(); }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-status-red hover:bg-red-bg transition-colors"
+              >
+                <Trash2 size={13} strokeWidth={1.8} />
+                {isPending ? 'Cancel invite' : 'Remove'}
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
+    </>
+  );
+}
 
 function MemberRow({
   member,
@@ -39,7 +132,7 @@ function MemberRow({
 
   return (
     <motion.div
-      className="flex items-center gap-4 px-5 py-3.5 border-b border-border-subtle last:border-0 hover:bg-bg-600 transition-colors group"
+      className="flex items-center gap-4 px-5 py-3.5 border-b border-border-subtle last:border-0 hover:bg-bg-600 transition-colors"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -8 }}
@@ -98,36 +191,25 @@ function MemberRow({
       </div>
 
       {/* Status */}
-      <div className="shrink-0">
+      <div className="w-24 shrink-0">
         {isPending ? (
-          <span className="flex items-center gap-1 text-2xs font-medium text-status-amber bg-amber-bg px-2 py-0.5 rounded-full">
+          <span className="inline-flex items-center gap-1 text-2xs font-medium text-status-amber bg-amber-bg px-2 py-0.5 rounded-full whitespace-nowrap">
             <Clock size={10} />Pending
           </span>
         ) : (
-          <span className="flex items-center gap-1 text-2xs font-medium text-status-green bg-green-bg px-2 py-0.5 rounded-full">
+          <span className="inline-flex items-center gap-1 text-2xs font-medium text-status-green bg-green-bg px-2 py-0.5 rounded-full whitespace-nowrap">
             <UserCheck size={10} />Active
           </span>
         )}
       </div>
 
       {/* Actions */}
-      <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        {isPending && (
-          <button
-            onClick={() => onResend(member.id)}
-            className="flex items-center gap-1 text-xs text-text-300 hover:text-accent transition-colors px-2 py-1 rounded-md hover:bg-accent-bg"
-          >
-            <RefreshCw size={11} strokeWidth={1.8} />
-            Resend
-          </button>
-        )}
-        <button
-          onClick={() => onRemove(member.id)}
-          className="flex items-center gap-1 text-xs text-text-300 hover:text-status-red transition-colors px-2 py-1 rounded-md hover:bg-red-bg"
-        >
-          <Trash2 size={11} strokeWidth={1.8} />
-          Remove
-        </button>
+      <div className="w-9 shrink-0 flex items-center justify-end">
+        <RowActionsMenu
+          isPending={isPending}
+          onRemove={() => onRemove(member.id)}
+          onResend={() => onResend(member.id)}
+        />
       </div>
     </motion.div>
   );
@@ -163,6 +245,7 @@ export default function PeopleScreen() {
   const { data: statsData }     = usePeopleStats();
   const { data: allTeams = [] } = useTeamsList();
   const removeMutation          = useRemovePerson();
+  const inviteMutation          = useInvitePerson();
   const confirm                 = useConfirm();
 
   const teamOptions: SelectOption[] = useMemo(
@@ -204,9 +287,20 @@ export default function PeopleScreen() {
     if (confirmed) removeMutation.mutate(id);
   }
 
-  function handleResend(id: string) {
-    // stub — no resend endpoint yet
-    console.log('Resend invite for', id);
+  async function handleResend(id: string) {
+    const member = people.find(m => m.id === id);
+    if (!member) return;
+
+    const confirmed = await confirm({
+      title:        'Resend invitation?',
+      description:  `Do you want to resend the invitation to ${member.email}?`,
+      confirmLabel: 'Resend',
+    });
+
+    if (!confirmed) return;
+    // Re-inviting the same email resets the pending invite's expiry (200) —
+    // there's no separate resend endpoint on the backend.
+    inviteMutation.mutate({ email: member.email });
   }
 
   if (isPending) return <PeopleSkeleton />;
@@ -307,8 +401,8 @@ export default function PeopleScreen() {
         <div className="w-44 shrink-0">Member</div>
         <div className="w-32 shrink-0 hidden lg:block">Title</div>
         <div className="flex-1">Teams</div>
-        <div className="shrink-0 w-20">Status</div>
-        <div className="shrink-0 w-28" />
+        <div className="shrink-0 w-24">Status</div>
+        <div className="shrink-0 w-9" />
       </div>
 
       {/* Member rows */}

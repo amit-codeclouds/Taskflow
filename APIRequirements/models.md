@@ -75,23 +75,100 @@ interface MeStats {
 
 ## UserSettings (API response shape — `GET /api/auth/me/settings`, `PUT /api/users/:id/settings`)
 
-> Per-user archiving preference. `userId` is the owning user's id — used as the `:id` path
-> param when saving via `PUT /api/users/:id/settings`.
+> Per-user archiving + notification preferences. `userId` is the owning user's id — used as
+> the `:id` path param when saving via `PUT /api/users/:id/settings`.
 > Source: `shell/lib/types/users.types.ts` (`UserSettings`, `UpdateUserSettingsPayload`).
 
 ```ts
 interface UserSettings {
   userId: string;
   daysToArchieve: number;  // spelling mirrors the backend response
+  // "Notify me when..." — actions taken on this user (they're added/assigned)
+  notificationOnMemberAddToWorkspace: boolean;
+  notificationOnMemberAddToTeam: boolean;
+  notificationOnTaskAssignment: boolean;
+  // "Notify me when..." — activity inside workspaces/teams/tasks this user created
+  isWorkspaceMemberNotificationEnabled: boolean;
+  isTeamMemberNotificationEnabled: boolean;
+  isTaskCreationNotificationEnabled: boolean;
 }
 
+// All fields optional. In practice the Shell submits all 7 together — one
+// Formik form spans both sections, saved via a single centralized button.
 interface UpdateUserSettingsPayload {
-  daysToArchieve: number;
+  daysToArchieve?: number;
+  notificationOnMemberAddToWorkspace?: boolean;
+  notificationOnMemberAddToTeam?: boolean;
+  notificationOnTaskAssignment?: boolean;
+  isWorkspaceMemberNotificationEnabled?: boolean;
+  isTeamMemberNotificationEnabled?: boolean;
+  isTaskCreationNotificationEnabled?: boolean;
 }
 ```
 
-> Drives the **Task Archiving** section on `SettingsScreen` — the number of days after
-> which a task marked with an archived-designated status is moved to the archive table.
+> Drives two sections on `SettingsScreen`, both saved together via one centralized
+> "Save settings" button (single Formik form, single `PUT` request):
+> - **Notifications** — split into "Notifications for you" (`notificationOn*` fields — the
+>   user is the one being added/assigned) and "Notifications for your workspaces & teams"
+>   (`is*NotificationEnabled` fields — the user is the creator/owner of the workspace, team,
+>   or task the activity happens in).
+> - **Task Archiving** — the number of days after which a task marked with an
+>   archived-designated status is moved to the archive table.
+
+---
+
+## Otp (API request/response shapes — `POST /api/otp/generate`, `POST /api/otp/verify`)
+
+> Not a persisted model on the frontend — documents the request/response contract for the
+> OTP-gated Signup, Forgot Password, and Change Password flows.
+> Source: `shell/lib/types/otp.types.ts`.
+
+```ts
+type OtpEvent = 'signup' | 'forgotpassword' | 'deleteaccount' | 'changepassword';
+
+interface GenerateOtpPayload {
+  email: string;
+  event: OtpEvent;
+  description?: string;
+}
+
+interface VerifyOtpPayload {
+  email: string;
+  event: OtpEvent;
+  otp: string;
+}
+
+interface VerifyOtpResult {
+  verified?: boolean;
+  event?: OtpEvent;
+}
+```
+
+> ✅ Confirmed live for `event: "forgotpassword"` — the response contains **no `userId`**.
+> Password changes therefore resolve the account by email (`ChangePasswordPayload` below)
+> rather than by id.
+
+---
+
+## ChangePasswordPayload (API request shape — `PUT /api/users/change/password`)
+
+> Identifies the account by `email` in the body rather than an `:id` path param. Shared by
+> both password-change flows: **Settings → Change Password** (authenticated — bearer token
+> sent, `email` is the current user's own) and **Login → Forgot Password** (anonymous — no
+> bearer token, `email` is whatever the user entered on the login page).
+> Source: `shell/lib/types/users.types.ts`.
+
+```ts
+interface ChangePasswordPayload {
+  email: string;
+  newPassword: string;     // 6-100 characters
+  confirmPassword: string; // must match newPassword
+}
+```
+
+> Both password models are called after OTP verification. Signup does **not** use either —
+> it calls `POST /api/auth/signup` instead. See `api-endpoints.md`'s OTP Service section for
+> the full flow.
 
 ---
 
