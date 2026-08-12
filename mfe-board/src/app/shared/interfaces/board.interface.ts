@@ -121,7 +121,7 @@ export interface Paginated<T> {
 export interface CreateStatusPayload {
   name: string;
   description: string;
-  position: number;
+  // position: number;   // dropped from the form — the server assigns the column order
   teamId: string;
   isArchievable: boolean;
 }

@@ -923,7 +923,7 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | Kanban columns + tasks (BoardComponent) | `GET /api/tasks/team/:teamId/board` via `TeamService.getTeamBoard()` — response mapped to columns/tasks in the component; no static data |
 | Column header status description tooltip (BoardComponent) | `GET /api/tasks/team/:teamId/board` — `columns[].description` shown on hover/focus of each status title (info icon). No extra request |
 | Column "Load more" tasks | `GET /api/board/:teamId/status/:statusId/tasks?page&limit` |
-| "+ Add Status" modal submit (dashboard card → CreateStatusComponent) | `POST /api/board-statuses/create` via `TeamService.createStatus()` — body `{ name, description, position, teamId, isArchievable }`. ✅ confirmed live (401 unauth) |
+| "+ Add Status" modal submit (dashboard card → CreateStatusComponent) | `POST /api/board-statuses/create` via `TeamService.createStatus()` — body `{ name, description, teamId, isArchievable }`. `position` is **not** sent: the field was removed from the modal, so the server must assign the column order. ✅ confirmed live (401 unauth) |
 | Edit status (✎) modal submit | `PATCH /api/board/:teamId/statuses/:statusId` |
 | Delete status (🗑, board column header → confirmation modal) | `DELETE /api/board-statuses/:statusId` via `TeamService.deleteStatus()`, then refetch the board. ✅ confirmed live (401 unauth) |
 | Drag task to another column | `PATCH /api/tasks/:id/status` via `TeamService.updateTaskStatus(taskId, statusId)` — body `{ statusId }`. ✅ confirmed live (PATCH → 401 unauth; PUT/POST → 405) |

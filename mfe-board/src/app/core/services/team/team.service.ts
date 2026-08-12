@@ -99,7 +99,8 @@ export class TeamService {
   }
 
   // POST /api/board-statuses/create — create a new board status.
-  // Body: { name, description, position, teamId, isArchievable }.
+  // Body: { name, description, teamId, isArchievable }. `position` is not sent —
+  // the server assigns the column order.
   createStatus(payload: CreateStatusPayload): Observable<unknown> {
     return this.api
       .post<ApiResult<unknown>>('/api/board-statuses/create', payload)

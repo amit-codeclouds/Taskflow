@@ -32,12 +32,12 @@
         <textarea id="cs-desc" class="field-input" formControlName="description" rows="2" placeholder="Optional"></textarea>
       </div>
 
-      <!-- Position -->
+      <!-- Position — removed from the form; the server assigns the column order.
       <div class="field">
         <label class="field-label" for="cs-pos">Position</label>
         <input id="cs-pos" class="field-input" type="number" formControlName="position" />
         <p class="field-error" *ngIf="f['position'].touched && f['position'].errors">Enter a valid position (0 or more)</p>
-      </div>
+      </div> -->
 
       <!-- Team ID (read-only, prefilled) -->
       <div class="field">
