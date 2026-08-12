@@ -1,9 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useConfirm } from '@/components/Modals/ConfirmProvider';
+import ProgressModal from '@/components/Modals/ProgressModal';
 import { LABEL_STYLES, PRIORITY_COLORS } from '@/lib/taskData';
 import { useDeleteTask } from '@/lib/hooks/useTasks';
 import { useAuth } from '@/lib/useAuth';
@@ -24,6 +26,31 @@ function EditIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
       <path d="M8.5 1.5a1.414 1.414 0 012 2L3.5 10.5l-3 .5.5-3 7.5-6.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+// Mini circular gauge whose arc fills to `value` (0–100). The track uses
+// currentColor (so it follows the button's hover state); the filled arc is
+// always accent so progress reads at a glance.
+function ProgressRing({ value }: { value: number }) {
+  const r = 5;
+  const c = 2 * Math.PI * r;
+  const pct = Math.min(100, Math.max(0, value));
+  const offset = c * (1 - pct / 100);
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0">
+      <circle cx="7" cy="7" r={r} stroke="currentColor" strokeWidth="1.6" opacity="0.25" />
+      <circle
+        cx="7"
+        cy="7"
+        r={r}
+        stroke="var(--color-accent)"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeDasharray={c}
+        strokeDashoffset={offset}
+        transform="rotate(-90 7 7)"
+      />
     </svg>
   );
 }
@@ -129,6 +156,7 @@ export function TaskRow({
   const deleteTask = useDeleteTask();
   const { id: currentUserId } = useAuth();
   const isAssignedToMe = !readOnly && task.assignees.some((a) => a.userId === currentUserId);
+  const [progressOpen, setProgressOpen] = useState(false);
 
   async function handleRemove(e: React.MouseEvent) {
     e.preventDefault();
@@ -206,6 +234,21 @@ export function TaskRow({
       {showActions && (
         <div className="flex items-center gap-1 shrink-0 pt-0.5">
           {isAssignedToMe && (
+            <button
+              type="button"
+              data-tooltip="Update progress"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setProgressOpen(true);
+              }}
+              className="h-7 pl-1.5 pr-2 rounded-lg flex items-center gap-1.5 text-text-300 hover:text-accent hover:bg-accent-bg transition-colors"
+            >
+              <ProgressRing value={task.progress ?? 0} />
+              <span className="text-2xs font-medium tabular-nums">{task.progress ?? 0}%</span>
+            </button>
+          )}
+          {isAssignedToMe && (
             <Link
               href={`/${task.id}/edit`}
               data-tooltip="Edit task"
@@ -238,6 +281,10 @@ export function TaskRow({
           )}
         </div>
       )}
+
+      <AnimatePresence>
+        {progressOpen && <ProgressModal task={task} onClose={() => setProgressOpen(false)} />}
+      </AnimatePresence>
     </motion.div>
   );
 }

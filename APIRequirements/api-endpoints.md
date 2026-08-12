@@ -989,6 +989,7 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | TaskListScreen — pagination (Previous/Next) | `GET /api/tasks/my?page=...` |
 | "New Task" button | navigates to `/new` (`?teamId=...` preserved if a team is selected) |
 | Task row edit (✎) / open (↗) icons | navigate to `/:id/edit` and `/:id` (client-side — no API) |
+| Task row progress (◔) icon → ProgressModal submit | `PUT /api/tasks/:id` via `useUpdateTask()` — body `{ progress }` only. Opens a modal with a progress slider (0–100, 5% steps); shown for the user's own tasks (same gating as Edit) |
 | TaskFormScreen — Team dropdown | `GET /api/teams`; disabled when editing (team is immutable post-creation) |
 | TaskFormScreen — Status dropdown (per team) | `GET /api/board-statuses/team/:teamId` |
 | TaskFormScreen — Assignees multi-select | `GET /api/people` |
