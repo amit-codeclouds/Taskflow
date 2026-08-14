@@ -18,6 +18,7 @@ import {
 import { BoardService } from '../../core/services/board/board.service';
 import { TeamService } from '../../core/services/team/team.service';
 import { ConfirmationModalComponent } from '../../shared/modal/confirmation-modal/confirmation-modal.component';
+import { ExportTasksComponent } from '../../shared/modal/export-tasks/export-tasks.component';
 
 // Palette used to colour columns by position (the API statuses carry no colour).
 const COLUMN_PALETTE = [
@@ -48,7 +49,7 @@ function initialsFromName(name?: string | null): string {
 @Component({
   selector: 'app-board',
   standalone: true,
-  imports: [NgFor, NgClass, NgIf, NgTemplateOutlet, DragDropModule, ConfirmationModalComponent],
+  imports: [NgFor, NgClass, NgIf, NgTemplateOutlet, DragDropModule, ConfirmationModalComponent, ExportTasksComponent],
   templateUrl: './board.component.html',
   styleUrl: './board.component.scss'
 })
@@ -69,6 +70,9 @@ export class BoardComponent implements OnInit {
   // Pending archive/delete confirmation (null = no modal open).
   confirm: { kind: 'archive' | 'delete'; col: Column } | null = null;
   confirmLoading = false;
+
+  // Export-tasks modal open state (for the currently selected team).
+  isExporting = false;
 
   constructor(private route: ActivatedRoute, private router: Router) {}
 
@@ -153,6 +157,9 @@ export class BoardComponent implements OnInit {
   get connectedDropLists(): string[] { return this.columns.map(c => c.id); }
 
   toggleDropdown(e: Event) { e.stopPropagation(); this.dropdownOpen = !this.dropdownOpen; }
+
+  openExport(): void { this.isExporting = true; }
+  closeExport(): void { this.isExporting = false; }
 
   addTaskUrl(col: Column): string {
     const params = new URLSearchParams({ teamId: this.selectedTeam?.id ?? '', statusId: col.statusId });

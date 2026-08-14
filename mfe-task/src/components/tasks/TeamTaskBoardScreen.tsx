@@ -4,12 +4,14 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Download } from 'lucide-react';
 import AppSelect, { type SelectOption } from '@/components/ui/AppSelect';
 import { useTeamBoard } from '@/lib/hooks/useBoard';
 import { useArchivedTasks, ARCHIVED_TASKS_PAGE_LIMIT } from '@/lib/hooks/useArchivedTasks';
 import { useTeamsList } from '@/lib/hooks/useTeams';
 import { TaskListSkeleton, TaskRowsSkeleton } from '@/app/_skeleton';
 import { TaskRow } from './TaskRow';
+import ExportTasksModal from './ExportTasksModal';
 import type { ApiTask, AssigneeSummary, Priority, LabelType } from '@/lib/types/tasks.types';
 import type { ApiArchivedTask } from '@/lib/types/archivedTasks.types';
 
@@ -89,6 +91,7 @@ export default function TeamTaskBoardScreen() {
   const [activeTab, setActiveTab] = useState('');
   const [archivedPage, setArchivedPage] = useState(1);
   const [archivedSearch, setArchivedSearch] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
 
   // Reset local tab/page/search state whenever the viewed team changes —
   // router.replace() below doesn't remount this component.
@@ -158,6 +161,14 @@ export default function TeamTaskBoardScreen() {
           </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
+          <motion.button
+            onClick={() => setIsExporting(true)}
+            className="flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-sm font-medium bg-bg-600 text-text-200 hover:bg-bg-500 hover:text-text-100 transition-colors"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+          >
+            <Download size={14} />Export
+          </motion.button>
           <Link href={`/new?teamId=${teamId}`}>
             <motion.button
               className="flex items-center gap-2 bg-accent text-white text-sm font-medium px-4 py-2 rounded-lg"
@@ -302,6 +313,17 @@ export default function TeamTaskBoardScreen() {
           </div>
         </div>
       )}
+
+      {/* Export modal */}
+      <AnimatePresence>
+        {isExporting && team && (
+          <ExportTasksModal
+            key={`export-${team.id}`}
+            team={team}
+            onClose={() => setIsExporting(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

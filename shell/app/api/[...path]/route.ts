@@ -32,6 +32,18 @@ async function handler(
       body,
     });
 
+    const upstreamContentType = upstream.headers.get('Content-Type') ?? '';
+
+    // Export endpoints return a raw CSV/XLSX file, not the JSON envelope — read
+    // as bytes so binary content (e.g. XLSX) isn't corrupted by text decoding.
+    if (!upstreamContentType.includes('application/json') && !upstreamContentType.includes('text/plain')) {
+      const buffer = await upstream.arrayBuffer();
+      const passthroughHeaders = new Headers({ 'Content-Type': upstreamContentType || 'application/octet-stream' });
+      const disposition = upstream.headers.get('Content-Disposition');
+      if (disposition) passthroughHeaders.set('Content-Disposition', disposition);
+      return new NextResponse(buffer, { status: upstream.status, headers: passthroughHeaders });
+    }
+
     const text = await upstream.text();
     let data: unknown;
     try {
