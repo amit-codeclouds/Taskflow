@@ -57,7 +57,7 @@ export default function ProgressModal({ task, onClose }: Props) {
   }, [onClose]);
 
   async function handleSubmit() {
-    await updateTask.mutateAsync({ id: task.id, progress, statusId });
+    await updateTask.mutateAsync({ id: task.id, teamId: task.teamId, progress, statusId });
     onClose();
   }
 

@@ -101,7 +101,7 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
       danger: true,
     });
     if (!ok) return;
-    await deleteTask.mutateAsync(task!.id);
+    await deleteTask.mutateAsync({ id: task!.id, teamId: task!.teamId });
     router.push('/');
   }
 
