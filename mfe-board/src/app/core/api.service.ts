@@ -73,6 +73,16 @@ export class ApiService {
     return this.http.delete<T>(url, this.buildOptions(options));
   }
 
+  // For endpoints that return a raw file (e.g. the CSV/XLSX export) rather than
+  // the standard JSON envelope — 'blob' has to be a literal here for HttpClient's
+  // overload resolution to return Observable<Blob> instead of Observable<Object>.
+  postBlob(url: string, body?: unknown, options?: RequestOptions): Observable<Blob> {
+    return this.http.post(url, body ?? null, {
+      ...this.buildOptions(options),
+      responseType: 'blob' as const,
+    });
+  }
+
   // Normalises the loose RequestOptions into the concrete shape HttpClient wants:
   // HttpParams, HttpHeaders (with the bearer token folded in), and passthrough flags.
   private buildOptions(options: RequestOptions = {}) {

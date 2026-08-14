@@ -4,6 +4,7 @@ import { RouterLink, Router } from '@angular/router';
 import { Team } from '../../shared/interfaces/board.interface';
 import { BoardService } from '../../core/services/board/board.service';
 import { CreateStatusComponent } from '../../shared/modal/create-status/create-status.component';
+import { ExportTasksComponent } from '../../shared/modal/export-tasks/export-tasks.component';
 
 // One rendered status pill on a board card — only built for statuses that are
 // actually present in the team's `statusTaskCounts`.
@@ -79,7 +80,7 @@ function readStatusEntries(raw: Team['statusTaskCounts']): { key: string; label:
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [NgFor, NgIf, RouterLink, CreateStatusComponent],
+  imports: [NgFor, NgIf, RouterLink, CreateStatusComponent, ExportTasksComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -96,6 +97,9 @@ export class DashboardComponent implements OnInit {
 
   // Team whose Add-Status modal is open (null = closed).
   statusModalTeam: Team | null = null;
+
+  // Team whose Export-Tasks modal is open (null = closed).
+  exportModalTeam: Team | null = null;
 
   ngOnInit(): void {
     this.load();
@@ -125,6 +129,18 @@ export class DashboardComponent implements OnInit {
 
   closeStatusModal(): void {
     this.statusModalTeam = null;
+  }
+
+  // ── Export tasks ──
+  openExport(team: Team, event: Event): void {
+    // Stop the click from triggering the card's routerLink navigation.
+    event.stopPropagation();
+    event.preventDefault();
+    this.exportModalTeam = team;
+  }
+
+  closeExportModal(): void {
+    this.exportModalTeam = null;
   }
 
   // ── Archived tasks ──

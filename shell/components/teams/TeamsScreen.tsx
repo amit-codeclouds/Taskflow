@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, UserPlus, Plus, Settings } from 'lucide-react';
+import { Users, UserPlus, Plus, Settings, Download } from 'lucide-react';
 import { useTeamsList, useTeamsStats, useInviteTeamMember } from '@/lib/hooks/useTeams';
 import { useAuth } from '@/lib/useAuth';
 import { TeamsSkeleton } from '@/app/(shell)/teams/_skeleton';
 import type { ApiTeam, TeamRole } from '@/lib/types/teams.types';
 import TeamInviteModal from './TeamInviteModal';
+import ExportTasksModal from './ExportTasksModal';
 import { TeamInitial, MemberAvatar } from './TeamAvatars';
 
 // ─── TeamCard ─────────────────────────────────────────────────────────────────
@@ -18,11 +19,13 @@ function TeamCard({
   index,
   onManage,
   onInvite,
+  onExport,
 }: {
   team: ApiTeam;
   index: number;
   onManage: (team: ApiTeam) => void;
   onInvite: (team: ApiTeam) => void;
+  onExport: (team: ApiTeam) => void;
 }) {
   const activeCount    = team.members.length;
   const pendingCount   = team.pendingInvites;
@@ -85,6 +88,15 @@ function TeamCard({
                 <UserPlus size={11} />
                 Invite
               </motion.button>
+              <motion.button
+                onClick={() => onExport(team)}
+                className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-xs font-medium bg-bg-600 text-text-200 hover:bg-bg-500 hover:text-text-100 transition-colors"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                <Download size={11} />
+                Export
+              </motion.button>
             </div>
           </div>
         </div>
@@ -103,6 +115,7 @@ export default function TeamsScreen() {
   const inviteMutation                  = useInviteTeamMember();
 
   const [invitingTeam, setInvitingTeam] = useState<ApiTeam | null>(null);
+  const [exportingTeam, setExportingTeam] = useState<ApiTeam | null>(null);
 
   const stats = [
     { label: 'Total Teams',     value: statsData?.totalTeams    ?? teams.length },
@@ -169,6 +182,7 @@ export default function TeamsScreen() {
               index={i}
               onManage={t => router.push(`/teams/${t.id}`)}
               onInvite={setInvitingTeam}
+              onExport={setExportingTeam}
             />
           ))}
         </AnimatePresence>
@@ -199,6 +213,17 @@ export default function TeamsScreen() {
             existingEmails={[]}
             onClose={() => setInvitingTeam(null)}
             onInvite={handleInvite}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Export modal */}
+      <AnimatePresence>
+        {exportingTeam && (
+          <ExportTasksModal
+            key={`export-${exportingTeam.id}`}
+            team={exportingTeam}
+            onClose={() => setExportingTeam(null)}
           />
         )}
       </AnimatePresence>

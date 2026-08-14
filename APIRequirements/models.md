@@ -307,6 +307,25 @@ interface TeamInvitation {
 
 ---
 
+## ExportTasksPayload (API request shape — `POST /api/tasks/export`)
+
+> Source: `shell/lib/types/export.types.ts`, `mfe-task/src/lib/types/export.types.ts`, `mfe-board/src/app/shared/interfaces/export.interface.ts`
+> Not a persisted model — request body for the Export service. The response is a raw CSV/XLSX file (not the JSON envelope), streamed straight through the Next.js proxy (`app/api/[...path]/route.ts` in both Shell and Task MFE) as bytes rather than parsed as JSON. The Board MFE has no server-side proxy layer, so it calls the endpoint directly with `ApiService.postBlob()` (Angular `HttpClient`, `responseType: 'blob'`).
+
+```ts
+type ExportFormat = 'Csv' | 'Xlsx';
+
+interface ExportTasksPayload {
+  teamId: string;
+  fileName: string;              // no extension — user-editable input, defaults to slugified team name,
+                                  // no whitespace allowed; client appends .csv / .xlsx on download
+  isIncludeArchiveTask: boolean; // include archived/migrated tasks for the team
+  format: ExportFormat;          // default "Csv"
+}
+```
+
+---
+
 ## BoardStatus
 
 > Statuses are fully dynamic per team. Each team owns its own ordered list of board columns.

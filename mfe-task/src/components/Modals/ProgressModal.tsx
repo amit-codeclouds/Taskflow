@@ -4,12 +4,19 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
+import AppSelect, { type SelectOption } from '@/components/ui/AppSelect';
 import { useUpdateTask, useTaskDetail } from '@/lib/hooks/useTasks';
+import { useBoardStatuses } from '@/lib/hooks/useBoardStatuses';
+import { colorForStatus } from '@/lib/statusColors';
 import type { ApiTask } from '@/lib/types/tasks.types';
 
 interface Props {
   task: ApiTask;
   onClose: () => void;
+}
+
+interface StatusOption extends SelectOption {
+  color: string;
 }
 
 const clampPct = (n: number) => Math.min(100, Math.max(0, n));
@@ -20,15 +27,24 @@ export default function ProgressModal({ task, onClose }: Props) {
   // GET /api/tasks/:id once it loads (so the bar reflects the current server
   // progress even if the list row was stale).
   const { data: detail } = useTaskDetail(task.id);
+  const { data: statuses = [] } = useBoardStatuses(task.teamId);
   const [progress, setProgress] = useState(clampPct(task.progress ?? 0));
+  const [statusId, setStatusId] = useState(task.statusId);
   const syncedRef = useRef(false);
 
   useEffect(() => {
-    if (!syncedRef.current && detail && typeof detail.progress === 'number') {
-      setProgress(clampPct(detail.progress));
+    if (!syncedRef.current && detail) {
+      if (typeof detail.progress === 'number') setProgress(clampPct(detail.progress));
+      if (detail.statusId) setStatusId(detail.statusId);
       syncedRef.current = true;
     }
   }, [detail]);
+
+  const statusOptions: StatusOption[] = statuses.map((s) => ({
+    value: s.statusId,
+    label: s.statusName,
+    color: colorForStatus(s.statusName),
+  }));
 
   // Portal to <body> so `position: fixed` is relative to the viewport, not the
   // transformed TaskRow ancestor. Also close on Escape.
@@ -41,7 +57,7 @@ export default function ProgressModal({ task, onClose }: Props) {
   }, [onClose]);
 
   async function handleSubmit() {
-    await updateTask.mutateAsync({ id: task.id, progress });
+    await updateTask.mutateAsync({ id: task.id, teamId: task.teamId, progress, statusId });
     onClose();
   }
 
@@ -79,53 +95,73 @@ export default function ProgressModal({ task, onClose }: Props) {
           </button>
         </div>
 
-        {/* Progress section */}
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-sm text-text-200">Progress</label>
-            <div className="flex items-center gap-1">
-              <input
-                type="number"
-                min={0}
-                max={100}
-                value={progress}
-                onChange={(e) => setProgress(clampPct(Number(e.target.value) || 0))}
-                className="w-12 h-6 px-1.5 text-center rounded-md bg-bg-700 border border-border-subtle text-xs text-text-100 focus:outline-none focus:border-accent"
-              />
-              <span className="text-xs text-text-300">%</span>
-            </div>
-          </div>
-
-          {/* Clickable filled bar */}
-          <div
-            className="relative h-2 w-full rounded-full bg-bg-600 cursor-pointer overflow-hidden"
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              const pct = Math.round(((e.clientX - rect.left) / rect.width) * 100 / 5) * 5;
-              setProgress(clampPct(pct));
-            }}
-          >
-            <motion.div
-              className="h-full rounded-full bg-gradient-to-r from-[var(--color-accent)] to-[var(--color-accent-hover)]"
-              animate={{ width: `${progress}%` }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        <div className="p-6 flex flex-col gap-5">
+          {/* Status */}
+          <div>
+            <label className="text-sm text-text-200 block mb-1.5">Status</label>
+            <AppSelect<StatusOption>
+              instanceId="progress-modal-status"
+              options={statusOptions}
+              value={statusOptions.find((o) => o.value === statusId) ?? null}
+              onChange={(opt) => setStatusId(opt?.value ?? statusId)}
+              isSearchable={false}
+              formatOptionLabel={(opt) => (
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: opt.color }} />
+                  {opt.label}
+                </span>
+              )}
             />
           </div>
 
-          {/* Quick-pick steps */}
-          <div className="flex justify-between mt-1.5">
-            {[0, 25, 50, 75, 100].map((v) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => setProgress(v)}
-                className={`text-[10px] transition-colors ${
-                  progress === v ? 'text-accent font-semibold' : 'text-text-300 hover:text-text-100'
-                }`}
-              >
-                {v === 0 ? 'None' : v === 100 ? 'Done' : `${v}%`}
-              </button>
-            ))}
+          {/* Progress section */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-sm text-text-200">Progress</label>
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={progress}
+                  onChange={(e) => setProgress(clampPct(Number(e.target.value) || 0))}
+                  className="w-12 h-6 px-1.5 text-center rounded-md bg-bg-700 border border-border-subtle text-xs text-text-100 focus:outline-none focus:border-accent"
+                />
+                <span className="text-xs text-text-300">%</span>
+              </div>
+            </div>
+
+            {/* Clickable filled bar */}
+            <div
+              className="relative h-2 w-full rounded-full bg-bg-600 cursor-pointer overflow-hidden"
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const pct = Math.round(((e.clientX - rect.left) / rect.width) * 100 / 5) * 5;
+                setProgress(clampPct(pct));
+              }}
+            >
+              <motion.div
+                className="h-full rounded-full bg-gradient-to-r from-[var(--color-accent)] to-[var(--color-accent-hover)]"
+                animate={{ width: `${progress}%` }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              />
+            </div>
+
+            {/* Quick-pick steps */}
+            <div className="flex justify-between mt-1.5">
+              {[0, 25, 50, 75, 100].map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setProgress(v)}
+                  className={`text-[10px] transition-colors ${
+                    progress === v ? 'text-accent font-semibold' : 'text-text-300 hover:text-text-100'
+                  }`}
+                >
+                  {v === 0 ? 'None' : v === 100 ? 'Done' : `${v}%`}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

@@ -778,6 +778,40 @@ Returns `422` if attempting to remove the only `admin`.
 
 ---
 
+## Export Service  `/api/tasks/export`
+
+> Drives the **Export** button across all three frontends:
+> - `shell/components/teams/TeamsScreen.tsx` — TeamCard "Export" button, beside Manage/Invite
+> - `shell/components/teams/AssignedTeamsScreen.tsx` — AssignedTeamCard "Export" button, beside View Tasks
+> - `mfe-task/src/components/tasks/TeamTaskBoardScreen.tsx` — header "Export" button (the team board reached via View Tasks / the team switcher)
+> - `mfe-board/src/app/features/dashboard/dashboard.component.ts` — "Export" action per team card on the `/board` landing (`DashboardComponent`), beside Archived Task
+> - `mfe-board/src/app/features/board/board.component.ts` — header "Export" button on the Kanban board (`BoardComponent`), scoped to the selected team
+> - Shared modal per app: `ExportTasksModal.tsx` (Shell/Task MFE) / `ExportTasksComponent` (Board MFE) — CSV/Excel radio, a file-name input group, and "Include archived tasks" checkbox
+>
+> Requester must be a member of the team. Response is a **raw file** (`text/csv` or `.xlsx`), not the standard `ApiResponse` envelope. Both Next.js proxies (`shell/app/api/[...path]/route.ts`, `mfe-task/src/app/api/[...path]/route.ts`) sniff the upstream `Content-Type` and stream non-JSON responses through as bytes rather than parsing them as JSON, so binary XLSX isn't corrupted; the Board MFE has no such proxy — it calls `/api/tasks/export` directly (same-origin, per the CORS note below) via `ApiService.postBlob()`. The client requests with `responseType: 'blob'` and triggers a browser download via an object URL.
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/api/tasks/export` | Auth | Export a team's tasks as a downloadable CSV or XLSX file |
+
+### `POST /api/tasks/export`
+**Request**
+```json
+{
+  "teamId": "team_1",
+  "fileName": "taskflow-core-tasks-export",
+  "isIncludeArchiveTask": false,
+  "format": "Csv"
+}
+```
+- `format` — `"Csv"` (default) or `"Xlsx"`, chosen via radio buttons in `ExportTasksModal`.
+- `isIncludeArchiveTask` — when `true`, archived/migrated tasks for the team are included alongside active ones.
+- `fileName` — no extension; an editable input group in `ExportTasksModal`, pre-filled with the slugified team name, with the active format's extension (`.csv` / `.xlsx`) shown as an appended suffix that updates live with the radio selection. Client-side validation rejects empty values and any whitespace (`/\s/` test — Yup `.matches(/^\S+$/, ...)` in Shell, manual check in Task MFE) before submit.
+
+**Response `200`** — raw file body, `Content-Type: text/csv` or the XLSX MIME type, `Content-Disposition: attachment; filename=...`.
+
+---
+
 ## Dashboard Service  `/api/dashboard`
 
 > Drives `shell/components/home/WelcomeScreen.tsx` — the 4-card stats row.
@@ -967,6 +1001,8 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | Sidebar — "Teams" accordion → Workspace Teams / Assigned Teams sub-links | (navigation only) |
 | AssignedTeamsScreen — assigned team list (`/teams/assigned`) | `GET /api/teams?exclude_workspace=true` |
 | AssignedTeamCard — "View Tasks" button → cross-zone `<a href="/tasks/listview?teamid=...">` into Task MFE's `TeamTaskBoardScreen` | (navigation only — see Task MFE traceability below) |
+| TeamCard — "Export" button → `ExportTasksModal` (format radio + include-archived checkbox) submit | `POST /api/tasks/export` via `useExportTasks()` → `exportService.exportTasks()`, `responseType: 'blob'`; triggers a browser download on success |
+| AssignedTeamCard — "Export" button → `ExportTasksModal` submit | `POST /api/tasks/export` (same as TeamCard's Export) |
 | `/teams/:id` — Manage Team page save (edit name / desc / color) | `PATCH /api/teams/:id` |
 | `/teams/:id` — Add from workspace (member picker + role, Add button) | `POST /api/teams/:id/members` |
 | `/teams/:id` — Change member role dropdown | `PATCH /api/teams/:id/members/:userId` |
@@ -1012,8 +1048,12 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | TaskListScreen — status badge on each row | resolved via `GET /api/board-statuses/team/:teamId` for the row's team (batched across the page's unique teams with `useBoardStatusesMap`) |
 | TaskListScreen — pagination (Previous/Next) | `GET /api/tasks/my?page=...` |
 | "New Task" button | navigates to `/new` (`?teamId=...` preserved if a team is selected) |
-| Task row edit (✎) / open (↗) icons | navigate to `/:id/edit` and `/:id` (client-side — no API) |
-| Task row progress (◔) icon → ProgressModal submit | `PUT /api/tasks/:id` via `useUpdateTask()` — body `{ progress }` only. Opens a modal with a progress slider (0–100, 5% steps); shown for the user's own tasks (same gating as Edit) |
+| TaskRow — row layout: line 1 is the title only (ellipsis-truncated, full title in a `data-tooltip` on hover); line 2 holds assignees, the label/due-date chips, and Created/Updated — status, progress, and the "⋮" menu moved to their own group at the row's right end | client-side only — no API involved |
+| TaskRow — right-end group: status chip → progress chip → "⋮" menu | see the two rows below; grouping them apart from the title/content chips was a deliberate fix so it's visually obvious which rows a user can actually edit |
+| TaskRow — progress chip (always visible for every row — same `{progress}%` info regardless of permission — but only clickable, accent-lit (`bg-accent-bg text-accent`, hover fills solid) for the task's own assignee; everyone else gets the identical chip dulled to `bg-bg-700 text-text-300 opacity-70` and non-interactive, via a `data-tooltip` explaining why) → ProgressModal submit | `PUT /api/tasks/:id` via `useUpdateTask()` — body `{ progress, statusId }`. Modal has a progress slider (0–100, 5% steps) **and** a status `AppSelect` dropdown (options from `GET /api/board-statuses/team/:teamId` via `useBoardStatuses()`); `statusId` is always included in the submit payload, defaulting to the task's current status if left unchanged |
+| TaskRow — status chip color | client-side only — `colorForStatus()` (`mfe-task/src/lib/statusColors.ts`) maps well-known status names (Done→green, In Progress→accent, Blocked→red, etc.) to a fixed color and hashes any custom/team-defined status name to a slot in a 10-color palette, so the same status always renders the same color. No API involved |
+| TaskRow — "⋮" actions menu (replaces the separate Edit/View/Delete icon buttons) | client-side only — same permission gating as before (Edit + Delete only for the task's own assignee; View always available when a detail route exists); no new endpoint |
+| Cache invalidation fix: `useUpdateTask()` / `useDeleteTask()` now also take an optional `teamId` (stripped before the request body — `UpdateTaskRequestDto`/delete have no such field) and invalidate `queryKeys.board.team(teamId)` on success, not just `queryKeys.tasks.*` | fixes a bug where editing progress/status from `ProgressModal`, or deleting a task, from `TeamTaskBoardScreen` (`GET /api/tasks/team/:teamId/board` via `useTeamBoard()`) left that board query stale since it lives under a disjoint `['board', ...]` key. All four call sites updated: `ProgressModal`, `TaskRow`'s delete, `TaskDetailScreen`'s delete, `TaskFormScreen`'s edit submit |
 | TaskFormScreen — Team dropdown | `GET /api/teams`; disabled when editing (team is immutable post-creation) |
 | TaskFormScreen — Status dropdown (per team) | `GET /api/board-statuses/team/:teamId` |
 | TaskFormScreen — Assignees multi-select | `GET /api/people` |
@@ -1033,6 +1073,7 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | TeamTaskBoardScreen — Archived tab (with tooltip explaining its purpose) | `GET /api/migrate/task/archived?teamId=&page=&limit=&search=` via `archivedTasksService.list()`; rows render read-only (no view/edit/delete — no archived-task detail page exists yet in Task MFE) |
 | TeamTaskBoardScreen — Archived tab search + pagination | same endpoint, `search`/`page` query params |
 | Entry point: Shell's AssignedTeamsScreen "View Tasks" button | cross-zone `<a href="/tasks/listview?teamid=...">` (navigation only) |
+| TeamTaskBoardScreen — header "Export" button → `ExportTasksModal` submit | `POST /api/tasks/export` via `useExportTasks()` → `exportService.exportTasks()`, `responseType: 'blob'`; triggers a browser download on success |
 
 > Not yet wired in this pass (no UI surface added for them): `GET /api/tasks` (all-teams/assignee-filtered view), `PATCH /api/tasks/:id/status` (drag-drop — Board MFE concern), `GET /api/notifications`, `GET /api/migrate/task/archived/:taskId` (archived task detail).
 
@@ -1051,6 +1092,8 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | Drag task to another column | `PATCH /api/tasks/:id/status` via `TeamService.updateTaskStatus(taskId, statusId)` — body `{ statusId }`. ✅ confirmed live (PATCH → 401 unauth; PUT/POST → 405) |
 | "+ Add Task" button per column | navigates to `/tasks/new?teamId=&statusId=` → `POST /api/tasks` |
 | "Archived Task" button per team card (DashboardComponent) | navigates to `/archived/:teamId` (Angular router, same zone) |
+| "Export" button per team card (DashboardComponent → ExportTasksComponent modal) | `POST /api/tasks/export` via `ExportService.exportTasks()` — `ApiService.postBlob()` requests with `responseType: 'blob'`; triggers a browser download on success |
+| "Export" button in board header (BoardComponent → ExportTasksComponent modal) | `POST /api/tasks/export` (same as DashboardComponent's Export), scoped to `selectedTeam` |
 | Archived Tasks table (ArchivedTasklistComponent) — Task # / Title / Priority / Assignee | `GET /api/migrate/task/archived?teamId=&page=&limit=&statusId=&search=` via `TeamService.getArchivedTasks()`. Assignee cell shows `assigneeDetails[].avatarUrl` (fallback initials) with the name on hover |
 | Archived Tasks table — "View Task" eye icon per row | navigates to `/archived-task/:taskId` (Angular router, same zone) → `ArchivedTaskdetailsComponent` |
 | Archived Task Details (ArchivedTaskdetailsComponent) — number, title, priority, label, progress, dates, assignees, description | `GET /api/migrate/task/archived/:taskId` via `TeamService.getArchivedTask()`. Description rendered from CKEditor HTML via `[innerHTML]` |

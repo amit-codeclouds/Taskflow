@@ -254,8 +254,10 @@ export default function TaskFormScreen({ taskId }: { taskId?: string }) {
     try {
       if (isEdit) {
         // UpdateTaskRequestDto has no teamId — a task's team cannot change after creation.
-        const { teamId: _teamId, ...updatePayload } = basePayload;
-        const updated = await updateTask.mutateAsync({ id: editTask!.id, ...updatePayload });
+        // useUpdateTask still takes it (and strips it before the request body) so it
+        // can invalidate that team's board query too.
+        const { teamId, ...updatePayload } = basePayload;
+        const updated = await updateTask.mutateAsync({ id: editTask!.id, teamId, ...updatePayload });
         router.push(`/${updated.id}`);
       } else {
         await createTask.mutateAsync(basePayload);

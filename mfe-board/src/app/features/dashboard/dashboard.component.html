@@ -98,6 +98,12 @@
             </svg>
             Archived Task
           </span>
+          <span class="archived-btn" role="button" tabindex="0" (click)="openExport(b.team, $event)" (keydown.enter)="openExport(b.team, $event)">
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+              <path d="M7 1.5v7M4.5 6l2.5 2.5L9.5 6M2.5 11h9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            Export
+          </span>
           <span class="open-btn">Open</span>
         </div>
       </div>
@@ -117,3 +123,11 @@
   (close)="closeStatusModal()"
   (created)="onStatusCreated()"
 ></app-create-status>
+
+<!-- Export tasks modal -->
+<app-export-tasks
+  *ngIf="exportModalTeam"
+  [teamId]="exportModalTeam.id"
+  [teamName]="exportModalTeam.name"
+  (close)="closeExportModal()"
+></app-export-tasks>
