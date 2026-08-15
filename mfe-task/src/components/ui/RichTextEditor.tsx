@@ -174,6 +174,7 @@ const TiptapDynamic = dynamic(
             highlighter: '<path d="M2 12h10M4 9l4-4 3 3-4 4H4V9z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>',
             rect: '<rect x="2" y="3" width="10" height="8" rx="1" stroke="currentColor" stroke-width="1.3"/>',
             circle: '<circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.3"/>',
+            arrow: '<path d="M2 12L12 2M12 2H6M12 2V8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>',
             text: '<text x="7" y="10.5" font-size="10" font-weight="700" fill="currentColor" text-anchor="middle" font-family="system-ui, sans-serif">T</text>',
             undo: '<path d="M3 7a4.5 4.5 0 118 3.2M3 7V3M3 7h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>',
             clear: '<path d="M2.5 3.5h9M5 3.5v-1a1 1 0 011-1h2a1 1 0 011 1v1M4 3.5v8a1 1 0 001 1h4a1 1 0 001-1v-8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -211,7 +212,7 @@ const TiptapDynamic = dynamic(
             overlayCanvas!.setPointerCapture(e.pointerId);
             const pt = toOverlayPoint(e);
             if (tool === 'pen' || tool === 'highlighter') currentStroke = { tool, color, points: [pt] };
-            else dragStart = pt; // rect / circle / text all drag out a box first
+            else dragStart = pt; // rect / circle / arrow / text all drag from a start point
           }
 
           function onOverlayPointerMove(e: PointerEvent) {
@@ -222,6 +223,9 @@ const TiptapDynamic = dynamic(
             } else if ((tool === 'rect' || tool === 'circle') && dragStart) {
               overlayCtx!.clearRect(0, 0, overlayCanvas!.width, overlayCanvas!.height);
               drawActions(overlayCtx!, [...actions, boundingShape(tool, color, dragStart, pt)]);
+            } else if (tool === 'arrow' && dragStart) {
+              overlayCtx!.clearRect(0, 0, overlayCanvas!.width, overlayCanvas!.height);
+              drawActions(overlayCtx!, [...actions, { tool: 'arrow', color, x1: dragStart.x, y1: dragStart.y, x2: pt.x, y2: pt.y }]);
             } else if (tool === 'text' && dragStart) {
               // Dashed placement guide only — the box itself is never part of
               // the rendered output, so this preview isn't run through drawActions.
@@ -246,6 +250,14 @@ const TiptapDynamic = dynamic(
             } else if ((tool === 'rect' || tool === 'circle') && dragStart) {
               const shape = boundingShape(tool, color, dragStart, pt);
               if (shape.w > 2 && shape.h > 2) actions.push(shape);
+              dragStart = null;
+              redrawOverlay();
+            } else if (tool === 'arrow' && dragStart) {
+              const dx = pt.x - dragStart.x;
+              const dy = pt.y - dragStart.y;
+              if (Math.hypot(dx, dy) > 6) {
+                actions.push({ tool: 'arrow', color, x1: dragStart.x, y1: dragStart.y, x2: pt.x, y2: pt.y });
+              }
               dragStart = null;
               redrawOverlay();
             } else if (tool === 'text' && dragStart) {
@@ -406,6 +418,7 @@ const TiptapDynamic = dynamic(
               { value: 'highlighter', icon: ICONS.highlighter, label: 'Highlighter' },
               { value: 'rect', icon: ICONS.rect, label: 'Rectangle' },
               { value: 'circle', icon: ICONS.circle, label: 'Circle' },
+              { value: 'arrow', icon: ICONS.arrow, label: 'Arrow' },
               { value: 'text', icon: ICONS.text, label: 'Text' },
             ];
             for (const t of tools) {

@@ -2,7 +2,7 @@
 // ResizableImage NodeView. Plain, framework-agnostic canvas code (no React) since
 // the NodeView itself is built with vanilla DOM.
 
-export type Tool = 'pen' | 'highlighter' | 'rect' | 'circle' | 'text';
+export type Tool = 'pen' | 'highlighter' | 'rect' | 'circle' | 'arrow' | 'text';
 
 export interface Point {
   x: number;
@@ -36,7 +36,19 @@ export interface TextAction {
   text: string;
 }
 
-export type Action = Stroke | Shape | TextAction;
+// Drag start -> end, rendered as a line with a triangular head at (x2, y2) —
+// the head scales with the drag length (capped) so a longer drag reads as a
+// bigger arrow, per the ask.
+export interface ArrowAction {
+  tool: 'arrow';
+  color: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+export type Action = Stroke | Shape | ArrowAction | TextAction;
 
 // Font size is in the overlay/display canvas's own coordinate space — it scales
 // up along with everything else when the final image is composited at native
@@ -78,6 +90,28 @@ export function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: 
     lines.push(current);
   }
   return lines;
+}
+
+function drawArrow(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, color: string) {
+  const length = Math.hypot(x2 - x1, y2 - y1);
+  const headLength = Math.min(18, Math.max(8, length * 0.4));
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+
+  ctx.strokeStyle = color;
+  ctx.lineCap = 'round';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - headLength * Math.cos(angle - Math.PI / 6), y2 - headLength * Math.sin(angle - Math.PI / 6));
+  ctx.lineTo(x2 - headLength * Math.cos(angle + Math.PI / 6), y2 - headLength * Math.sin(angle + Math.PI / 6));
+  ctx.closePath();
+  ctx.fill();
 }
 
 // Draws the full action list onto a canvas context — used both for the live
@@ -131,6 +165,8 @@ export function drawActions(ctx: CanvasRenderingContext2D, actions: Action[]) {
       ctx.strokeStyle = action.color;
       ctx.lineWidth = 3;
       ctx.stroke();
+    } else if (action.tool === 'arrow') {
+      drawArrow(ctx, action.x1, action.y1, action.x2, action.y2, action.color);
     } else {
       // text — only the text itself is rendered; the drag-box was purely for
       // sizing/positioning and leaves no border or fill of its own.
