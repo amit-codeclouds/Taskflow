@@ -23,7 +23,9 @@ export function useAuth(): AuthUser {
   }
 
   const name = data.name ?? '';
-  const workspace = data.workspaces?.[0];
+  // Prefer the workspace the user owns — `workspaces[]` order isn't guaranteed,
+  // so picking index 0 could land on a workspace they were merely invited into.
+  const workspace = data.workspaces?.find((w) => w.role === 'owner') ?? data.workspaces?.[0];
   return {
     id: data.id,
     name,
