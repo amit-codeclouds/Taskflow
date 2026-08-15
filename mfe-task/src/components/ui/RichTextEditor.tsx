@@ -8,6 +8,7 @@ import {
   List, ListOrdered, Indent, Outdent, Link2, Quote, Code as CodeIcon, ImagePlus, Undo2, Redo2, X, ChevronDown,
 } from 'lucide-react';
 import { ANNOTATION_COLORS, ANNOTATION_FONT_SIZE, boundingBox, boundingShape, drawActions, type Action, type Stroke, type Tool } from '@/lib/imageAnnotation';
+import { openImageLightbox } from '@/lib/imageLightbox';
 
 interface RichTextEditorProps {
   value: string;
@@ -178,6 +179,7 @@ const TiptapDynamic = dynamic(
             clear: '<path d="M2.5 3.5h9M5 3.5v-1a1 1 0 011-1h2a1 1 0 011 1v1M4 3.5v8a1 1 0 001 1h4a1 1 0 001-1v-8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>',
             check: '<path d="M2.5 7.5l3 3 6-6.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
             x: '<path d="M2.5 2.5l9 9M11.5 2.5l-9 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>',
+            expand: '<path d="M2 5V2h3M9 2h3v3M12 9v3H9M5 12H2V9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>',
           };
 
           let drawing = false;
@@ -389,6 +391,10 @@ const TiptapDynamic = dynamic(
             toolbar.innerHTML = '';
 
             if (!drawing) {
+              const expandBtn = makeIconButton(ICONS.expand, 'View full size');
+              expandBtn.addEventListener('click', (e) => { e.stopPropagation(); openImageLightbox(img.src, img.alt); });
+              toolbar.appendChild(expandBtn);
+
               const annotateBtn = makeIconButton(ICONS.pen, 'Annotate');
               annotateBtn.addEventListener('click', (e) => { e.stopPropagation(); enterDrawMode(); });
               toolbar.appendChild(annotateBtn);

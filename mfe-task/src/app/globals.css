@@ -165,7 +165,7 @@ html { scroll-behavior: smooth; }
   margin: 10px 0;
 }
 .task-description-content pre code { background: transparent; padding: 0; }
-.task-description-content img { max-width: 100%; border-radius: 6px; margin: 8px 0; }
+.task-description-content img { max-width: 100%; border-radius: 6px; margin: 8px 0; cursor: zoom-in; }
 .task-description-content figure.image { margin: 12px 0; text-align: center; }
 .task-description-content figure.image img { display: inline-block; max-height: 400px; object-fit: contain; }
 .task-description-content figcaption { font-size: 12px; color: var(--color-text-300); margin-top: 4px; }
@@ -365,6 +365,46 @@ html { scroll-behavior: smooth; }
   line-height: 1.25;
   outline: none;
 }
+
+/* ── Full-screen image viewer — see lib/imageLightbox.ts. Used both by the
+   editor's per-image toolbar (Expand button) and the read-only task detail
+   page's description images (click-to-enlarge, no edit affordance there). ── */
+.tf-lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: rgba(0, 0, 0, 0.85);
+  animation: tf-lightbox-fade-in 0.15s ease-out;
+}
+.tf-lightbox-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+.tf-lightbox-close {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-800);
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-100);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.tf-lightbox-close:hover { background: var(--color-bg-600); }
+@keyframes tf-lightbox-fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* ── Placeholder ── */
 .tf-editor-content p.is-editor-empty:first-child::before {
