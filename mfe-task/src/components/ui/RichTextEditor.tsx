@@ -7,6 +7,8 @@ import {
   Bold, Italic, Underline as UnderlineIcon, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   List, ListOrdered, Indent, Outdent, Link2, Quote, Code as CodeIcon, ImagePlus, Undo2, Redo2, X, ChevronDown,
 } from 'lucide-react';
+import { ANNOTATION_COLORS, ANNOTATION_FONT_SIZE, boundingBox, boundingShape, drawActions, type Action, type Stroke, type Tool } from '@/lib/imageAnnotation';
+import { openImageLightbox } from '@/lib/imageLightbox';
 
 interface RichTextEditorProps {
   value: string;
@@ -114,7 +116,18 @@ const TiptapDynamic = dynamic(
           handle.className = 'tf-image-resize-handle';
           handle.contentEditable = 'false';
 
+          // Small overlay toolbar (hover/selected, like the resize handle) — its
+          // "annotate" button opens an in-place pen/highlighter/shape overlay
+          // directly on this image, at wherever it's already rendered on the
+          // page. No separate modal: keeps quality (the final composite is
+          // rendered at the image's native resolution, not the on-page display
+          // size) and edits happen exactly where the image already lives.
+          const toolbar = document.createElement('div');
+          toolbar.className = 'tf-image-toolbar';
+          toolbar.contentEditable = 'false';
+
           imgBox.appendChild(img);
+          imgBox.appendChild(toolbar);
           imgBox.appendChild(handle);
           wrapper.appendChild(imgBox);
 
@@ -155,6 +168,306 @@ const TiptapDynamic = dynamic(
             document.addEventListener('pointerup', onPointerUp, { once: true });
           });
 
+          // ── Inline annotate overlay ──────────────────────────────────────
+          const ICONS = {
+            pen: '<path d="M9.5 1.5a1.6 1.6 0 012.3 2.3L4 11.5l-3 .5.5-3 8-7.5z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>',
+            highlighter: '<path d="M2 12h10M4 9l4-4 3 3-4 4H4V9z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>',
+            rect: '<rect x="2" y="3" width="10" height="8" rx="1" stroke="currentColor" stroke-width="1.3"/>',
+            circle: '<circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.3"/>',
+            arrow: '<path d="M2 12L12 2M12 2H6M12 2V8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>',
+            text: '<text x="7" y="10.5" font-size="10" font-weight="700" fill="currentColor" text-anchor="middle" font-family="system-ui, sans-serif">T</text>',
+            undo: '<path d="M3 7a4.5 4.5 0 118 3.2M3 7V3M3 7h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>',
+            clear: '<path d="M2.5 3.5h9M5 3.5v-1a1 1 0 011-1h2a1 1 0 011 1v1M4 3.5v8a1 1 0 001 1h4a1 1 0 001-1v-8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>',
+            check: '<path d="M2.5 7.5l3 3 6-6.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+            x: '<path d="M2.5 2.5l9 9M11.5 2.5l-9 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>',
+            expand: '<path d="M2 5V2h3M9 2h3v3M12 9v3H9M5 12H2V9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>',
+          };
+
+          let drawing = false;
+          let overlayCanvas: HTMLCanvasElement | null = null;
+          let overlayCtx: CanvasRenderingContext2D | null = null;
+          let tool: Tool = 'highlighter';
+          let color = ANNOTATION_COLORS[0];
+          let actions: Action[] = [];
+          let currentStroke: Stroke | null = null;
+          let dragStart: { x: number; y: number } | null = null;
+          let activeTextEditor: HTMLTextAreaElement | null = null;
+
+          function redrawOverlay() {
+            if (!overlayCtx || !overlayCanvas) return;
+            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            drawActions(overlayCtx, currentStroke ? [...actions, currentStroke] : actions);
+          }
+
+          function toOverlayPoint(e: PointerEvent) {
+            const rect = overlayCanvas!.getBoundingClientRect();
+            return {
+              x: ((e.clientX - rect.left) / rect.width) * overlayCanvas!.width,
+              y: ((e.clientY - rect.top) / rect.height) * overlayCanvas!.height,
+            };
+          }
+
+          function onOverlayPointerDown(e: PointerEvent) {
+            e.preventDefault();
+            overlayCanvas!.setPointerCapture(e.pointerId);
+            const pt = toOverlayPoint(e);
+            if (tool === 'pen' || tool === 'highlighter') currentStroke = { tool, color, points: [pt] };
+            else dragStart = pt; // rect / circle / arrow / text all drag from a start point
+          }
+
+          function onOverlayPointerMove(e: PointerEvent) {
+            const pt = toOverlayPoint(e);
+            if ((tool === 'pen' || tool === 'highlighter') && currentStroke) {
+              currentStroke.points.push(pt);
+              redrawOverlay();
+            } else if ((tool === 'rect' || tool === 'circle') && dragStart) {
+              overlayCtx!.clearRect(0, 0, overlayCanvas!.width, overlayCanvas!.height);
+              drawActions(overlayCtx!, [...actions, boundingShape(tool, color, dragStart, pt)]);
+            } else if (tool === 'arrow' && dragStart) {
+              overlayCtx!.clearRect(0, 0, overlayCanvas!.width, overlayCanvas!.height);
+              drawActions(overlayCtx!, [...actions, { tool: 'arrow', color, x1: dragStart.x, y1: dragStart.y, x2: pt.x, y2: pt.y }]);
+            } else if (tool === 'text' && dragStart) {
+              // Dashed placement guide only — the box itself is never part of
+              // the rendered output, so this preview isn't run through drawActions.
+              overlayCtx!.clearRect(0, 0, overlayCanvas!.width, overlayCanvas!.height);
+              drawActions(overlayCtx!, actions);
+              const box = boundingBox(dragStart, pt);
+              overlayCtx!.save();
+              overlayCtx!.setLineDash([4, 3]);
+              overlayCtx!.strokeStyle = color;
+              overlayCtx!.lineWidth = 1;
+              overlayCtx!.strokeRect(box.x, box.y, box.w, box.h);
+              overlayCtx!.restore();
+            }
+          }
+
+          function onOverlayPointerUp(e: PointerEvent) {
+            const pt = toOverlayPoint(e);
+            if ((tool === 'pen' || tool === 'highlighter') && currentStroke) {
+              actions.push(currentStroke);
+              currentStroke = null;
+              redrawOverlay();
+            } else if ((tool === 'rect' || tool === 'circle') && dragStart) {
+              const shape = boundingShape(tool, color, dragStart, pt);
+              if (shape.w > 2 && shape.h > 2) actions.push(shape);
+              dragStart = null;
+              redrawOverlay();
+            } else if (tool === 'arrow' && dragStart) {
+              const dx = pt.x - dragStart.x;
+              const dy = pt.y - dragStart.y;
+              if (Math.hypot(dx, dy) > 6) {
+                actions.push({ tool: 'arrow', color, x1: dragStart.x, y1: dragStart.y, x2: pt.x, y2: pt.y });
+              }
+              dragStart = null;
+              redrawOverlay();
+            } else if (tool === 'text' && dragStart) {
+              const box = boundingBox(dragStart, pt);
+              dragStart = null;
+              if (box.w > 20 && box.h > 16) startTextBox(box.x, box.y, box.w, box.h);
+              else redrawOverlay();
+            }
+          }
+
+          // Draw the box first (like other editors), then type into it — only
+          // the text itself ends up rendered; the box was purely for sizing
+          // and placement, matching the currently selected color.
+          function startTextBox(x: number, y: number, w: number, h: number) {
+            const rect = overlayCanvas!.getBoundingClientRect();
+            const scaleX = rect.width / overlayCanvas!.width;
+            const scaleY = rect.height / overlayCanvas!.height;
+
+            const textarea = document.createElement('textarea');
+            textarea.className = 'tf-image-textarea';
+            textarea.style.left = `${x * scaleX}px`;
+            textarea.style.top = `${y * scaleY}px`;
+            textarea.style.width = `${w * scaleX}px`;
+            textarea.style.height = `${h * scaleY}px`;
+            textarea.style.color = color;
+            textarea.style.fontSize = `${ANNOTATION_FONT_SIZE * scaleY}px`;
+            imgBox.appendChild(textarea);
+            activeTextEditor = textarea;
+
+            // ProseMirror's own pointer/mousedown handling on the contentEditable
+            // root can otherwise steal focus back before the browser finishes
+            // focusing this field — stop it from ever seeing these events.
+            textarea.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+            textarea.addEventListener('mousedown', (ev) => ev.stopPropagation());
+            textarea.focus();
+
+            let done = false;
+            function commit() {
+              if (done) return;
+              done = true;
+              const text = textarea.value.trim();
+              textarea.remove();
+              activeTextEditor = null;
+              if (text) {
+                actions.push({ tool: 'text', color, x, y, w, h, text });
+              }
+              redrawOverlay();
+            }
+            function cancelInput() {
+              if (done) return;
+              done = true;
+              textarea.remove();
+              activeTextEditor = null;
+              redrawOverlay();
+            }
+
+            textarea.addEventListener('keydown', (ev) => {
+              ev.stopPropagation();
+              if (ev.key === 'Escape') { ev.preventDefault(); cancelInput(); }
+            });
+            textarea.addEventListener('blur', commit);
+          }
+
+          function onDocPointerDown(e: PointerEvent) {
+            if (drawing && !imgBox.contains(e.target as Node)) exitDrawMode();
+          }
+
+          function enterDrawMode() {
+            if (drawing) return;
+            drawing = true;
+            actions = [];
+            currentStroke = null;
+            dragStart = null;
+            imgBox.classList.add('tf-drawing');
+
+            overlayCanvas = document.createElement('canvas');
+            overlayCanvas.className = 'tf-image-annotate-canvas';
+            overlayCanvas.width = img.clientWidth;
+            overlayCanvas.height = img.clientHeight;
+            overlayCtx = overlayCanvas.getContext('2d');
+            overlayCanvas.addEventListener('pointerdown', onOverlayPointerDown);
+            overlayCanvas.addEventListener('pointermove', onOverlayPointerMove);
+            overlayCanvas.addEventListener('pointerup', onOverlayPointerUp);
+            imgBox.insertBefore(overlayCanvas, toolbar);
+
+            renderToolbar();
+            document.addEventListener('pointerdown', onDocPointerDown, true);
+          }
+
+          function exitDrawMode() {
+            drawing = false;
+            imgBox.classList.remove('tf-drawing');
+            document.removeEventListener('pointerdown', onDocPointerDown, true);
+            if (overlayCanvas) {
+              overlayCanvas.removeEventListener('pointerdown', onOverlayPointerDown);
+              overlayCanvas.removeEventListener('pointermove', onOverlayPointerMove);
+              overlayCanvas.removeEventListener('pointerup', onOverlayPointerUp);
+              overlayCanvas.remove();
+            }
+            overlayCanvas = null;
+            overlayCtx = null;
+            actions = [];
+            renderToolbar();
+          }
+
+          // Composites the base image + all actions at the image's NATIVE
+          // resolution (not the capped on-page display size the overlay was
+          // drawn at) — this is what avoids the blur/quality-loss bug: strokes
+          // are recorded in overlay-canvas space and scaled up at export time.
+          function applyAnnotation() {
+            if (!overlayCanvas) return;
+            const natural = document.createElement('canvas');
+            natural.width = img.naturalWidth || overlayCanvas.width;
+            natural.height = img.naturalHeight || overlayCanvas.height;
+            const ctx = natural.getContext('2d');
+            if (!ctx) return;
+            ctx.drawImage(img, 0, 0, natural.width, natural.height);
+            ctx.save();
+            ctx.scale(natural.width / overlayCanvas.width, natural.height / overlayCanvas.height);
+            drawActions(ctx, actions);
+            ctx.restore();
+
+            const dataUrl = natural.toDataURL('image/png');
+            const pos = typeof getPos === 'function' ? getPos() : null;
+            if (pos !== null && pos !== undefined) {
+              editor.view.dispatch(
+                editor.view.state.tr.setNodeMarkup(pos, undefined, { ...currentNode.attrs, src: dataUrl })
+              );
+            }
+            exitDrawMode();
+          }
+
+          function makeIconButton(iconPath: string, label: string, active = false): HTMLButtonElement {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `tf-image-toolbar-btn${active ? ' tf-image-toolbar-btn--active' : ''}`;
+            btn.setAttribute('data-tooltip', label);
+            btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 14 14" fill="none">${iconPath}</svg>`;
+            return btn;
+          }
+
+          function renderToolbar() {
+            toolbar.innerHTML = '';
+
+            if (!drawing) {
+              const expandBtn = makeIconButton(ICONS.expand, 'View full size');
+              expandBtn.addEventListener('click', (e) => { e.stopPropagation(); openImageLightbox(img.src, img.alt); });
+              toolbar.appendChild(expandBtn);
+
+              const annotateBtn = makeIconButton(ICONS.pen, 'Annotate');
+              annotateBtn.addEventListener('click', (e) => { e.stopPropagation(); enterDrawMode(); });
+              toolbar.appendChild(annotateBtn);
+              return;
+            }
+
+            const tools: { value: Tool; icon: string; label: string }[] = [
+              { value: 'pen', icon: ICONS.pen, label: 'Pen' },
+              { value: 'highlighter', icon: ICONS.highlighter, label: 'Highlighter' },
+              { value: 'rect', icon: ICONS.rect, label: 'Rectangle' },
+              { value: 'circle', icon: ICONS.circle, label: 'Circle' },
+              { value: 'arrow', icon: ICONS.arrow, label: 'Arrow' },
+              { value: 'text', icon: ICONS.text, label: 'Text' },
+            ];
+            for (const t of tools) {
+              const btn = makeIconButton(t.icon, t.label, tool === t.value);
+              btn.addEventListener('click', (e) => { e.stopPropagation(); tool = t.value; renderToolbar(); });
+              toolbar.appendChild(btn);
+            }
+
+            const sep1 = document.createElement('div');
+            sep1.className = 'tf-image-toolbar-sep';
+            toolbar.appendChild(sep1);
+
+            for (const c of ANNOTATION_COLORS) {
+              const dot = document.createElement('button');
+              dot.type = 'button';
+              dot.className = `tf-image-color-dot${color === c ? ' tf-image-color-dot--active' : ''}`;
+              dot.style.background = c;
+              dot.setAttribute('data-tooltip', 'Color');
+              dot.addEventListener('click', (e) => { e.stopPropagation(); color = c; renderToolbar(); });
+              toolbar.appendChild(dot);
+            }
+
+            const sep2 = document.createElement('div');
+            sep2.className = 'tf-image-toolbar-sep';
+            toolbar.appendChild(sep2);
+
+            const undoBtn = makeIconButton(ICONS.undo, 'Undo');
+            undoBtn.disabled = actions.length === 0;
+            undoBtn.addEventListener('click', (e) => { e.stopPropagation(); actions.pop(); redrawOverlay(); });
+            toolbar.appendChild(undoBtn);
+
+            const clearBtn = makeIconButton(ICONS.clear, 'Clear all');
+            clearBtn.disabled = actions.length === 0;
+            clearBtn.addEventListener('click', (e) => { e.stopPropagation(); actions = []; redrawOverlay(); });
+            toolbar.appendChild(clearBtn);
+
+            const cancelBtn = makeIconButton(ICONS.x, 'Cancel');
+            cancelBtn.className += ' tf-image-toolbar-btn--danger';
+            cancelBtn.addEventListener('click', (e) => { e.stopPropagation(); exitDrawMode(); });
+            toolbar.appendChild(cancelBtn);
+
+            const applyBtn = makeIconButton(ICONS.check, 'Apply changes');
+            applyBtn.className += ' tf-image-toolbar-btn--primary';
+            applyBtn.addEventListener('click', (e) => { e.stopPropagation(); applyAnnotation(); });
+            toolbar.appendChild(applyBtn);
+          }
+
+          renderToolbar();
+
           return {
             dom: wrapper,
             update(updatedNode: any) {
@@ -164,6 +477,36 @@ const TiptapDynamic = dynamic(
               img.alt = updatedNode.attrs.alt ?? '';
               applyAttrs(updatedNode.attrs);
               return true;
+            },
+            // `image` is a leaf/atom node — ProseMirror doesn't expect it to
+            // have any editable DOM content of its own. Without these two
+            // hooks, focusing and typing into the text tool's <textarea>
+            // (which lives inside this node's DOM) made ProseMirror think the
+            // node's content had been tampered with from outside and re-render
+            // this node view from scratch — tearing down and recreating the
+            // <img> (which has to reload), which showed up as the whole image
+            // flashing/vanishing on every keystroke. Both hooks scope to just
+            // our own interactive UI (toolbar, drawing overlay, text input) so
+            // clicking the image itself still lets ProseMirror select the node
+            // normally (that's what drives the align buttons + selected outline).
+            stopEvent(event: Event) {
+              const target = event.target as Node;
+              if (toolbar.contains(target)) return true;
+              if (overlayCanvas && overlayCanvas.contains(target)) return true;
+              if (activeTextEditor && activeTextEditor.contains(target)) return true;
+              return false;
+            },
+            ignoreMutation() {
+              // Everything inside this node view (img resize/align styles, the
+              // drawing overlay, the toolbar, the text input) is mutated only
+              // by our own code above, never by ProseMirror or by the user
+              // typing directly into contenteditable content — a leaf/atom
+              // node like `image` has no editable content of its own, so it's
+              // always safe to tell ProseMirror to leave this subtree alone.
+              return true;
+            },
+            destroy() {
+              document.removeEventListener('pointerdown', onDocPointerDown, true);
             },
           };
         };

@@ -167,6 +167,8 @@ Sets `taskflow_session` (httpOnly) + `taskflow_name` + `taskflow_email` + `taskf
 ```
 `workspaces[]` and `teams[]` are the authoritative membership arrays on the User. All workspace and team access decisions are derived from these two arrays.
 
+**Active workspace selection**: a user can belong to more than one workspace (their own, plus any they've been invited into — see `WorkspaceInvitation` in `models.md`). The frontend must not assume `workspaces[0]` is the user's own workspace — array order is backend-defined, not role-based. `useAuth()` (Shell, Task MFE) and Board MFE's `AuthService` all resolve the active workspace as `workspaces.find(w => w.role === 'owner') ?? workspaces[0]` — i.e. prefer the workspace this user owns, falling back to the first membership only if they don't own one. There is still no UI to switch to a *non*-owned workspace if a user belongs to several and doesn't own any of them — that's an open gap, not just an ordering bug.
+
 ### `GET /api/auth/me/stats`
 Aggregate stats for the current authenticated user.
 **Response `200`**
@@ -1025,7 +1027,7 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | SettingsScreen — single centralized "Save settings" button (one Formik form spanning both the Notifications and Task Archiving sections) | `PUT /api/users/:id/settings` via `useUpdateUserSettings()` → `usersService.updateSettings()`, submitting all 6 notification booleans + `daysToArchieve` in one request, `:id` = `userId` from the settings read response |
 | `/chat` — ChatPage, full-bleed `<iframe>` embedding the external chatbot app (`NEXT_PUBLIC_CHATBOT_URL`, default `https://taskflow-chatbot-six.vercel.app`) | _no backend dependency — third-party origin owns its own API calls; nothing proxied through our gateway_ |
 | Sidebar — "Chat" link (Workspace group) → `/chat` | (navigation only) |
-| Sidebar — workspace indicator (workspace name) | `GET /api/auth/me` (`workspaces[0].name`) |
+| Sidebar — workspace indicator (workspace name) | `GET /api/auth/me` (active workspace's `.name` — see "Active workspace selection" above) |
 | Sidebar — user card (name, initials) | `GET /api/auth/me` |
 | Topbar — bell icon | _commented out — not yet wired_ |
 | Topbar — avatar | `GET /api/auth/me` |
@@ -1067,7 +1069,7 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | TaskDetailScreen — CommentComposer submit | `POST /api/comments?taskId=:id` |
 | TaskDetailScreen — CommentItem edit (own comment only) | `PUT /api/comments/:commentId` |
 | TaskDetailScreen — CommentItem delete (own comment only, ConfirmProvider modal) | `DELETE /api/comments/:commentId` |
-| Sidebar / Topbar — user card + workspace indicator | `GET /api/auth/me` (`workspaces[0].name` for the workspace indicator) |
+| Sidebar / Topbar — user card + workspace indicator | `GET /api/auth/me` (active workspace's `.name` for the workspace indicator — see "Active workspace selection" above) |
 | TeamTaskBoardScreen (`/tasks/listview?teamid=`) — status tabs + per-tab task list | `GET /api/tasks/team/:teamId/board` via `boardService.getTeamBoard()`; tabs come from `columns[]`, no separate board-statuses call |
 | TeamTaskBoardScreen — task row Edit/Delete visibility | client-side only — `TaskRow` shows Edit + Delete for a task only when the signed-in user is one of its `assignees`; everyone else gets View only (no API) |
 | TeamTaskBoardScreen — Archived tab (with tooltip explaining its purpose) | `GET /api/migrate/task/archived?teamId=&page=&limit=&search=` via `archivedTasksService.list()`; rows render read-only (no view/edit/delete — no archived-task detail page exists yet in Task MFE) |
@@ -1098,7 +1100,7 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | Archived Tasks table — "View Task" eye icon per row | navigates to `/archived-task/:taskId` (Angular router, same zone) → `ArchivedTaskdetailsComponent` |
 | Archived Task Details (ArchivedTaskdetailsComponent) — number, title, priority, label, progress, dates, assignees, description | `GET /api/migrate/task/archived/:taskId` via `TeamService.getArchivedTask()`. Description rendered from CKEditor HTML via `[innerHTML]` |
 | Task card "↗" open icon | navigates to `/tasks/:id` |
-| Sidebar — user card + workspace indicator | `GET /api/auth/me` (`workspaces[0].name` for the workspace indicator) |
+| Sidebar — user card + workspace indicator | `GET /api/auth/me` (active workspace's `.name` for the workspace indicator — see "Active workspace selection" above) |
 | Topbar — notification bell | `GET /api/notifications` |
 
 > **CORS / same-origin proxy**: the Board MFE calls all backend endpoints as relative `/api/*`
