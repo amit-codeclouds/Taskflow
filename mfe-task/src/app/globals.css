@@ -234,10 +234,15 @@ html { scroll-behavior: smooth; }
 }
 /* `imgBox` shrink-wraps the image — this is what actually carries the align
    margins, and what the resize handle is anchored to, so the handle always
-   sits at the image's own corner regardless of alignment. */
+   sits at the image's own corner regardless of alignment. Must be a block box
+   for `margin-left/right: auto` to actually center/right-align it — on
+   `inline-block` those auto margins resolve to 0 and silently do nothing.
+   `width: fit-content` keeps the shrink-to-content sizing inline-block used
+   to provide. */
 .tf-image-box {
   position: relative;
-  display: inline-block;
+  display: block;
+  width: fit-content;
   max-width: 100%;
 }
 .tf-image-resize-handle {
@@ -260,6 +265,105 @@ html { scroll-behavior: smooth; }
 .tf-image-wrapper.ProseMirror-selectednode img {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
+}
+
+/* ── Inline annotate overlay — hover/selected reveals a small "Annotate"
+   trigger; clicking it expands the same toolbar into pen/highlighter/shape
+   tools + colors + undo/clear/apply, drawn directly over the image at its
+   on-page size. See ResizableImage NodeView. ────────────────────────────── */
+.tf-image-toolbar {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: var(--color-bg-800);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  box-shadow: var(--shadow-elevated);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+.tf-image-box:hover .tf-image-toolbar,
+.tf-image-wrapper.ProseMirror-selectednode .tf-image-toolbar,
+.tf-image-box.tf-drawing .tf-image-toolbar {
+  opacity: 1;
+  pointer-events: auto;
+}
+.tf-image-box.tf-drawing .tf-image-resize-handle {
+  display: none;
+}
+.tf-image-box.tf-drawing {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.tf-image-toolbar-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-200);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.tf-image-toolbar-btn:hover:not(:disabled) { background: var(--color-bg-600); color: var(--color-text-100); }
+.tf-image-toolbar-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.tf-image-toolbar-btn--active { background: var(--color-accent-bg); color: var(--color-accent); }
+.tf-image-toolbar-btn--primary { background: var(--color-accent); color: #fff; }
+.tf-image-toolbar-btn--primary:hover:not(:disabled) { background: var(--color-accent-hover); color: #fff; }
+.tf-image-toolbar-btn--danger:hover:not(:disabled) { background: var(--color-status-red); color: #fff; }
+.tf-image-toolbar-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--color-border-subtle);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+.tf-image-color-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.1s, border-color 0.1s;
+}
+.tf-image-color-dot--active {
+  border-color: var(--color-text-100);
+  transform: scale(1.2);
+}
+.tf-image-annotate-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  cursor: crosshair;
+  touch-action: none;
+  border-radius: 6px;
+}
+/* Text tool: box is dragged out first (like other editors), then typed into —
+   the dashed border/background are editing aids only; neither is part of the
+   final render, which draws only the wrapped, colored text (see drawActions).
+   Text color matches the currently selected swatch, set inline via style.color. */
+.tf-image-textarea {
+  position: absolute;
+  z-index: 6;
+  resize: none;
+  background: color-mix(in srgb, var(--color-bg-900) 70%, transparent);
+  border: 1px dashed var(--color-accent);
+  border-radius: 3px;
+  padding: 2px 4px;
+  font-family: Inter, system-ui, sans-serif;
+  font-weight: 600;
+  line-height: 1.25;
+  outline: none;
 }
 
 /* ── Placeholder ── */
