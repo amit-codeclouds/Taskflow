@@ -9,3 +9,9 @@ export interface Invitation {
   expiresAt: string;      // ISO 8601
   createdAt: string;      // ISO 8601
 }
+
+// Body for accept / decline — POST /people/invitations/accept | /decline
+export interface InviteActionPayload {
+  workspaceId: string;
+  userId: string;
+}

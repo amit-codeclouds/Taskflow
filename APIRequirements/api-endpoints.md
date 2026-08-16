@@ -583,6 +583,8 @@ Drag-drop move. Replaces the old `PATCH /api/board/move`.
 | GET | `/api/people` | Auth | List all workspace members (active + pending) |
 | GET | `/api/people/stats` | Auth | Aggregate counts (total, active, pending, teams) |
 | GET | `/api/people/invitations?userId=:userId` | Auth | Invitations addressed to a user. Consumed by `inviteService.listByUser()` (Shell Invite screen). ✅ endpoint live (401 unauth) |
+| POST | `/api/people/invitations/accept` | Auth | Accept a workspace invitation. Body `{ workspaceId, userId }`. Consumed by `inviteService.accept()` (Invite screen Accept button) |
+| POST | `/api/people/invitations/decline` | Auth | Reject a workspace invitation. Body `{ workspaceId, userId }`. Consumed by `inviteService.decline()` (Invite screen Reject button) |
 | POST | `/api/people/invite` | Auth | Invite someone to the workspace by email |
 | PATCH | `/api/people/:userId` | Auth | Update member title / role |
 | DELETE | `/api/people/:userId` | Auth | Remove member from workspace (and all teams) |

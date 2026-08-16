@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { UserPlus } from 'lucide-react';
-import { useInvitations } from '@/lib/hooks/useInvitations';
+import { useInvitations, useAcceptInvite, useDeclineInvite } from '@/lib/hooks/useInvitations';
 import { useMe } from '@/lib/hooks/useMe';
 import type { Invitation } from '@/lib/types/invite.types';
 
@@ -19,20 +19,36 @@ export default function InviteScreen() {
   const { data: me } = useMe();
   const { data: invitations, isPending } = useInvitations(me?.id ?? '');
 
+  const accept = useAcceptInvite();
+  const decline = useDeclineInvite();
+
+  // Which invitation row is currently being acted on (accept or decline).
+  const [actingId, setActingId] = useState<string | null>(null);
+
   useEffect(() => {
     if (invitations) console.log('Invitation list response:', invitations);
   }, [invitations]);
 
-  // TODO: wire to the accept/reject endpoints once available.
   function handleAccept(inv: Invitation) {
-    console.log('Accept invitation:', inv);
+    if (!me?.id) return;
+    setActingId(inv.id);
+    accept.mutate(
+      { workspaceId: inv.workspaceId, userId: me.id },
+      { onSettled: () => setActingId(null) },
+    );
   }
   function handleReject(inv: Invitation) {
-    console.log('Reject invitation:', inv);
+    if (!me?.id) return;
+    setActingId(inv.id);
+    decline.mutate(
+      { workspaceId: inv.workspaceId, userId: me.id },
+      { onSettled: () => setActingId(null) },
+    );
   }
 
   const loading = isPending;
   const rows = invitations ?? [];
+  const busy = accept.isPending || decline.isPending;
 
   return (
     <div className="max-w-4xl mx-auto flex flex-col min-h-[calc(100vh-8rem)]">
@@ -83,16 +99,18 @@ export default function InviteScreen() {
                         <button
                           type="button"
                           onClick={() => handleAccept(inv)}
-                          className="h-8 px-3 rounded-lg text-xs font-medium text-white bg-accent hover:bg-accent-hover transition-colors"
+                          disabled={busy}
+                          className="h-8 px-3 rounded-lg text-xs font-medium text-white bg-accent hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Accept
+                          {actingId === inv.id && accept.isPending ? 'Accepting…' : 'Accept'}
                         </button>
                         <button
                           type="button"
                           onClick={() => handleReject(inv)}
-                          className="h-8 px-3 rounded-lg text-xs font-medium text-status-red bg-red-bg hover:opacity-90 transition-opacity"
+                          disabled={busy}
+                          className="h-8 px-3 rounded-lg text-xs font-medium text-status-red bg-red-bg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Reject
+                          {actingId === inv.id && decline.isPending ? 'Rejecting…' : 'Reject'}
                         </button>
                       </div>
                     </td>
