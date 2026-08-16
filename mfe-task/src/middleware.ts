@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/signup'];
-
 // Decode a JWT payload in the Edge runtime (no Buffer) — base64url → UTF-8 JSON.
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   const parts = token.split('.');
@@ -23,10 +21,9 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   }
 }
 
-// A token counts as valid unless we can positively prove it is expired.
-// Missing token → invalid. Present but not a decodable JWT (or no `exp`) → treated
-// as valid, so we never wrongly log out a user holding an opaque/non-JWT token.
-// Only a decodable token whose `exp` is in the past counts as logged out.
+// Valid unless we can positively prove the token is expired. Missing → invalid.
+// Present but not a decodable JWT (or no `exp`) → treated as valid, so a user
+// holding an opaque token is never wrongly logged out.
 function isTokenValid(token: string | undefined): boolean {
   if (!token) return false;
   const payload = decodeJwtPayload(token);
@@ -37,31 +34,33 @@ function isTokenValid(token: string | undefined): boolean {
 }
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
-
   const accessToken = request.cookies.get('taskflow_access_token')?.value;
   const refreshToken = request.cookies.get('taskflow_refresh_token')?.value;
 
   // Authenticated when the access token is still valid, OR a valid refresh token
-  // exists (the client's axios interceptor will silently refresh the access token).
-  // A lingering-but-expired access-token cookie no longer counts as logged in.
+  // exists (the client's axios interceptor will silently refresh it).
   const isAuthenticated = isTokenValid(accessToken) || isTokenValid(refreshToken);
 
-  // Already authenticated → don't let them see login/signup
-  if (isAuthenticated && isPublic) {
-    return NextResponse.redirect(new URL('/', request.url));
-  }
-
-  // Not authenticated → redirect any protected route to login
-  if (!isAuthenticated && !isPublic) {
-    return NextResponse.redirect(new URL('/login', request.url));
+  // Every route in this zone is protected — /login lives in the Shell zone, so an
+  // unauthenticated user is sent there (the Worker routes /login to the Shell).
+  //
+  // Emit the redirect with an explicit Location header rather than
+  // NextResponse.redirect(): with basePath '/tasks', the helper can prefix the
+  // basePath onto the target (→ /tasks/login), which this zone can't serve. The
+  // raw header is passed through untouched, so the browser goes to root /login.
+  if (!isAuthenticated) {
+    const loginUrl = new URL('/login', request.url);
+    return new NextResponse(null, {
+      status: 307,
+      headers: { Location: loginUrl.toString() },
+    });
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  // Include '/' explicitly so the zone's index route (/tasks) is guarded too —
+  // with basePath the regex matcher alone can miss it.
+  matcher: ['/', '/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };
