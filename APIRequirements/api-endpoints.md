@@ -582,6 +582,7 @@ Drag-drop move. Replaces the old `PATCH /api/board/move`.
 |---|---|---|---|
 | GET | `/api/people` | Auth | List all workspace members (active + pending) |
 | GET | `/api/people/stats` | Auth | Aggregate counts (total, active, pending, teams) |
+| GET | `/api/people/invitations?userId=:userId` | Auth | Invitations addressed to a user. Consumed by `inviteService.listByUser()` (Shell Invite screen). ✅ endpoint live (401 unauth) |
 | POST | `/api/people/invite` | Auth | Invite someone to the workspace by email |
 | PATCH | `/api/people/:userId` | Auth | Update member title / role |
 | DELETE | `/api/people/:userId` | Auth | Remove member from workspace (and all teams) |
@@ -646,6 +647,26 @@ page=1&limit=50
 ```
 Sends a workspace invitation email. Returns `409` if already an active member or has a pending invite.  
 The invited person appears in the People list with `status: "pending"` until they accept.
+
+### `GET /api/people/invitations`
+**Query params**: `userId=uuid` (required)
+**Response `200`** — invitations addressed to the user (envelope: `{ status, code, result }`).
+```json
+{
+  "result": [
+    {
+      "id": "757a1f4c-cace-47ca-80b7-321d8261c2f4",
+      "workspaceId": "2c6b8c4d-6ec8-4d45-9e79-2a09ada121a7",
+      "workspaceName": "Arkabrata Chandra's Workspace",
+      "invitedBy": "Arkabrata Chandra",
+      "email": "ramit4863@gmail.com",
+      "expiresAt": "2026-08-20T12:47:43.767358Z",
+      "createdAt": "2026-08-13T12:47:43.76738Z"
+    }
+  ]
+}
+```
+> Source: `shell/lib/types/invite.types.ts` (`Invitation`). `invitedBy` is the inviter's display name. Backs the Shell **Invite** screen (`/invite`, driven by the `wid`/`uid`/`event`/`action` link params).
 
 ---
 

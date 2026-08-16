@@ -24,4 +24,7 @@ export const queryKeys = {
   settings: {
     mine: () => ['settings', 'me'] as const,
   },
+  invitations: {
+    byUser: (userId: string) => ['invitations', 'user', userId] as const,
+  },
 } as const;

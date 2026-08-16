@@ -223,6 +223,23 @@ interface WorkspaceInvitation {
 }
 ```
 
+### Invitation (API response shape — `GET /api/people/invitations?userId=`)
+
+> The invitation as returned to the invitee (camelCase DTO). Confirmed against the
+> live payload. Source: `shell/lib/types/invite.types.ts` (`Invitation`).
+
+```ts
+interface Invitation {
+  id: string;
+  workspaceId: string;
+  workspaceName: string;
+  invitedBy: string;   // inviter's display name (e.g. "Arkabrata Chandra")
+  email: string;       // recipient email
+  expiresAt: string;   // ISO 8601
+  createdAt: string;   // ISO 8601
+}
+```
+
 ---
 
 ## Role

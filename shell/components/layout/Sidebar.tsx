@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Users, UserCircle2, Settings, KanbanSquare, User, ChevronRight, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, Users, UserCircle2, Settings, KanbanSquare, User, ChevronRight, MessageSquare, UserPlus } from 'lucide-react';
 import Skeleton from 'react-loading-skeleton';
 import Logo from '@/components/ui/Logo';
 import Avatar from '@/components/ui/Avatar';
@@ -18,6 +18,7 @@ const WORKSPACE_ITEMS: NavItem[] = [
 
 const WORKSPACE_TRAILING_ITEMS: NavItem[] = [
   { label: 'People', href: '/people', icon: <UserCircle2 size={16} strokeWidth={1.5} /> },
+  { label: 'Invite', href: '/invite', icon: <UserPlus size={16} strokeWidth={1.5} /> },
   { label: 'Chat', href: '/chat', icon: <MessageSquare size={16} strokeWidth={1.5} /> },
 ];
 
