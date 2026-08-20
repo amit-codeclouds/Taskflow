@@ -35,7 +35,7 @@ export class TeamService {
     // When the board is filtered by assignee, pass the selected user id(s) as a
     // single comma-separated `assigneeId` param (?assigneeId=222,333,555).
     const options = assigneeIds && assigneeIds.length
-      ? { params: { assigneeId: assigneeIds.join(',') } }
+      ? { params: { assigneeIds: assigneeIds.join(',') } }
       : undefined;
     return this.api
       .get<ApiResult<TeamBoard>>(`/api/tasks/team/${teamId}/board`, options)

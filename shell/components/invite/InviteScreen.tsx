@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { UserPlus } from 'lucide-react';
 import { useInvitations, useAcceptInvite, useDeclineInvite } from '@/lib/hooks/useInvitations';
 import { useMe } from '@/lib/hooks/useMe';
@@ -16,6 +17,7 @@ function formatDate(iso: string): string {
 export default function InviteScreen() {
   // Always load the logged-in user's invitations whenever the Invite tab opens
   // (the hook stays disabled until the user id is available).
+  const router = useRouter();
   const { data: me } = useMe();
   const { data: invitations, isPending } = useInvitations(me?.id ?? '');
 
@@ -34,7 +36,11 @@ export default function InviteScreen() {
     setActingId(inv.id);
     accept.mutate(
       { workspaceId: inv.workspaceId, userId: me.id },
-      { onSettled: () => setActingId(null) },
+      {
+        // On successful accept, go to that workspace's details page.
+        onSuccess: () => router.push(`/workspace/${inv.workspaceId}`),
+        onSettled: () => setActingId(null),
+      },
     );
   }
   function handleReject(inv: Invitation) {

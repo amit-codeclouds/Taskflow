@@ -672,6 +672,34 @@ The invited person appears in the People list with `status: "pending"` until the
 
 ---
 
+## Workspace Service  `/api/workspace`
+
+> Drives the **Shell** — Workspace Details screen (`shell/components/workspace/WorkspaceDetailsScreen.tsx`, route `/workspace/:id`).
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/workspace/:workspaceId/info` | Auth | Workspace details — owner, teams, members. Consumed by `workspaceService.info()`. ✅ endpoint live (401 unauth) |
+
+### `GET /api/workspace/:workspaceId/info`
+**Response `200`** — envelope `{ status, code, result }`.
+```json
+{
+  "result": {
+    "id": "53c912b0-7b07-434f-860c-3eecb765e116",
+    "name": "Ramit Roy's Workspace",
+    "ownerId": "4d3c04d0-54fb-44c8-a6b5-7ce574335f29",
+    "createdAt": "2026-08-10T04:50:40.044589Z",
+    "updatedAt": "2026-08-10T04:50:40.044715Z",
+    "owner": { "id": "uuid", "name": "Ramit Roy", "email": "ramit4863@gmail.com", "title": "Team Lead", "avatarUrl": "https://…" },
+    "teams": [ { "id": "uuid", "name": "Taskflow Team", "description": "", "color": "#E67E22" } ],
+    "members": [ { "id": "uuid", "name": "Atanu Chakraborty", "email": "…", "title": "Engineer", "avatarUrl": null } ]
+  }
+}
+```
+> Source: `shell/lib/types/workspace.types.ts` (`WorkspaceDetails`). `owner.avatarUrl` / `members[].avatarUrl` may be a URL, `null`, or `""`.
+
+---
+
 ## Team Service  `/api/teams`
 
 > Drives the **Shell** — Teams section.
@@ -1007,6 +1035,7 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | PeopleScreen — row "⋮" menu → "Cancel invite" (pending member) | `DELETE /api/people/:userId` |
 | SettingsScreen — Profile (name, title) read | `GET /api/auth/me` |
 | SettingsScreen — Profile save | `PATCH /api/users/:id` |
+| WorkspaceDetailsScreen (`/workspace/:id`) — owner, teams list, members list | `GET /api/workspace/:workspaceId/info` via `workspaceService.info()` |
 | SettingsScreen — Security section, "Change password" button | `POST /api/otp/generate` (`event: "changepassword"`) → OtpModal → `POST /api/otp/verify` → NewPasswordModal → `PUT /api/users/change/password` (`email` = current user's own email) |
 | SettingsScreen — Notifications section (6 toggles, split "Notifications for you" / "Notifications for your workspaces & teams") + Task Archiving section ("Archive after N days" field), read | `GET /api/auth/me/settings` via `useMySettings()` → `authService.meSettings()` |
 | SettingsScreen — single centralized "Save settings" button (one Formik form spanning both the Notifications and Task Archiving sections) | `PUT /api/users/:id/settings` via `useUpdateUserSettings()` → `usersService.updateSettings()`, submitting all 6 notification booleans + `daysToArchieve` in one request, `:id` = `userId` from the settings read response |

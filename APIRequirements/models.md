@@ -186,6 +186,31 @@ interface Workspace {
 
 > A workspace is auto-created for every new user. `name` is user-supplied at signup (step 2 of `SignupForm`, field `workspaceName`) and pre-filled with the default `"<name>'s Workspace"` — not server-generated. Multi-workspace support is a future scope — the table is already structured for it.
 
+### WorkspaceDetails (API response shape — `GET /api/workspace/:workspaceId/info`)
+
+> Aggregated view for the Workspace Details screen. Source: `shell/lib/types/workspace.types.ts`.
+
+```ts
+interface WorkspaceDetails {
+  id: string;
+  name: string;
+  ownerId: string;
+  createdAt: string;
+  updatedAt: string;
+  owner: WorkspacePerson;
+  teams: WorkspaceTeamSummary[];   // { id, name, description, color }
+  members: WorkspacePerson[];
+}
+
+interface WorkspacePerson {
+  id: string;
+  name: string;
+  email: string;
+  title: string;
+  avatarUrl?: string | null;       // URL, null, or "" 
+}
+```
+
 ---
 
 ## WorkspaceMember
