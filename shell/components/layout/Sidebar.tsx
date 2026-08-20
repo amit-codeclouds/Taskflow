@@ -18,7 +18,7 @@ const WORKSPACE_ITEMS: NavItem[] = [
 
 const WORKSPACE_TRAILING_ITEMS: NavItem[] = [
   { label: 'People', href: '/people', icon: <UserCircle2 size={16} strokeWidth={1.5} /> },
-  { label: 'Invite', href: '/invite', icon: <UserPlus size={16} strokeWidth={1.5} /> },
+  { label: 'Pending Invite', href: '/invite', icon: <UserPlus size={16} strokeWidth={1.5} /> },
   { label: 'Chat', href: '/chat', icon: <MessageSquare size={16} strokeWidth={1.5} /> },
 ];
 

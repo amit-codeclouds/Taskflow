@@ -1067,6 +1067,7 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | Topbar team-switcher dropdown (Board MFE only) | `GET /api/teams` |
 | Kanban columns + tasks (BoardComponent) | `GET /api/tasks/team/:teamId/board` via `TeamService.getTeamBoard()` — response mapped to columns/tasks in the component; no static data |
 | Column header status description tooltip (BoardComponent) | `GET /api/tasks/team/:teamId/board` — `columns[].description` shown on hover/focus of each status title (info icon). No extra request |
+| Board assignee filter (BoardComponent) — multi-select of workspace people | `GET /api/people` via `PeopleService.getPeople()` for the list; selecting user(s) refetches `GET /api/tasks/team/:teamId/board?assigneeId=<ids>` (comma-separated for multiple: `?assigneeId=222,333,555`) via `TeamService.getTeamBoard(teamId, assigneeIds)` |
 | Column "Load more" tasks | `GET /api/board/:teamId/status/:statusId/tasks?page&limit` |
 | "+ Add Status" modal submit (dashboard card → CreateStatusComponent) | `POST /api/board-statuses/create` via `TeamService.createStatus()` — body `{ name, description, teamId, isArchievable }`. `position` is **not** sent: the field was removed from the modal, so the server must assign the column order. ✅ confirmed live (401 unauth) |
 | Edit status (✎) modal submit | `PATCH /api/board/:teamId/statuses/:statusId` |

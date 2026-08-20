@@ -31,9 +31,14 @@ export class TeamService {
   // Called as a same-origin relative path (proxied to the backend), and ApiService
   // attaches the access token from the taskflow_access_token cookie as a
   // Authorization: Bearer header. `teamId` comes from the route URL.
-  getTeamBoard(teamId: string): Observable<TeamBoard> {
+  getTeamBoard(teamId: string, assigneeIds?: string[]): Observable<TeamBoard> {
+    // When the board is filtered by assignee, pass the selected user id(s) as a
+    // single comma-separated `assigneeId` param (?assigneeId=222,333,555).
+    const options = assigneeIds && assigneeIds.length
+      ? { params: { assigneeId: assigneeIds.join(',') } }
+      : undefined;
     return this.api
-      .get<ApiResult<TeamBoard>>(`/api/tasks/team/${teamId}/board`)
+      .get<ApiResult<TeamBoard>>(`/api/tasks/team/${teamId}/board`, options)
       .pipe(map((res) => res.result));
   }
 

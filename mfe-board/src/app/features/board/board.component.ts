@@ -12,11 +12,13 @@ import {
   ApiBoardColumn,
   ApiBoardTask,
   Column,
+  Person,
   Task,
   Team,
 } from '../../shared/interfaces/board.interface';
 import { BoardService } from '../../core/services/board/board.service';
 import { TeamService } from '../../core/services/team/team.service';
+import { PeopleService } from '../../core/services/people/people.service';
 import { ConfirmationModalComponent } from '../../shared/modal/confirmation-modal/confirmation-modal.component';
 
 // Palette used to colour columns by position (the API statuses carry no colour).
@@ -55,13 +57,20 @@ function initialsFromName(name?: string | null): string {
 export class BoardComponent implements OnInit {
   private boardService = inject(BoardService);
   private teamService = inject(TeamService);
+  private peopleService = inject(PeopleService);
 
   teams: Team[] = [];
   selectedTeam?: Team;
-  columns: Column[] = [];
+  columns: Column[] = [];              // master — all tasks for the team
+  displayColumns: Column[] = [];       // columns after the assignee filter is applied
   loading = true;      // teams / selected team resolving
   boardLoading = false; // board columns loading for the selected team
   dropdownOpen = false;
+
+  // ── Assignee filter ──
+  people: Person[] = [];
+  filterOpen = false;
+  readonly selectedUserIds = new Set<string>();
 
   // Skeleton placeholder layout: 3 columns with these task-card counts.
   readonly skeletonColumns = [[0, 1, 2], [0, 1], [0, 1, 2]];
@@ -73,6 +82,12 @@ export class BoardComponent implements OnInit {
   constructor(private route: ActivatedRoute, private router: Router) {}
 
   ngOnInit() {
+    // People power the assignee filter (independent of the board load).
+    this.peopleService.getPeople().subscribe({
+      next: (people) => (this.people = people),
+      error: () => (this.people = []),
+    });
+
     // Resolve the selected team from GET /api/teams (route param is a real UUID),
     // then load that team's board from GET /api/tasks/team/:teamId/board.
     combineLatest([this.boardService.getTeams(), this.route.paramMap]).subscribe({
@@ -95,13 +110,18 @@ export class BoardComponent implements OnInit {
   private loadBoard(teamId: string) {
     this.boardLoading = true;
     this.columns = [];
-    this.teamService.getTeamBoard(teamId).subscribe({
+    this.displayColumns = [];
+    // Server-side assignee filter: pass the selected user id(s) as `assigneeId`.
+    const assigneeIds = Array.from(this.selectedUserIds);
+    this.teamService.getTeamBoard(teamId, assigneeIds).subscribe({
       next: (board) => {
         this.columns = (board?.columns ?? []).map((c, i) => this.toColumn(c, i));
+        this.displayColumns = this.columns;
         this.boardLoading = false;
       },
       error: () => {
         this.columns = [];
+        this.displayColumns = [];
         this.boardLoading = false;
       },
     });
@@ -139,6 +159,7 @@ export class BoardComponent implements OnInit {
           avatarUrl: a.avatarUrl,
         }))
         .filter(a => a.initials || a.avatarUrl),
+      assigneeIds: (task.assignees ?? []).map(a => a.userId).filter((id): id is string => !!id),
       due: this.formatDue(task.expectedCompletion ?? task.dueDate ?? task.due),
     };
   }
@@ -150,9 +171,37 @@ export class BoardComponent implements OnInit {
   }
 
   get totalTasks(): number { return this.columns.reduce((s, c) => s + c.tasks.length, 0); }
+  // Tasks currently visible (after the assignee filter).
+  get visibleTaskCount(): number { return this.displayColumns.reduce((s, c) => s + c.tasks.length, 0); }
   get connectedDropLists(): string[] { return this.columns.map(c => c.id); }
 
-  toggleDropdown(e: Event) { e.stopPropagation(); this.dropdownOpen = !this.dropdownOpen; }
+  trackColumn = (_: number, c: Column) => c.id;
+  trackTask = (_: number, t: Task) => t.taskId;
+
+  toggleDropdown(e: Event) { e.stopPropagation(); this.dropdownOpen = !this.dropdownOpen; this.filterOpen = false; }
+
+  // ── Assignee filter ──
+  toggleFilter(e: Event) { e.stopPropagation(); this.filterOpen = !this.filterOpen; this.dropdownOpen = false; }
+
+  isUserSelected(id: string): boolean { return this.selectedUserIds.has(id); }
+
+  get selectedCount(): number { return this.selectedUserIds.size; }
+
+  toggleUser(id: string): void {
+    if (this.selectedUserIds.has(id)) this.selectedUserIds.delete(id);
+    else this.selectedUserIds.add(id);
+    if (this.selectedTeam) this.loadBoard(this.selectedTeam.id);   // refetch with the new filter
+  }
+
+  clearFilter(): void {
+    if (this.selectedUserIds.size === 0) return;
+    this.selectedUserIds.clear();
+    if (this.selectedTeam) this.loadBoard(this.selectedTeam.id);
+  }
+
+  initialsOf(p: Person): string {
+    return p.avatarInitials?.trim() || initialsFromName(p.name) || '??';
+  }
 
   addTaskUrl(col: Column): string {
     const params = new URLSearchParams({ teamId: this.selectedTeam?.id ?? '', statusId: col.statusId });
@@ -211,7 +260,8 @@ export class BoardComponent implements OnInit {
   }
 
   onTaskDropped(event: CdkDragDrop<Task[]>, target: Column) {
-    // Reorder within the same column — purely local, no status change.
+    // displayColumns mirrors columns (the server applies the assignee filter), so
+    // the drop lists are the master arrays — index-based moves are safe.
     if (event.previousContainer === event.container) {
       moveItemInArray(target.tasks, event.previousIndex, event.currentIndex);
       return;
@@ -246,5 +296,5 @@ export class BoardComponent implements OnInit {
   }
 
   @HostListener('document:click')
-  closeDropdown() { this.dropdownOpen = false; }
+  closeDropdown() { this.dropdownOpen = false; this.filterOpen = false; }
 }
