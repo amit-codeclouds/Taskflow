@@ -1,0 +1,77 @@
+<div class="modal-overlay" (click)="onCancel()">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <div class="modal-icon">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M9 2v9M5 7.5l4 4 4-4M3 15h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </div>
+      <div class="modal-head-text">
+        <h3 class="modal-title">Export tasks</h3>
+        <p class="modal-subtitle" *ngIf="teamName">{{ teamName }}</p>
+      </div>
+      <button type="button" class="modal-close" (click)="onCancel()" [disabled]="exporting" aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+        </svg>
+      </button>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate class="modal-form">
+      <!-- Format -->
+      <div class="field">
+        <label class="field-label">Export format</label>
+        <div class="format-options">
+          <label class="format-option" [class.format-option--selected]="f['format'].value === 'Csv'">
+            <input type="radio" formControlName="format" value="Csv" />
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M3 1.5h5l3 3v8a.5.5 0 01-.5.5h-8a.5.5 0 01-.5-.5v-10a.5.5 0 01.5-.5z" stroke="currentColor" stroke-width="1.2" />
+            </svg>
+            <span>CSV</span>
+          </label>
+          <label class="format-option" [class.format-option--selected]="f['format'].value === 'Xlsx'">
+            <input type="radio" formControlName="format" value="Xlsx" />
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <rect x="1.5" y="1.5" width="11" height="11" rx="1.5" stroke="currentColor" stroke-width="1.2" />
+              <path d="M4.5 4.5l5 5m0-5l-5 5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+            </svg>
+            <span>Excel (.xlsx)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- File name -->
+      <div class="field">
+        <label class="field-label" for="et-filename">File name</label>
+        <div class="filename-group" [class.filename-group--error]="f['fileName'].touched && f['fileName'].invalid">
+          <input id="et-filename" class="filename-input" formControlName="fileName" autocomplete="off" />
+          <span class="filename-suffix">{{ extension }}</span>
+        </div>
+        <p class="field-error" *ngIf="f['fileName'].touched && f['fileName'].errors?.['required']">File name is required</p>
+        <p class="field-error" *ngIf="f['fileName'].touched && f['fileName'].errors?.['pattern']">Spaces are not allowed</p>
+      </div>
+
+      <!-- Include archived -->
+      <label class="toggle-row">
+        <span class="toggle-text">
+          <span class="toggle-title">Include archived tasks</span>
+          <span class="toggle-desc">Adds tasks whose status was archived or removed from the board</span>
+        </span>
+        <span class="toggle-switch">
+          <input type="checkbox" formControlName="isIncludeArchiveTask" />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </span>
+      </label>
+
+      <p class="modal-error" *ngIf="errorMsg">{{ errorMsg }}</p>
+
+      <div class="modal-actions">
+        <button type="button" class="modal-btn modal-btn--ghost" (click)="onCancel()" [disabled]="exporting">Cancel</button>
+        <button type="submit" class="modal-btn modal-btn--primary" [disabled]="exporting || form.invalid">
+          <span class="btn-spinner" *ngIf="exporting"></span>
+          {{ exporting ? 'Exporting…' : 'Export' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

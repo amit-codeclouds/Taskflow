@@ -1,10 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, ListChecks } from 'lucide-react';
+import { Users, ListChecks, Download } from 'lucide-react';
 import { useTeamsList } from '@/lib/hooks/useTeams';
 import { AssignedTeamsSkeleton } from '@/app/(shell)/teams/_skeleton';
 import type { ApiTeam } from '@/lib/types/teams.types';
+import ExportTasksModal from './ExportTasksModal';
 import { TeamInitial, MemberAvatar } from './TeamAvatars';
 
 // ─── AssignedTeamCard ─────────────────────────────────────────────────────────
@@ -12,9 +14,11 @@ import { TeamInitial, MemberAvatar } from './TeamAvatars';
 function AssignedTeamCard({
   team,
   index,
+  onExport,
 }: {
   team: ApiTeam;
   index: number;
+  onExport: (team: ApiTeam) => void;
 }) {
   const activeCount    = team.members.length;
   const pendingCount   = team.pendingInvites;
@@ -69,6 +73,15 @@ function AssignedTeamCard({
                 <ListChecks size={11} />
                 View Tasks
               </motion.a>
+              <motion.button
+                onClick={() => onExport(team)}
+                className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-xs font-medium bg-bg-600 text-text-200 hover:bg-bg-500 hover:text-text-100 transition-colors"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                <Download size={11} />
+                Export
+              </motion.button>
             </div>
           </div>
         </div>
@@ -81,6 +94,7 @@ function AssignedTeamCard({
 
 export default function AssignedTeamsScreen() {
   const { data: teams = [], isPending } = useTeamsList({ excludeWorkspace: true });
+  const [exportingTeam, setExportingTeam] = useState<ApiTeam | null>(null);
 
   if (isPending) return <AssignedTeamsSkeleton />;
 
@@ -107,6 +121,7 @@ export default function AssignedTeamsScreen() {
               key={team.id}
               team={team}
               index={i}
+              onExport={setExportingTeam}
             />
           ))}
         </AnimatePresence>
@@ -127,6 +142,17 @@ export default function AssignedTeamsScreen() {
           </motion.div>
         )}
       </div>
+
+      {/* Export modal */}
+      <AnimatePresence>
+        {exportingTeam && (
+          <ExportTasksModal
+            key={`export-${exportingTeam.id}`}
+            team={exportingTeam}
+            onClose={() => setExportingTeam(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

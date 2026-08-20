@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { MoreVertical } from 'lucide-react';
 import { useConfirm } from '@/components/Modals/ConfirmProvider';
 import ProgressModal from '@/components/Modals/ProgressModal';
 import { LABEL_STYLES, PRIORITY_COLORS } from '@/lib/taskData';
+import { colorForStatus } from '@/lib/statusColors';
 import { useDeleteTask } from '@/lib/hooks/useTasks';
 import { useAuth } from '@/lib/useAuth';
 import type { ApiTask, AssigneeSummary } from '@/lib/types/tasks.types';
@@ -29,9 +32,10 @@ function EditIcon() {
     </svg>
   );
 }
-// Mini circular gauge whose arc fills to `value` (0–100). The track uses
-// currentColor (so it follows the button's hover state); the filled arc is
-// always accent so progress reads at a glance.
+// Mini circular gauge whose arc fills to `value` (0–100). Both the track and
+// the filled arc use currentColor, so the ring automatically reads accent-lit
+// on the "active" (editable) progress chip and dulled on the read-only one —
+// same markup, color comes entirely from the parent chip's text color.
 function ProgressRing({ value }: { value: number }) {
   const r = 5;
   const c = 2 * Math.PI * r;
@@ -44,7 +48,7 @@ function ProgressRing({ value }: { value: number }) {
         cx="7"
         cy="7"
         r={r}
-        stroke="var(--color-accent)"
+        stroke="currentColor"
         strokeWidth="1.6"
         strokeLinecap="round"
         strokeDasharray={c}
@@ -62,6 +66,125 @@ function TrashIcon() {
         stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"
       />
     </svg>
+  );
+}
+
+// Collapses Edit/View/Delete into a single "⋮" trigger — saves the horizontal
+// space three separate icon buttons used to take. Rendered via a portal (like
+// PeopleScreen's RowActionsMenu) so it can't be clipped by the list card's
+// overflow, with position computed from the trigger's viewport rect.
+function TaskRowActionsMenu({
+  taskId,
+  linkHref,
+  canEdit,
+  onRemove,
+  removing,
+}: {
+  taskId: string;
+  linkHref?: string;
+  canEdit: boolean;
+  onRemove: (e: React.MouseEvent) => void;
+  removing: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; right: number } | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => setMounted(true), []);
+
+  function openMenu() {
+    const rect = btnRef.current?.getBoundingClientRect();
+    if (rect) setCoords({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    setOpen(true);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    function onMouseDown(e: MouseEvent) {
+      const target = e.target as Node;
+      if (btnRef.current?.contains(target) || panelRef.current?.contains(target)) return;
+      setOpen(false);
+    }
+    function onDismiss() { setOpen(false); }
+    document.addEventListener('mousedown', onMouseDown);
+    window.addEventListener('scroll', onDismiss, true);
+    window.addEventListener('resize', onDismiss);
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown);
+      window.removeEventListener('scroll', onDismiss, true);
+      window.removeEventListener('resize', onDismiss);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (open) setOpen(false);
+          else openMenu();
+        }}
+        data-tooltip="More actions"
+        className={`w-7 h-7 rounded-lg flex items-center justify-center text-text-300 hover:text-text-100 hover:bg-bg-600 transition-colors ${open ? 'bg-bg-600 text-text-100' : ''}`}
+      >
+        <MoreVertical size={15} strokeWidth={1.8} />
+      </button>
+
+      {mounted && createPortal(
+        <AnimatePresence>
+          {open && coords && (
+            <motion.div
+              ref={panelRef}
+              className="fixed w-40 bg-bg-800 rounded-xl border border-border-subtle shadow-elevated z-50 overflow-hidden py-1"
+              style={{ top: coords.top, right: coords.right }}
+              initial={{ opacity: 0, y: -6, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.96 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {canEdit && (
+                <Link
+                  href={`/${taskId}/edit`}
+                  onClick={() => setOpen(false)}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-text-200 hover:bg-bg-700 hover:text-text-100 transition-colors"
+                >
+                  <EditIcon />
+                  Edit
+                </Link>
+              )}
+              {linkHref && (
+                <Link
+                  href={linkHref}
+                  onClick={() => setOpen(false)}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-text-200 hover:bg-bg-700 hover:text-text-100 transition-colors"
+                >
+                  <RedirectIcon />
+                  View
+                </Link>
+              )}
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={(e) => { setOpen(false); onRemove(e); }}
+                  disabled={removing}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-status-red hover:bg-red-bg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <TrashIcon />
+                  Delete
+                </button>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
+    </>
   );
 }
 
@@ -168,33 +291,32 @@ export function TaskRow({
       danger: true,
     });
     if (!ok) return;
-    await deleteTask.mutateAsync(task.id);
+    await deleteTask.mutateAsync({ id: task.id, teamId: task.teamId });
   }
+
+  const statusColor = colorForStatus(statusName);
 
   const content = (
     <>
-      {/* Line 1 — title + highlighted chips */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-sm text-text-100 truncate">{task.title}</span>
+      {/* Line 1 — title only; ellipsis-truncated with the full title on hover */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-text-100 truncate" data-tooltip={task.title}>{task.title}</span>
+      </div>
+
+      {/* Line 2 — assignees, label / due chips, created / updated */}
+      <div className="flex items-center gap-2 flex-wrap text-2xs text-text-300">
+        <AssigneeStack assignees={task.assignees} size="md" />
         {task.label && (
-          <span className={`text-2xs font-medium px-2 py-0.5 rounded-full shrink-0 ${LABEL_STYLES[task.label] ?? 'bg-bg-600 text-text-300'}`}>
+          <span className={`font-medium px-2 py-0.5 rounded-full shrink-0 ${LABEL_STYLES[task.label] ?? 'bg-bg-600 text-text-300'}`}>
             {task.label}
           </span>
         )}
-        <span className="text-2xs font-medium px-2 py-0.5 rounded-full shrink-0 bg-accent-bg text-accent-hover">
-          {statusName}
-        </span>
         {task.expectedCompletion && (
-          <span className={`text-2xs font-medium px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1 ${deadlineChipClass(task.expectedCompletion)}`}>
+          <span className={`font-medium px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1 ${deadlineChipClass(task.expectedCompletion)}`}>
             <CalendarIcon />
             {formatShortDate(task.expectedCompletion)}
           </span>
         )}
-      </div>
-
-      {/* Line 2 — assignees + created / updated */}
-      <div className="flex items-center gap-3 text-2xs text-text-300">
-        <AssigneeStack assignees={task.assignees} size="md" />
         <span>Created {formatShortDate(task.createdAt)}</span>
         <span className="text-border-subtle">·</span>
         <span>Updated {formatShortDate(task.updatedAt)}</span>
@@ -230,10 +352,22 @@ export function TaskRow({
         <div className="flex-1 min-w-0 flex flex-col gap-1.5">{content}</div>
       )}
 
-      {/* Right side — Edit / View / Remove */}
+      {/* Right end — status + progress, kept apart from the title/content so it
+          reads as its own distinct group. Progress is always visible (everyone
+          can see where a task stands); it's only rendered as a live, accent-lit
+          button for the task's own assignee — everyone else gets the same chip
+          in a dulled, non-interactive style so it's obvious at a glance who can
+          actually change it. Menu is the only actual action. */}
       {showActions && (
-        <div className="flex items-center gap-1 shrink-0 pt-0.5">
-          {isAssignedToMe && (
+        <div className="flex items-center gap-2 shrink-0 self-center" onClick={(e) => e.stopPropagation()}>
+          <span
+            className="text-2xs font-medium px-2 py-0.5 rounded-full shrink-0"
+            style={{ background: `color-mix(in srgb, ${statusColor} 16%, transparent)`, color: statusColor }}
+          >
+            {statusName}
+          </span>
+
+          {isAssignedToMe ? (
             <button
               type="button"
               data-tooltip="Update progress"
@@ -242,43 +376,28 @@ export function TaskRow({
                 e.stopPropagation();
                 setProgressOpen(true);
               }}
-              className="h-7 pl-1.5 pr-2 rounded-lg flex items-center gap-1.5 text-text-300 hover:text-accent hover:bg-accent-bg transition-colors"
+              className="text-2xs font-medium px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1 bg-accent-bg text-accent hover:bg-accent hover:text-white transition-colors"
             >
               <ProgressRing value={task.progress ?? 0} />
-              <span className="text-2xs font-medium tabular-nums">{task.progress ?? 0}%</span>
+              <span className="tabular-nums">{task.progress ?? 0}%</span>
             </button>
-          )}
-          {isAssignedToMe && (
-            <Link
-              href={`/${task.id}/edit`}
-              data-tooltip="Edit task"
-              onClick={(e) => e.stopPropagation()}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-text-300 hover:text-accent hover:bg-accent-bg transition-colors"
+          ) : (
+            <span
+              data-tooltip="Only the assignee can update progress"
+              className="text-2xs font-medium px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1 bg-bg-700 text-text-300 opacity-70 cursor-default"
             >
-              <EditIcon />
-            </Link>
+              <ProgressRing value={task.progress ?? 0} />
+              <span className="tabular-nums">{task.progress ?? 0}%</span>
+            </span>
           )}
-          {linkHref && (
-            <Link
-              href={linkHref}
-              data-tooltip="View task"
-              onClick={(e) => e.stopPropagation()}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-text-300 hover:text-accent hover:bg-accent-bg transition-colors"
-            >
-              <RedirectIcon />
-            </Link>
-          )}
-          {isAssignedToMe && (
-            <button
-              type="button"
-              onClick={handleRemove}
-              disabled={deleteTask.isPending}
-              data-tooltip="Remove task"
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-text-300 hover:text-status-red hover:bg-red-bg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <TrashIcon />
-            </button>
-          )}
+
+          <TaskRowActionsMenu
+            taskId={task.id}
+            linkHref={linkHref}
+            canEdit={isAssignedToMe}
+            onRemove={handleRemove}
+            removing={deleteTask.isPending}
+          />
         </div>
       )}
 

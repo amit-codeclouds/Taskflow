@@ -42,14 +42,18 @@ export function useCreateTask() {
   });
 }
 
+// `teamId` is accepted purely so the mutation can invalidate that team's board
+// query too — it's stripped before the payload reaches the PUT request, since
+// UpdateTaskRequestDto has no teamId (a task's team can't change post-creation).
 export function useUpdateTask() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...payload }: UpdateTaskPayload & { id: string }) =>
+    mutationFn: ({ id, teamId, ...payload }: UpdateTaskPayload & { id: string; teamId?: string }) =>
       tasksService.update(id, payload),
-    onSuccess: (_, { id }) => {
+    onSuccess: (_, { id, teamId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all() });
+      if (teamId) queryClient.invalidateQueries({ queryKey: queryKeys.board.team(teamId) });
       toast.success('Task updated!');
     },
     onError: (err) => toast.error(extractErrorMessage(err)),
@@ -59,9 +63,10 @@ export function useUpdateTask() {
 export function useDeleteTask() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => tasksService.delete(id),
-    onSuccess: () => {
+    mutationFn: ({ id }: { id: string; teamId?: string }) => tasksService.delete(id),
+    onSuccess: (_, { teamId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all() });
+      if (teamId) queryClient.invalidateQueries({ queryKey: queryKeys.board.team(teamId) });
       toast.success('Task deleted.');
     },
     onError: (err) => toast.error(extractErrorMessage(err)),

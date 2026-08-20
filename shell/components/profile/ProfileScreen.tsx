@@ -100,7 +100,9 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 
 function ProfileCard({ me }: { me: ReturnType<typeof useMe>['data'] }) {
   const initials = me?.avatarInitials || getInitials(me?.name);
-  const workspace = me?.workspaces?.[0];
+  // Prefer the workspace the user owns — same fallback as useAuth() — so this
+  // hero card doesn't show a different workspace than the rest of the app.
+  const workspace = me?.workspaces?.find((w) => w.role === 'owner') ?? me?.workspaces?.[0];
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadAvatar = useUploadAvatar();

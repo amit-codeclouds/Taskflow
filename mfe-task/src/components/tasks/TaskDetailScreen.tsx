@@ -10,6 +10,7 @@ import { useTaskDetail, useDeleteTask } from '@/lib/hooks/useTasks';
 import { useTeamsList } from '@/lib/hooks/useTeams';
 import { useBoardStatuses } from '@/lib/hooks/useBoardStatuses';
 import { useConfirm } from '@/components/Modals/ConfirmProvider';
+import { openImageLightbox } from '@/lib/imageLightbox';
 import { TaskDetailSkeleton } from '@/app/[id]/_skeleton';
 import CommentList from './CommentList';
 import CommentComposer from './CommentComposer';
@@ -101,7 +102,7 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
       danger: true,
     });
     if (!ok) return;
-    await deleteTask.mutateAsync(task!.id);
+    await deleteTask.mutateAsync({ id: task!.id, teamId: task!.teamId });
     router.push('/');
   }
 
@@ -159,6 +160,13 @@ export default function TaskDetailScreen({ taskId }: { taskId: string }) {
               <div
                 className="task-description-content"
                 dangerouslySetInnerHTML={{ __html: task.description }}
+                onClick={(e) => {
+                  const target = e.target as HTMLElement;
+                  if (target.tagName === 'IMG') {
+                    const src = (target as HTMLImageElement).src;
+                    openImageLightbox(src, target.getAttribute('alt') ?? '');
+                  }
+                }}
               />
             ) : (
               <p className="text-sm text-text-300 italic">No description provided.</p>

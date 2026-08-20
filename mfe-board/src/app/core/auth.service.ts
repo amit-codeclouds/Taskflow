@@ -56,7 +56,9 @@ export class AuthService {
     this.http.get<{ result: MeResponse }>('/api/auth/me').subscribe({
       next: (res) => {
         const data = res.result;
-        const workspace = data.workspaces?.[0];
+        // Prefer the workspace the user owns — `workspaces[]` order isn't guaranteed,
+        // so picking index 0 could land on a workspace they were merely invited into.
+        const workspace = data.workspaces?.find((w) => w.role === 'owner') ?? data.workspaces?.[0];
         this.user.set({
           id: data.id,
           name: data.name ?? '',
