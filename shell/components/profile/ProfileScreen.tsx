@@ -2,13 +2,14 @@
 
 import { useRef } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import Select from 'react-select';
 import {
   User, Palette, Bell, Shield, Check, Camera,
-  Building2, Users, Crown, Clock, Loader2, Trash2,
+  Building2, Users, Crown, Clock, Loader2, Trash2, ChevronRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useMe } from '@/lib/hooks/useMe';
@@ -264,7 +265,13 @@ function WorkspaceCard({ me }: { me: ReturnType<typeof useMe>['data'] }) {
           <div key={ws.workspaceId} className="px-5 py-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-text-100 truncate">{ws.name}</p>
+                <Link
+                  href={`/workspace/${ws.workspaceId}`}
+                  className="group inline-flex items-center gap-1 text-sm font-medium text-text-100 hover:text-accent-hover transition-colors max-w-full"
+                >
+                  <span className="truncate">{ws.name}</span>
+                  <ChevronRight size={13} className="shrink-0 text-text-300 group-hover:text-accent-hover group-hover:translate-x-0.5 transition-all" />
+                </Link>
                 <div className="flex items-center gap-2 mt-1.5">
                   <span className="text-2xs font-medium px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">
                     {formatRole(ws.role)}

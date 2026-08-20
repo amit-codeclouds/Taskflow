@@ -27,4 +27,7 @@ export const queryKeys = {
   invitations: {
     byUser: (userId: string) => ['invitations', 'user', userId] as const,
   },
+  workspaces: {
+    detail: (id: string) => ['workspaces', 'detail', id] as const,
+  },
 } as const;

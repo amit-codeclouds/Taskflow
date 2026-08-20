@@ -11,7 +11,17 @@ export interface Task {
   label: string;
   labelColor: string;
   assignees: Assignee[];
+  assigneeIds: string[];   // assignee userIds — used by the board's user filter
   due: string;
+}
+
+// One workspace member from GET /api/people — powers the board's assignee filter.
+export interface Person {
+  id: string;
+  name: string;
+  email?: string;
+  avatarInitials?: string;
+  avatarUrl?: string;
 }
 
 export interface Column {

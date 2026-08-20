@@ -27,10 +27,38 @@
       <span class="header-sep">·</span>
       <div>
         <h1 class="board-title">Sprint Board</h1>
-        <p class="board-subtitle">{{ columns.length }} columns · {{ totalTasks }} tasks</p>
+        <p class="board-subtitle">{{ columns.length }} columns · {{ visibleTaskCount }} tasks{{ selectedCount > 0 ? ' (filtered)' : '' }}</p>
       </div>
     </div>
     <div class="board-actions">
+      <!-- Assignee filter -->
+      <div class="filter-wrap">
+        <button type="button" class="btn-secondary" [class.btn-secondary--active]="selectedCount > 0" (click)="toggleFilter($event)">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M1 3h12M3 7h8M5 11h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>Filter
+          <span class="filter-badge" *ngIf="selectedCount > 0">{{ selectedCount }}</span>
+        </button>
+
+        <div class="filter-dropdown" *ngIf="filterOpen" (click)="$event.stopPropagation()">
+          <div class="filter-dropdown-head">
+            <span>Filter by assignee</span>
+            <button type="button" class="filter-clear" *ngIf="selectedCount > 0" (click)="clearFilter()">Clear</button>
+          </div>
+          <div class="filter-list">
+            <label class="filter-item" *ngFor="let p of people">
+              <input type="checkbox" [checked]="isUserSelected(p.id)" (change)="toggleUser(p.id)" />
+              <span class="filter-avatar">
+                <img *ngIf="p.avatarUrl" [src]="p.avatarUrl" [alt]="p.name" />
+                <span *ngIf="!p.avatarUrl">{{ initialsOf(p) }}</span>
+              </span>
+              <span class="filter-name">{{ p.name }}</span>
+            </label>
+            <p class="filter-empty" *ngIf="people.length === 0">No people found.</p>
+          </div>
+        </div>
+      </div>
+
       <!-- <button class="btn-secondary">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
           <path d="M1 4h12M4 1v2M10 1v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
@@ -59,7 +87,7 @@
       No columns on this board yet.
     </p>
 
-    <div class="column" *ngFor="let col of columns; let ci = index" [style.animation-delay]="(ci * 0.08) + 's'">
+    <div class="column" *ngFor="let col of displayColumns; let ci = index; trackBy: trackColumn" [style.animation-delay]="(ci * 0.08) + 's'">
       <div class="column-header">
         <div class="column-header-left">
           <span class="column-dot" [style.background]="col.color"></span>
@@ -122,7 +150,7 @@
         [cdkDropListConnectedTo]="connectedDropLists"
         (cdkDropListDropped)="onTaskDropped($event, col)"
       >
-        <div class="task-card" cdkDrag *ngFor="let task of col.tasks; let ti = index" [style.animation-delay]="(ci * 0.08 + ti * 0.05) + 's'" (click)="openTask(task)">
+        <div class="task-card" cdkDrag [cdkDragData]="task" *ngFor="let task of col.tasks; let ti = index; trackBy: trackTask" [style.animation-delay]="(ci * 0.08 + ti * 0.05) + 's'" (click)="openTask(task)">
           <div class="task-card-top">
             <span class="task-label" [style.background]="'color-mix(in srgb, ' + task.labelColor + ' 13%, transparent)'" [style.color]="task.labelColor">{{ task.label }}</span>
             <div class="priority-dot" [ngClass]="'priority-' + task.priority"></div>
