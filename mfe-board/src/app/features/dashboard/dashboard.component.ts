@@ -77,6 +77,8 @@ function readStatusEntries(raw: Team['statusTaskCounts']): { key: string; label:
   return entries;
 }
 
+export type TeamsTab = 'workspace' | 'assigned';
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -92,6 +94,11 @@ export class DashboardComponent implements OnInit {
   loading = true;
   error = false;
 
+  // "Workspace Teams" (owned/administered in the user's own workspace) vs
+  // "Assigned Teams" (teams the user is a member of outside their workspace) —
+  // mirrors the tabs on the shell's /teams and /teams/assigned screens.
+  activeTab: TeamsTab = 'workspace';
+
   // Placeholder rows rendered while loading (skeleton cards).
   readonly skeletonCards = [0, 1, 2];
 
@@ -105,9 +112,16 @@ export class DashboardComponent implements OnInit {
     this.load();
   }
 
+  setTab(tab: TeamsTab): void {
+    if (tab === this.activeTab) return;
+    this.activeTab = tab;
+    this.load();
+  }
+
   private load(): void {
     this.loading = true;
-    this.boardService.getTeams().subscribe({
+    this.error = false;
+    this.boardService.getTeams({ excludeWorkspace: this.activeTab === 'assigned' }).subscribe({
       next: (teams) => {
         this.boards = teams.map(team => this.toSummary(team));
         this.loading = false;

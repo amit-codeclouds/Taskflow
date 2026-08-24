@@ -702,6 +702,50 @@ The invited person appears in the People list with `status: "pending"` until the
 
 ---
 
+## Role Service  `/api/roles`
+
+> Drives the role dropdown wherever a team member is assigned a role — **Shell**'s
+> `shell/components/teams/RoleSelect.tsx` (shared component, fetched via
+> `shell/lib/hooks/useRoles.ts`), used by:
+> - `shell/app/(shell)/teams/new/page.tsx` — per-member "Assign roles" rows on Create Team
+> - `shell/components/teams/TeamInviteModal.tsx` — "Assign role" on the invite-by-email modal
+> - `shell/app/(shell)/teams/[id]/page.tsx` — per-member role select + "Add from workspace" role select on Manage Team
+>
+> Each option in the dropdown shows a native hover tooltip built from the role's
+> `description` + `permissions` list, so members can see what a role grants before assigning it.
+> Roles are not a fixed client-side list — the dropdown always reflects whatever
+> `GET /api/roles` currently returns.
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/roles` | Auth | List all roles available to assign to a team member |
+
+### `GET /api/roles`
+**Response `200`**
+```json
+{
+  "status": true,
+  "code": 200,
+  "result": [
+    {
+      "id": "11111111-1111-1111-1111-111111111111",
+      "name": "Team Admin",
+      "description": "Placeholder role — full access. Replace with the real role set.",
+      "permissions": ["Read", "Write", "Delete", "Manage", "Comment"]
+    }
+  ],
+  "message": "Roles fetched successfully.",
+  "errors": [],
+  "devMessage": "",
+  "requestId": "",
+  "timestamp": "2026-08-24T04:32:01.1876930Z",
+  "source": "Dotnet 8.0.0 web api"
+}
+```
+> Confirmed live roles (placeholders, expected to change): Flow Controller, Manupulator, Team Admin, Team Manager, Tester, Visitor. See [Role](./models.md#role).
+
+---
+
 ## Team Service  `/api/teams`
 
 > Drives the **Shell** — Teams section.
@@ -712,8 +756,15 @@ The invited person appears in the People list with `status: "pending"` until the
 > - AssignedTeamCard's "View Tasks" button cross-zone-links straight into Task MFE's `TeamTaskBoardScreen` (`/tasks/listview?teamid=`) — no placeholder page in Shell
 > - `shell/components/teams/TeamInviteModal.tsx` — Invite by email (modal)
 > - `shell/components/layout/Sidebar.tsx` — "Teams" sidebar item is an expandable accordion with two sub-links: Workspace Teams (`/teams`) and Assigned Teams (`/teams/assigned`)
+> - **Board MFE** also consumes `GET /api/teams` (and `?exclude_workspace=true`) for its own Workspace Teams / Assigned Teams tabs: `mfe-board/src/app/features/dashboard/dashboard.component.ts` ("My Boards" tabs) and `mfe-board/src/app/features/board/board.component.ts` (in-board team-switcher dropdown tabs)
 >
 > Teams are separate from Projects. A team groups users; a project groups tasks.
+>
+> **Role values**: every `role` / `roleId` field below is a [Role](./models.md#role).`id`
+> (UUID from `GET /api/roles`), not a fixed enum string — corrected from earlier drafts
+> of this doc that showed lowercase literals like `"developer"`. "Admin" is likewise not
+> a fixed role name; any role whose `permissions` include `Manage` counts as admin-tier
+> for the "team must always have at least one admin" rule below.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
@@ -741,7 +792,7 @@ The invited person appears in the People list with `status: "pending"` until the
       "color": "#6155DD",
       "ownerId": "uuid",
       "members": [
-        { "userId": "uuid", "user": { "name": "Arkabrata", "avatarInitials": "AC" }, "role": "admin" }
+        { "userId": "uuid", "user": { "name": "Arkabrata", "avatarInitials": "AC" }, "role": "11111111-1111-1111-1111-111111111111" }
       ],
       "pendingInvites": 1,
       "createdAt": "2026-06-01T00:00:00Z",
@@ -768,12 +819,12 @@ Same response shape as `GET /api/teams`, filtered to teams the current user is a
 ### `POST /api/teams`
 **Request**
 ```json
-{ "name": "Frontend Team", "description": "optional", "color": "#6155DD", "memberIds": [{ "userId": "u2", "role": "developer" }] }
+{ "name": "Frontend Team", "description": "optional", "color": "#6155DD", "memberIds": [{ "userId": "u2", "role": "44444444-4444-4444-4444-444444444444" }] }
 ```
 - `color` — required hex color chosen from the 8-swatch colour picker on the Create Team page (`/teams/new`).
-- `memberIds` — optional array of workspace members to add at creation time (React Select multi-select on the Create Team page), each with an assigned role. Creator is automatically added as `admin` server-side regardless.
+- `memberIds` — optional array of workspace members to add at creation time (React Select multi-select on the Create Team page), each with an assigned role id from `GET /api/roles` (defaults to the first role returned). Creator is automatically added with an admin-tier role (one whose `permissions` include `Manage`) server-side regardless.
 
-**Response `201`** — full Team object. Creator is automatically added as `admin`.
+**Response `201`** — full Team object. Creator is automatically added with an admin-tier role.
 
 ### `PATCH /api/teams/:id`
 **Request** — any subset of `{ name, description, color }`.
@@ -789,7 +840,7 @@ Used by the "Add from workspace" section on the Manage Team page (`/teams/:id`).
 
 **Request**
 ```json
-{ "userId": "u2", "role": "developer" }
+{ "userId": "u2", "role": "44444444-4444-4444-4444-444444444444" }
 ```
 **Response `201`** — new TeamMember object.  
 Returns `409` if the user is already on the team.
@@ -800,29 +851,31 @@ Used by the **Invite** button modal (`TeamInviteModal`).
 
 **Request**
 ```json
-{ "email": "colleague@example.com", "role": "developer", "addToWorkspace": false }
+{ "email": "colleague@example.com", "role": "44444444-4444-4444-4444-444444444444", "addToWorkspace": false }
 ```
 - `addToWorkspace: false` — invite is team-scoped only.
 - `addToWorkspace: true` — also creates a `workspace_invitation`; the invitee joins both on acceptance.
+- `role` defaults to the first role returned by `GET /api/roles` until the user picks one in the modal.
 
 **Response `201`**
 ```json
-{ "id": "uuid", "teamId": "team_1", "email": "colleague@example.com", "role": "developer", "status": "pending", "expiresAt": "2026-06-18T00:00:00Z" }
+{ "id": "uuid", "teamId": "team_1", "email": "colleague@example.com", "role": "44444444-4444-4444-4444-444444444444", "status": "pending", "expiresAt": "2026-06-18T00:00:00Z" }
 ```
 Returns `409` if a pending invite already exists for that email + team.
 
 ### `PATCH /api/teams/:id/members/:userId`
-Changes a member's role. A team must always have at least one `admin` — returns `422` if attempting to demote the only admin.
+Changes a member's role. A team must always have at least one member holding an
+admin-tier role (`Manage` permission) — returns `422` if attempting to demote the last one.
 
 **Request**
 ```json
-{ "role": "pm" }
+{ "role": "22222222-2222-2222-2222-222222222222" }
 ```
 **Response `200`** — updated TeamMember object.
 
 ### `DELETE /api/teams/:id/members/:userId`
 Removes a member from the team (not the workspace). Their tasks remain but `assignee_id` becomes `null`.  
-Returns `422` if attempting to remove the only `admin`.
+Returns `422` if attempting to remove the last member holding an admin-tier (`Manage` permission) role.
 
 **Response `200`**
 ```json
@@ -1050,8 +1103,10 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 | TeamsScreen — team list | `GET /api/teams` |
 | TeamsScreen — "New Team" button → navigates to `/teams/new` | (navigation only) |
 | `/teams/new` — Create Team page submit (name + desc + color + member multi-select) | `POST /api/teams` (includes `color` + `memberIds[]`) |
+| `/teams/new`, `TeamInviteModal`, `/teams/:id` — role dropdown (per-member role, invite-modal role, "Add from workspace" role) via shared `RoleSelect` component, each option showing a hover tooltip with the role's description + permissions | `GET /api/roles` via `useRolesList()` |
 | TeamCard — "Manage" button → navigates to `/teams/:id` | (navigation only) |
 | Sidebar — "Teams" accordion → Workspace Teams / Assigned Teams sub-links | (navigation only) |
+| Sidebar — "Manage Contributors" accordion → People / Pending Invitations sub-links (merges the former standalone "People" and "Pending Invite" sidebar items) | (navigation only) |
 | AssignedTeamsScreen — assigned team list (`/teams/assigned`) | `GET /api/teams?exclude_workspace=true` |
 | AssignedTeamCard — "View Tasks" button → cross-zone `<a href="/tasks/listview?teamid=...">` into Task MFE's `TeamTaskBoardScreen` | (navigation only — see Task MFE traceability below) |
 | TeamCard — "Export" button → `ExportTasksModal` (format radio + include-archived checkbox) submit | `POST /api/tasks/export` via `useExportTasks()` → `exportService.exportTasks()`, `responseType: 'blob'`; triggers a browser download on success |
@@ -1135,8 +1190,8 @@ See the **Response Envelope** section at the top. All errors use the same wrappe
 
 | Frontend element | Endpoint |
 |---|---|
-| DashboardComponent (`/board` landing) — "My Boards" team cards | `GET /api/teams` via `BoardService.getTeams()` — returns `ApiTeam[]`. Card assignees come from `members[].avatarInitials`; the To Do / In Progress / Done counts and total come from each team's `statusTaskCounts`. No static data |
-| Topbar team-switcher dropdown (Board MFE only) | `GET /api/teams` |
+| DashboardComponent (`/board` landing) — "My Boards" team cards, split into **Workspace Teams** / **Assigned Teams** tabs (mirrors the Shell's `/teams` + `/teams/assigned` split) | Workspace Teams tab: `GET /api/teams`; Assigned Teams tab: `GET /api/teams?exclude_workspace=true` — both via `BoardService.getTeams({ excludeWorkspace })`, returns `ApiTeam[]`. Switching tabs refetches and re-renders the card grid. Card assignees come from `members[].avatarInitials`; the To Do / In Progress / Done counts and total come from each team's `statusTaskCounts`. No static data |
+| BoardComponent team-switcher dropdown — split into **Workspace Teams** / **Assigned Teams** tabs | Fetches both `GET /api/teams` and `GET /api/teams?exclude_workspace=true` up front (`combineLatest`) so the route's `teamId` resolves against either list; the dropdown lists whichever tab (`dropdownTab`) is active |
 | Kanban columns + tasks (BoardComponent) | `GET /api/tasks/team/:teamId/board` via `TeamService.getTeamBoard()` — response mapped to columns/tasks in the component; no static data |
 | Column header status description tooltip (BoardComponent) | `GET /api/tasks/team/:teamId/board` — `columns[].description` shown on hover/focus of each status title (info icon). No extra request |
 | Board assignee filter (BoardComponent) — multi-select of workspace people | `GET /api/people` via `PeopleService.getPeople()` for the list; selecting user(s) refetches `GET /api/tasks/team/:teamId/board?assigneeId=<ids>` (comma-separated for multiple: `?assigneeId=222,333,555`) via `TeamService.getTeamBoard(teamId, assigneeIds)` |

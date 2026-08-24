@@ -1,14 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, X, Check, UserPlus } from 'lucide-react';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import Select from 'react-select';
 import { getSelectStyles } from '@/lib/selectStyles';
+import { useRolesList } from '@/lib/hooks/useRoles';
 import type { TeamRole } from '@/lib/types/teams.types';
-import { ROLE_OPTIONS } from '@/lib/teams';
+import RoleSelect from '@/components/teams/RoleSelect';
 
 interface Props {
   team: { id: string; name: string };
@@ -21,11 +21,12 @@ const roleStyles = getSelectStyles({ size: 'md' });
 
 export default function TeamInviteModal({ team, existingEmails, onClose, onInvite }: Props) {
   const [success, setSuccess] = useState(false);
+  const { data: roles = [] } = useRolesList();
 
   const formik = useFormik({
     initialValues: {
       email: '',
-      role: 'Developer' as TeamRole,
+      role: '' as TeamRole,
       addToWorkspace: false,
     },
     validationSchema: Yup.object({
@@ -46,6 +47,13 @@ export default function TeamInviteModal({ team, existingEmails, onClose, onInvit
   });
 
   const emailError = !!formik.touched.email && !!formik.errors.email;
+
+  // Default to the first available role once GET /roles resolves.
+  useEffect(() => {
+    if (!formik.values.role && roles.length) {
+      formik.setFieldValue('role', roles[0].id);
+    }
+  }, [roles]); // eslint-disable-line
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center">
@@ -146,14 +154,12 @@ export default function TeamInviteModal({ team, existingEmails, onClose, onInvit
                   <label className="text-xs font-medium text-text-200 block mb-1.5">
                     Assign role
                   </label>
-                  <Select
+                  <RoleSelect
                     inputId="team-invite-role"
                     instanceId="team-invite-role"
-                    options={ROLE_OPTIONS}
-                    value={ROLE_OPTIONS.find(o => o.value === formik.values.role) ?? ROLE_OPTIONS[3]}
-                    onChange={opt => formik.setFieldValue('role', opt?.value ?? 'Developer')}
+                    value={formik.values.role}
+                    onChange={role => formik.setFieldValue('role', role)}
                     styles={roleStyles}
-                    isSearchable={false}
                     menuPortalTarget={typeof document !== 'undefined' ? document.body : undefined}
                     menuPosition="fixed"
                     menuPlacement="top"

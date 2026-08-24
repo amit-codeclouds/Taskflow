@@ -9,6 +9,27 @@
       <div class="skeleton" style="width:120px;height:24px"></div>
       <div class="skeleton" style="width:180px;height:14px;margin-top:8px"></div>
     </div>
+
+    <!-- Workspace / Assigned teams switch -->
+    <div class="teams-switch" role="tablist" [class.teams-switch--assigned]="activeTab === 'assigned'">
+      <span class="teams-switch-indicator"></span>
+      <button
+        type="button"
+        role="tab"
+        class="teams-switch-tab"
+        [class.teams-switch-tab--active]="activeTab === 'workspace'"
+        [attr.aria-selected]="activeTab === 'workspace'"
+        (click)="setTab('workspace')"
+      >Workspace Teams</button>
+      <button
+        type="button"
+        role="tab"
+        class="teams-switch-tab"
+        [class.teams-switch-tab--active]="activeTab === 'assigned'"
+        [attr.aria-selected]="activeTab === 'assigned'"
+        (click)="setTab('assigned')"
+      >Assigned Teams</button>
+    </div>
   </div>
 
   <!-- Stats -->
@@ -110,7 +131,7 @@
     </a>
 
     <div class="empty-state" *ngIf="!loading && !error && boards.length === 0">
-      <p>No boards yet.</p>
+      <p>{{ activeTab === 'assigned' ? 'No teams assigned outside your workspace yet.' : 'No boards yet.' }}</p>
     </div>
   </div>
 </div>

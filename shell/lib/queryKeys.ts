@@ -21,6 +21,10 @@ export const queryKeys = {
     list: (params?: { workspaceId?: string }) => ['users', 'list', params] as const,
     detail: (id: string) => ['users', 'detail', id] as const,
   },
+  roles: {
+    all: () => ['roles'] as const,
+    list: () => ['roles', 'list'] as const,
+  },
   settings: {
     mine: () => ['settings', 'me'] as const,
   },

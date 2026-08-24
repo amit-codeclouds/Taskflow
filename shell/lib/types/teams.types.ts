@@ -1,5 +1,5 @@
-// Matches TeamRole enum from backend: Admin | PM | TL | Developer
-export type TeamRole = 'Admin' | 'PM' | 'TL' | 'Developer';
+// A team member's role is a dynamic role id fetched from GET /roles (see @/lib/hooks/useRoles).
+export type TeamRole = string;
 
 // Matches TeamMemberSummaryDto
 export interface ApiTeamMember {
