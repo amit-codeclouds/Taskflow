@@ -14,9 +14,11 @@ import { getSelectStyles, type SelectOption } from '@/lib/selectStyles';
 import { useAuth } from '@/lib/useAuth';
 import { useUsersList } from '@/lib/hooks/useUsers';
 import { useCreateTeam } from '@/lib/hooks/useTeams';
+import { useRolesList } from '@/lib/hooks/useRoles';
 import type { TeamRole } from '@/lib/types/teams.types';
-import { TEAM_COLORS, ROLE_OPTIONS } from '@/lib/teams';
+import { TEAM_COLORS } from '@/lib/teams';
 import { getInitials } from '@/lib/initials';
+import RoleSelect from '@/components/teams/RoleSelect';
 
 // ─── Color picker ─────────────────────────────────────────────────────────────
 
@@ -64,6 +66,7 @@ function TeamNewPageContent() {
   const workspaceName = auth.workspaceName;
 
   const { data: allUsers = [] } = useUsersList({ workspaceId });
+  const { data: roles = [] }    = useRolesList();
   const createTeam              = useCreateTeam();
 
   const [memberRoles, setMemberRoles] = useState<Map<string, TeamRole>>(new Map());
@@ -72,10 +75,10 @@ function TeamNewPageContent() {
     const ids = new Set(selected.map(s => s.value));
     setMemberRoles(prev => {
       const next = new Map<string, TeamRole>();
-      ids.forEach(id => { next.set(id, prev.get(id) ?? 'Developer'); });
+      ids.forEach(id => { next.set(id, prev.get(id) ?? roles[0]?.id ?? ''); });
       return next;
     });
-  }, []);
+  }, [roles]);
 
   const toggleMember = useCallback((id: string) => {
     setMemberRoles(prev => {
@@ -285,12 +288,10 @@ function TeamNewPageContent() {
                           <p className="text-xs text-text-300 truncate">{u.title || '—'}</p>
                         </div>
                         <div className="w-[160px] shrink-0">
-                          <Select
-                            options={ROLE_OPTIONS}
-                            value={ROLE_OPTIONS.find(o => o.value === (memberRoles.get(u.id) ?? 'Developer')) ?? ROLE_OPTIONS[3]}
-                            onChange={opt => opt && setMemberRole(u.id, opt.value as TeamRole)}
+                          <RoleSelect
+                            value={memberRoles.get(u.id) ?? ''}
+                            onChange={role => setMemberRole(u.id, role)}
                             styles={rowStyles}
-                            isSearchable={false}
                             instanceId={`role-${u.id}`}
                           />
                         </div>

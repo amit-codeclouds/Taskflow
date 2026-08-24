@@ -60,7 +60,9 @@ export class BoardComponent implements OnInit {
   private teamService = inject(TeamService);
   private peopleService = inject(PeopleService);
 
-  teams: Team[] = [];
+  teams: Team[] = [];             // "Workspace Teams" — owned/administered in the user's own workspace
+  assignedTeams: Team[] = [];     // "Assigned Teams" — member of, outside the user's own workspace
+  dropdownTab: 'workspace' | 'assigned' = 'workspace';
   selectedTeam?: Team;
   columns: Column[] = [];              // master — all tasks for the team
   displayColumns: Column[] = [];       // columns after the assignee filter is applied
@@ -93,14 +95,25 @@ export class BoardComponent implements OnInit {
     });
 
     // Resolve the selected team from GET /api/teams (route param is a real UUID),
-    // then load that team's board from GET /api/tasks/team/:teamId/board.
-    combineLatest([this.boardService.getTeams(), this.route.paramMap]).subscribe({
-      next: ([teams, params]) => {
+    // then load that team's board from GET /api/tasks/team/:teamId/board. Fetches
+    // both Workspace and Assigned teams so the switcher dropdown can tab between
+    // them and so a route pointing at an assigned-only team still resolves.
+    combineLatest([
+      this.boardService.getTeams(),
+      this.boardService.getTeams({ excludeWorkspace: true }),
+      this.route.paramMap,
+    ]).subscribe({
+      next: ([teams, assignedTeams, params]) => {
         this.teams = teams;
+        this.assignedTeams = assignedTeams;
         this.loading = false;
         const teamId = params.get('teamId');
-        const match = teams.find(t => t.id === teamId);
-        this.selectedTeam = match ?? (teams.length ? teams[0] : undefined);
+        const all = [...teams, ...assignedTeams];
+        const match = all.find(t => t.id === teamId);
+        this.selectedTeam = match ?? (all.length ? all[0] : undefined);
+        this.dropdownTab = this.selectedTeam && assignedTeams.some(t => t.id === this.selectedTeam!.id)
+          ? 'assigned'
+          : 'workspace';
         if (this.selectedTeam) {
           this.loadBoard(this.selectedTeam.id);
         }
@@ -109,6 +122,15 @@ export class BoardComponent implements OnInit {
         this.loading = false;
       },
     });
+  }
+
+  get dropdownTeams(): Team[] {
+    return this.dropdownTab === 'assigned' ? this.assignedTeams : this.teams;
+  }
+
+  setDropdownTab(tab: 'workspace' | 'assigned', e: Event) {
+    e.stopPropagation();
+    this.dropdownTab = tab;
   }
 
   private loadBoard(teamId: string) {

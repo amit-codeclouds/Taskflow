@@ -1,6 +1,5 @@
-import type { SelectOption } from './selectStyles';
-
-export type TeamRole = 'Admin' | 'PM' | 'TL' | 'Developer';
+// A team member's role is now a dynamic role id fetched from GET /roles (see RoleSelect).
+export type TeamRole = string;
 
 export const TEAM_COLORS = [
   '#6155DD',
@@ -14,10 +13,3 @@ export const TEAM_COLORS = [
 ] as const;
 
 export type TeamColor = (typeof TEAM_COLORS)[number];
-
-export const ROLE_OPTIONS: SelectOption[] = [
-  { value: 'Admin',     label: 'Admin'     },
-  { value: 'PM',        label: 'PM'        },
-  { value: 'TL',        label: 'Team Lead' },
-  { value: 'Developer', label: 'Developer' },
-];

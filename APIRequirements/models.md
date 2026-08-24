@@ -26,7 +26,8 @@ type WorkspaceMemberStatus = 'active' | 'pending';
 
 type InvitationStatus = 'pending' | 'accepted' | 'declined' | 'expired';
 
-type TeamRole = 'admin' | 'pm' | 'tl' | 'developer';
+// A team member's role is a dynamic Role.id (UUID), fetched from GET /api/roles —
+// not a fixed enum. See Role below. Source: shell/lib/types/teams.types.ts.
 ```
 
 ---
@@ -269,14 +270,22 @@ interface Invitation {
 
 ## Role
 
-> Global role definitions — not scoped per workspace.
-> Predefined roles: Admin, PM, TL, Developer.
-> `permissions` is a string array of permission keys, e.g. `["task:create", "task:delete"]`.
+> Global role definitions — not scoped per workspace. Fetched via `GET /api/roles`
+> and sourced dynamically in the UI (no fixed client-side role list) — see
+> `shell/lib/hooks/useRoles.ts` and `shell/components/teams/RoleSelect.tsx`.
+> Confirmed against the live payload: current seed roles are Flow Controller, Manupulator,
+> Team Admin, Team Manager, Tester, Visitor — these are placeholders and expected to change,
+> so nothing in the frontend hardcodes role names or a fixed count of roles.
+> `permissions` is a string array of permission keys (confirmed values so far: `Read`,
+> `Write`, `Delete`, `Manage`, `Comment`). A role's tooltip in the UI shows its
+> `description` + this `permissions` list. `Manage` is treated as the admin-tier
+> signal for "last admin" protection on the Manage Team page (any member holding a
+> role with `Manage` counts toward `adminCount`, not just a role literally named "Admin").
 
 ```ts
 interface Role {
   id: string;              // UUID — PK
-  name: string;            // UNIQUE — e.g. 'admin' | 'pm' | 'tl' | 'developer'
+  name: string;            // display name, e.g. "Team Admin" — not an enum, can change
   description?: string;
   permissions: string[];   // array of permission key strings
   created_at: string;

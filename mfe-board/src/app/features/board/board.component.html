@@ -11,7 +11,21 @@
         </svg>
         <!-- Dropdown -->
         <div class="team-dropdown" *ngIf="dropdownOpen">
-          <div *ngFor="let team of teams"
+          <div class="team-dropdown-tabs">
+            <button
+              type="button"
+              class="team-dropdown-tab"
+              [class.team-dropdown-tab--active]="dropdownTab === 'workspace'"
+              (click)="setDropdownTab('workspace', $event)"
+            >Workspace Teams</button>
+            <button
+              type="button"
+              class="team-dropdown-tab"
+              [class.team-dropdown-tab--active]="dropdownTab === 'assigned'"
+              (click)="setDropdownTab('assigned', $event)"
+            >Assigned Teams</button>
+          </div>
+          <div *ngFor="let team of dropdownTeams"
             class="team-dropdown-item"
             [class.team-dropdown-item--active]="team.id === sel.id"
             (click)="selectTeam(team, $event)"
@@ -21,6 +35,9 @@
             <svg *ngIf="team.id === sel.id" width="12" height="12" viewBox="0 0 12 12" fill="none" style="margin-left:auto">
               <path d="M2 6l3 3 5-5" style="stroke: var(--color-accent)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
+          </div>
+          <div class="team-dropdown-empty" *ngIf="dropdownTeams.length === 0">
+            {{ dropdownTab === 'assigned' ? 'No assigned teams' : 'No workspace teams' }}
           </div>
         </div>
       </div>

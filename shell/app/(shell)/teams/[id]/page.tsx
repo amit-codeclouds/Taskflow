@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,14 +10,16 @@ import * as Yup from 'yup';
 import Select from 'react-select';
 import { getSelectStyles, type SelectOption } from '@/lib/selectStyles';
 import { useConfirm } from '@/components/Modals/ConfirmProvider';
-import { TEAM_COLORS, ROLE_OPTIONS } from '@/lib/teams';
+import { TEAM_COLORS } from '@/lib/teams';
 import type { TeamRole } from '@/lib/teams';
 import { useTeamDetail, useUpdateTeam, useDeleteTeam } from '@/lib/hooks/useTeams';
 import { useUsersList } from '@/lib/hooks/useUsers';
+import { useRolesList } from '@/lib/hooks/useRoles';
 import { useAuth } from '@/lib/useAuth';
 import type { ApiTeamMember } from '@/lib/types/teams.types';
 import { TeamDetailSkeleton } from './_skeleton';
 import { getInitials } from '@/lib/initials';
+import RoleSelect, { roleHasPermission } from '@/components/teams/RoleSelect';
 
 // ─── Color picker ─────────────────────────────────────────────────────────────
 
@@ -50,11 +52,13 @@ const rowStyles = getSelectStyles({ size: 'sm' });
 
 function MemberRow({
   member,
+  roleName,
   isLastAdmin,
   onRoleChange,
   onRemove,
 }: {
   member: ApiTeamMember;
+  roleName: string;
   isLastAdmin: boolean;
   onRoleChange: (id: string, role: TeamRole) => void;
   onRemove: (id: string) => void;
@@ -86,22 +90,20 @@ function MemberRow({
 
       <div className="flex-1 min-w-0">
         <p className="text-sm text-text-100 truncate">{member.name}</p>
-        <p className="text-xs text-text-300 truncate">{member.role}</p>
+        <p className="text-xs text-text-300 truncate">{roleName}</p>
       </div>
 
       <div className="w-[160px] shrink-0">
         {isLastAdmin ? (
           <div className="h-9 flex items-center gap-1.5 px-3 bg-bg-600/60 border border-border-subtle rounded-lg cursor-not-allowed">
             <Lock size={11} className="text-text-300 shrink-0" />
-            <span className="text-xs text-text-300">Admin</span>
+            <span className="text-xs text-text-300 truncate">{roleName}</span>
           </div>
         ) : (
-          <Select
-            options={ROLE_OPTIONS}
-            value={ROLE_OPTIONS.find(o => o.value === member.role) ?? ROLE_OPTIONS[3]}
-            onChange={opt => opt && onRoleChange(member.userId, opt.value as TeamRole)}
+          <RoleSelect
+            value={member.role}
+            onChange={role => onRoleChange(member.userId, role)}
             styles={rowStyles}
-            isSearchable={false}
             instanceId={`role-${member.userId}`}
           />
         )}
@@ -143,21 +145,39 @@ export default function TeamManagePage({ params }: { params: { id: string } }) {
   const auth                       = useAuth();
   const { data: team, isPending }  = useTeamDetail(params.id);
   const { data: allUsers = [] }    = useUsersList({ workspaceId: auth.workspaceId });
+  const { data: roles = [] }       = useRolesList();
   const updateTeam                 = useUpdateTeam();
   const deleteTeam                 = useDeleteTeam();
 
   const [localMembers, setLocalMembers] = useState<ApiTeamMember[]>([]);
   const [addMemberSel,  setAddMemberSel]  = useState<SelectOption | null>(null);
-  const [addMemberRole, setAddMemberRole] = useState<SelectOption>(ROLE_OPTIONS[3]);
+  const [addMemberRole, setAddMemberRole] = useState<string>('');
 
   // Sync localMembers once team loads
   useMemo(() => {
     if (team && localMembers.length === 0) setLocalMembers(team.members);
   }, [team]); // eslint-disable-line
 
+  // Default the "add member" role picker to the first available role once GET /roles resolves.
+  useEffect(() => {
+    if (!addMemberRole && roles.length) setAddMemberRole(roles[0].id);
+  }, [roles]); // eslint-disable-line
+
+  const roleById = useMemo(() => new Map(roles.map(r => [r.id, r] as const)), [roles]);
+  const roleName = useCallback(
+    (roleId: string) => roleById.get(roleId)?.name ?? roleId,
+    [roleById],
+  );
+  // A member counts as an "admin" for last-admin protection if their role carries Manage permission
+  // (GET /roles no longer has a fixed 'Admin' role name — any number of roles can be admin-tier).
+  const isAdminTier = useCallback(
+    (roleId: string) => roleHasPermission(roleById.get(roleId), 'Manage'),
+    [roleById],
+  );
+
   const adminCount = useMemo(
-    () => localMembers.filter(m => m.role === 'Admin').length,
-    [localMembers],
+    () => localMembers.filter(m => isAdminTier(m.role)).length,
+    [localMembers, isAdminTier],
   );
 
   const formik = useFormik({
@@ -175,7 +195,7 @@ export default function TeamManagePage({ params }: { params: { id: string } }) {
         name:        values.name.trim(),
         description: values.description.trim(),
         color:       values.color,
-        members:     localMembers.map(m => ({ userId: m.userId, role: m.role as import('@/lib/types/teams.types').TeamRole })),
+        members:     localMembers.map(m => ({ userId: m.userId, role: m.role })),
       });
       router.push('/teams');
     },
@@ -198,20 +218,20 @@ export default function TeamManagePage({ params }: { params: { id: string } }) {
   }, [confirm, localMembers]);
 
   const handleAddMember = useCallback(() => {
-    if (!addMemberSel) return;
+    if (!addMemberSel || !addMemberRole) return;
     const user = allUsers.find(u => u.id === addMemberSel.value);
     if (!user) return;
     const newMember: ApiTeamMember = {
       userId:         user.id,
       name:           user.name,
-      role:           addMemberRole.value as TeamRole,
+      role:           addMemberRole,
       avatarInitials: user.avatarInitials,
       avatarUrl:      user.avatarUrl,
     };
     setLocalMembers(prev => [...prev, newMember]);
     setAddMemberSel(null);
-    setAddMemberRole(ROLE_OPTIONS[3]);
-  }, [addMemberSel, addMemberRole, allUsers]);
+    setAddMemberRole(roles[0]?.id ?? '');
+  }, [addMemberSel, addMemberRole, allUsers, roles]);
 
   const handleDeleteTeam = useCallback(async () => {
     if (!team) return;
@@ -324,7 +344,8 @@ export default function TeamManagePage({ params }: { params: { id: string } }) {
               <MemberRow
                 key={member.userId}
                 member={member}
-                isLastAdmin={adminCount === 1 && member.role === 'Admin'}
+                roleName={roleName(member.role)}
+                isLastAdmin={adminCount === 1 && isAdminTier(member.role)}
                 onRoleChange={handleRoleChange}
                 onRemove={handleRemove}
               />
@@ -351,12 +372,10 @@ export default function TeamManagePage({ params }: { params: { id: string } }) {
                 />
               </div>
               <div className="w-[160px] shrink-0">
-                <Select
-                  options={ROLE_OPTIONS}
+                <RoleSelect
                   value={addMemberRole}
-                  onChange={opt => opt && setAddMemberRole(opt as SelectOption)}
+                  onChange={setAddMemberRole}
                   styles={addStyles}
-                  isSearchable={false}
                   instanceId="manage-add-role"
                 />
               </div>

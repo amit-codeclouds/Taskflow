@@ -41,6 +41,38 @@
   &.accent { color: var(--color-accent-hover); }
 }
 
+// Segmented "button shift" switch — a sliding pill indicator behind two buttons.
+.teams-switch {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  background: var(--color-bg-700);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 999px;
+  padding: 3px;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+.teams-switch-indicator {
+  position: absolute;
+  top: 3px; bottom: 3px; left: 3px;
+  width: calc(50% - 3px);
+  background: var(--color-accent);
+  border-radius: 999px;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.teams-switch--assigned .teams-switch-indicator { transform: translateX(100%); }
+
+.teams-switch-tab {
+  position: relative; z-index: 1; flex: 1;
+  padding: 7px 16px; background: transparent; border: none; border-radius: 999px;
+  font-size: 12px; font-weight: 500; color: var(--color-text-300);
+  cursor: pointer; white-space: nowrap; transition: color 0.2s;
+
+  &:hover { color: var(--color-text-100); }
+  &--active { color: #fff; }
+}
+
 .board-list { display: flex; flex-direction: column; gap: 12px; }
 
 .board-card {
