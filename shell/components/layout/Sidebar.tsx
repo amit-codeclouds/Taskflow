@@ -17,7 +17,7 @@ const WORKSPACE_ITEMS: NavItem[] = [
 ];
 
 const WORKSPACE_TRAILING_ITEMS: NavItem[] = [
-  { label: 'Chat', href: '/chat', icon: <MessageSquare size={16} strokeWidth={1.5} /> },
+  { label: 'Task Assistant', href: '/chat', icon: <MessageSquare size={16} strokeWidth={1.5} /> },
 ];
 
 const TEAMS_CHILDREN = [

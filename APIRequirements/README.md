@@ -16,6 +16,7 @@
 | [database-schema.md](./database-schema.md) | PostgreSQL DDL + MongoDB collection specs |
 | [api-endpoints.md](./api-endpoints.md) | REST endpoint catalogue (method, path, body, response) |
 | [auth.md](./auth.md) | Session / cookie auth contract |
+| [flow/](./flow/00-overview.md) | End-to-end user journey — signup through daily task work, roles & permissions, what's current vs. planned |
 
 ---
 
