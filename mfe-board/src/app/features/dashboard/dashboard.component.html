@@ -95,37 +95,70 @@
       </div>
 
       <div class="board-card-bottom">
-        <div class="assignees">
-          <ng-container *ngFor="let a of visibleAssignees(b)">
-            <img *ngIf="a.avatarUrl" class="assignee-avatar" [src]="a.avatarUrl" [alt]="a.initials" />
-            <div *ngIf="!a.avatarUrl" class="assignee-avatar">{{ a.initials }}</div>
-          </ng-container>
-          <div class="assignee-overflow" *ngIf="overflowAssignees(b) > 0">+{{ overflowAssignees(b) }}</div>
+        <div class="board-card-meta">
+          <div class="assignees">
+            <ng-container *ngFor="let a of visibleAssignees(b)">
+              <img *ngIf="a.avatarUrl" class="assignee-avatar" [src]="a.avatarUrl" [alt]="a.initials" [appTooltip]="a.name" />
+              <div *ngIf="!a.avatarUrl" class="assignee-avatar" [appTooltip]="a.name">{{ a.initials }}</div>
+            </ng-container>
+            <div class="assignee-overflow" *ngIf="overflowAssignees(b) > 0">+{{ overflowAssignees(b) }}</div>
+          </div>
+
+          <div class="status-pills">
+            <span class="column-pill" *ngFor="let s of b.statuses">
+              <span class="dot" [style.background]="s.color"></span>{{ s.count }} {{ s.label }}
+            </span>
+            <span class="no-tasks-pill" *ngIf="b.statuses.length === 0">No tasks in the flow</span>
+          </div>
         </div>
 
         <div class="board-actions">
-          <span class="column-pill" *ngFor="let s of b.statuses">
-            <span class="dot" [style.background]="s.color"></span>{{ s.count }} {{ s.label }}
+          <span
+            class="icon-btn"
+            role="button"
+            tabindex="0"
+            aria-label="Add status"
+            [appTooltip]="'Add Status'"
+            (click)="openAddStatus(b.team, $event)"
+            (keydown.enter)="openAddStatus(b.team, $event)"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2v8M2 6h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
           </span>
-          <span class="add-status-btn" role="button" tabindex="0" (click)="openAddStatus(b.team, $event)" (keydown.enter)="openAddStatus(b.team, $event)">
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 2v8M2 6h8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-            Add Status
-          </span>
-          <span class="archived-btn" role="button" tabindex="0" (click)="openArchived(b.team, $event)" (keydown.enter)="openArchived(b.team, $event)">
-            <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+          <span
+            class="icon-btn"
+            role="button"
+            tabindex="0"
+            aria-label="Archived tasks"
+            [appTooltip]="'Archived Tasks'"
+            (click)="openArchived(b.team, $event)"
+            (keydown.enter)="openArchived(b.team, $event)"
+          >
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
               <rect x="1.5" y="2" width="11" height="3" rx="1" stroke="currentColor" stroke-width="1.2" />
               <path d="M2.5 5v6a1 1 0 001 1h7a1 1 0 001-1V5" stroke="currentColor" stroke-width="1.2" />
               <path d="M5.5 7.5h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
             </svg>
-            Archived Task
           </span>
-          <span class="archived-btn" role="button" tabindex="0" (click)="openExport(b.team, $event)" (keydown.enter)="openExport(b.team, $event)">
-            <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+          <span
+            class="icon-btn"
+            role="button"
+            tabindex="0"
+            aria-label="Export tasks"
+            [appTooltip]="'Export'"
+            (click)="openExport(b.team, $event)"
+            (keydown.enter)="openExport(b.team, $event)"
+          >
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
               <path d="M7 1.5v7M4.5 6l2.5 2.5L9.5 6M2.5 11h9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
-            Export
           </span>
-          <span class="open-btn">Open</span>
+
+          <span class="spacer"></span>
+
+          <span class="open-btn">
+            Open
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M4 2.5L8 6l-4 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
         </div>
       </div>
     </a>
