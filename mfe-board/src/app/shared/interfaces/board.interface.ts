@@ -1,4 +1,5 @@
 export interface Assignee {
+  name: string;
   initials: string;
   avatarUrl?: string;
 }

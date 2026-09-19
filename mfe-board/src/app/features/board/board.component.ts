@@ -8,6 +8,7 @@ import {
   moveItemInArray,
   transferArrayItem,
 } from '@angular/cdk/drag-drop';
+import { ScrollingModule } from '@angular/cdk/scrolling';
 import {
   ApiBoardColumn,
   ApiBoardTask,
@@ -21,6 +22,7 @@ import { TeamService } from '../../core/services/team/team.service';
 import { PeopleService } from '../../core/services/people/people.service';
 import { ConfirmationModalComponent } from '../../shared/modal/confirmation-modal/confirmation-modal.component';
 import { ExportTasksComponent } from '../../shared/modal/export-tasks/export-tasks.component';
+import { TooltipDirective } from '../../shared/directives/tooltip.directive';
 
 // Palette used to colour columns by position (the API statuses carry no colour).
 const COLUMN_PALETTE = [
@@ -51,7 +53,7 @@ function initialsFromName(name?: string | null): string {
 @Component({
   selector: 'app-board',
   standalone: true,
-  imports: [NgFor, NgClass, NgIf, NgTemplateOutlet, DragDropModule, ConfirmationModalComponent, ExportTasksComponent],
+  imports: [NgFor, NgClass, NgIf, NgTemplateOutlet, DragDropModule, ScrollingModule, ConfirmationModalComponent, ExportTasksComponent, TooltipDirective],
   templateUrl: './board.component.html',
   styleUrl: './board.component.scss'
 })
@@ -84,6 +86,17 @@ export class BoardComponent implements OnInit {
 
   // Export-tasks modal open state (for the currently selected team).
   isExporting = false;
+
+  // ── Column "load more" loader (visual only) ──
+  // All of a column's tasks already come back in one GET /api/tasks/team/:teamId/board
+  // response — there's no pagination to actually fetch more. Scrolling a tall column
+  // near its bottom edge just flashes this spinner briefly, matching the affordance
+  // people expect from a fixed-height, internally-scrolling list.
+  private static readonly LOAD_MORE_NEAR_BOTTOM_PX = 40;
+  private static readonly LOAD_MORE_SPINNER_MS = 900;
+  private static readonly LOAD_MORE_COOLDOWN_MS = 4000;
+  private loadingMoreColumnIds = new Set<string>();
+  private loadMoreCooldownUntil = new Map<string, number>();
 
   constructor(private route: ActivatedRoute, private router: Router) {}
 
@@ -181,6 +194,7 @@ export class BoardComponent implements OnInit {
       labelColor: LABEL_COLORS[(task.label ?? '').toLowerCase()] ?? 'var(--color-accent-hover)',
       assignees: (task.assignees ?? [])
         .map(a => ({
+          name: a.name,
           initials: a.avatarInitials?.trim() || initialsFromName(a.name),
           avatarUrl: a.avatarUrl,
         }))
@@ -203,6 +217,26 @@ export class BoardComponent implements OnInit {
 
   trackColumn = (_: number, c: Column) => c.id;
   trackTask = (_: number, t: Task) => t.taskId;
+
+  // ── Column "load more" loader (visual only — see field comments above) ──
+  isLoadingMore(colId: string): boolean {
+    return this.loadingMoreColumnIds.has(colId);
+  }
+
+  onColumnScroll(event: Event, col: Column): void {
+    const el = event.target as HTMLElement;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < BoardComponent.LOAD_MORE_NEAR_BOTTOM_PX;
+    if (!nearBottom || this.loadingMoreColumnIds.has(col.id)) return;
+
+    const cooldownUntil = this.loadMoreCooldownUntil.get(col.id) ?? 0;
+    if (Date.now() < cooldownUntil) return;
+
+    this.loadingMoreColumnIds.add(col.id);
+    setTimeout(() => {
+      this.loadingMoreColumnIds.delete(col.id);
+      this.loadMoreCooldownUntil.set(col.id, Date.now() + BoardComponent.LOAD_MORE_COOLDOWN_MS);
+    }, BoardComponent.LOAD_MORE_SPINNER_MS);
+  }
 
   toggleDropdown(e: Event) { e.stopPropagation(); this.dropdownOpen = !this.dropdownOpen; this.filterOpen = false; }
 
@@ -241,6 +275,14 @@ export class BoardComponent implements OnInit {
   // (cross-zone) navigation, not an Angular router navigation.
   openTask(task: Task): void {
     window.location.href = `/tasks/${task.taskId}`;
+  }
+
+  // The "Archive status" action just opens an informational modal (no API call
+  // yet — see onConfirm()) repeating what the archive badge's tooltip already
+  // says. On "Done" that's pure clutter, since Done is the archivable status by
+  // definition, so the button is hidden there.
+  showArchiveAction(col: Column): boolean {
+    return col.isArchievable && col.title.trim().toLowerCase() !== 'done';
   }
 
   archiveStatus(col: Column, event: Event): void {
