@@ -23,6 +23,7 @@ import { PeopleService } from '../../core/services/people/people.service';
 import { ConfirmationModalComponent } from '../../shared/modal/confirmation-modal/confirmation-modal.component';
 import { ExportTasksComponent } from '../../shared/modal/export-tasks/export-tasks.component';
 import { TooltipDirective } from '../../shared/directives/tooltip.directive';
+import { ArchivableStatus, ArchivedTasksPanelComponent } from '../../shared/panel/archived-tasks-panel/archived-tasks-panel.component';
 
 // Palette used to colour columns by position (the API statuses carry no colour).
 const COLUMN_PALETTE = [
@@ -53,7 +54,7 @@ function initialsFromName(name?: string | null): string {
 @Component({
   selector: 'app-board',
   standalone: true,
-  imports: [NgFor, NgClass, NgIf, NgTemplateOutlet, DragDropModule, ScrollingModule, ConfirmationModalComponent, ExportTasksComponent, TooltipDirective],
+  imports: [NgFor, NgClass, NgIf, NgTemplateOutlet, DragDropModule, ScrollingModule, ConfirmationModalComponent, ExportTasksComponent, TooltipDirective, ArchivedTasksPanelComponent],
   templateUrl: './board.component.html',
   styleUrl: './board.component.scss'
 })
@@ -81,11 +82,14 @@ export class BoardComponent implements OnInit {
   readonly skeletonColumns = [[0, 1, 2], [0, 1], [0, 1, 2]];
 
   // Pending archive/delete confirmation (null = no modal open).
-  confirm: { kind: 'archive' | 'delete'; col: Column } | null = null;
+  confirm: { kind: 'delete'; col: Column } | null = null;
   confirmLoading = false;
 
   // Export-tasks modal open state (for the currently selected team).
   isExporting = false;
+
+  // Archived-tasks panel open state (for the currently selected team).
+  showArchivedPanel = false;
 
   // ── Column "load more" loader (visual only) ──
   // All of a column's tasks already come back in one GET /api/tasks/team/:teamId/board
@@ -266,6 +270,23 @@ export class BoardComponent implements OnInit {
   openExport(): void { this.isExporting = true; }
   closeExport(): void { this.isExporting = false; }
 
+  // Opening from a specific column's "View archived tasks" button pre-selects
+  // that column's status tab in the panel instead of "All".
+  archivedPanelInitialStatusId = '';
+
+  openArchivedPanel(statusId = ''): void {
+    this.archivedPanelInitialStatusId = statusId;
+    this.showArchivedPanel = true;
+  }
+  closeArchivedPanel(): void { this.showArchivedPanel = false; }
+
+  // Archivable statuses for the current team, for the panel's status tabs.
+  get archivableStatuses(): ArchivableStatus[] {
+    return this.columns
+      .filter(c => c.isArchievable)
+      .map(c => ({ id: c.statusId, name: c.title, color: c.color }));
+  }
+
   addTaskUrl(col: Column): string {
     const params = new URLSearchParams({ teamId: this.selectedTeam?.id ?? '', statusId: col.statusId });
     return `/tasks/new?${params.toString()}`;
@@ -277,17 +298,12 @@ export class BoardComponent implements OnInit {
     window.location.href = `/tasks/${task.taskId}`;
   }
 
-  // The "Archive status" action just opens an informational modal (no API call
-  // yet — see onConfirm()) repeating what the archive badge's tooltip already
-  // says. On "Done" that's pure clutter, since Done is the archivable status by
-  // definition, so the button is hidden there.
-  showArchiveAction(col: Column): boolean {
-    return col.isArchievable && col.title.trim().toLowerCase() !== 'done';
-  }
-
-  archiveStatus(col: Column, event: Event): void {
+  // Opens the archived-tasks panel scoped to this column's status. Any status
+  // can be archivable, not just "Done", so this shows on every archivable
+  // column — not just the one that happens to be named "Done".
+  viewArchivedForColumn(col: Column, event: Event): void {
     event.stopPropagation();
-    this.confirm = { kind: 'archive', col };
+    this.openArchivedPanel(col.statusId);
   }
 
   deleteStatus(col: Column, event: Event): void {
@@ -297,26 +313,20 @@ export class BoardComponent implements OnInit {
 
   onConfirm(): void {
     if (!this.confirm) return;
-    const { kind, col } = this.confirm;
+    const { col } = this.confirm;
 
-    if (kind === 'delete') {
-      this.confirmLoading = true;
-      this.teamService.deleteStatus(col.statusId).subscribe({
-        next: () => {
-          this.confirmLoading = false;
-          this.confirm = null;
-          if (this.selectedTeam) this.loadBoard(this.selectedTeam.id);   // refetch the board
-        },
-        error: () => {
-          // Keep the modal open so the user can retry or cancel.
-          this.confirmLoading = false;
-        },
-      });
-      return;
-    }
-
-    // TODO: archive-status API (no endpoint yet).
-    this.confirm = null;
+    this.confirmLoading = true;
+    this.teamService.deleteStatus(col.statusId).subscribe({
+      next: () => {
+        this.confirmLoading = false;
+        this.confirm = null;
+        if (this.selectedTeam) this.loadBoard(this.selectedTeam.id);   // refetch the board
+      },
+      error: () => {
+        // Keep the modal open so the user can retry or cancel.
+        this.confirmLoading = false;
+      },
+    });
   }
 
   onCancelConfirm(): void {

@@ -1,7 +1,5 @@
-import { Component, signal } from '@angular/core';
+import { Component } from '@angular/core';
 import { NgIf } from '@angular/common';
-import { NavigationEnd, Router } from '@angular/router';
-import { filter } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
 
@@ -22,26 +20,17 @@ export class SidebarComponent {
   readonly isProfileActive = this.path.startsWith('/profile');
   readonly isSettingsActive = this.path.startsWith('/settings');
 
-  // Dashboard vs. Task Board are both routes inside this same Angular app, and
-  // BoardComponent/DashboardComponent navigate between each other via the Router
-  // (no reload) — so these track the Router reactively instead.
-  readonly isDashboardActive = signal(true);
-  readonly isTaskBoardActive = signal(false);
+  // The "Dashboard" nav item's href="/" points to the Shell's home page — a
+  // different app/zone entirely. This sidebar only ever renders inside the
+  // Board MFE (mounted at /board/*), so it is always "Task Board" while this
+  // component exists; "Dashboard" never applies here, regardless of whether
+  // the current page within this zone is the team-listing root or a specific
+  // team's Kanban board (both are internal routes of the Task Board section).
+  readonly isDashboardActive = false;
+  readonly isTaskBoardActive = true;
 
-  constructor(public auth: AuthService, private router: Router) {
+  constructor(public auth: AuthService) {
     this.auth.ensureLoaded();
-    this.updateBoardActive(this.router.url);
-    this.router.events
-      .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
-      .subscribe(e => this.updateBoardActive(e.urlAfterRedirects));
-  }
-
-  // The route table only has DashboardComponent at '' — everything else
-  // (a team's board, its archive, an archived task) belongs to the Task Board tab.
-  private updateBoardActive(url: string): void {
-    const isDashboard = url === '/' || url === '';
-    this.isDashboardActive.set(isDashboard);
-    this.isTaskBoardActive.set(!isDashboard);
   }
 
   get workspaceLabel(): string {

@@ -1,0 +1,74 @@
+<div class="archive-panel-overlay" (click)="onClose()">
+  <aside class="archive-panel" (click)="$event.stopPropagation()">
+    <div class="archive-panel-head">
+      <div>
+        <h3 class="archive-panel-title">Archived Tasks</h3>
+        <p class="archive-panel-subtitle" *ngIf="!loading && !error">
+          {{ total }} archived task{{ total === 1 ? '' : 's' }}
+          <ng-container *ngIf="selectedStatusName">&nbsp;·&nbsp;{{ selectedStatusName }}</ng-container>
+        </p>
+      </div>
+      <button type="button" class="archive-panel-close" (click)="onClose()" aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Status tabs — archivable statuses for this team only -->
+    <div class="archive-panel-tabs" *ngIf="statuses.length">
+      <span class="archive-tab" [class.archive-tab--active]="selectedStatusId === ''" (click)="selectStatus('')">All</span>
+      <span
+        class="archive-tab"
+        *ngFor="let s of statuses"
+        [class.archive-tab--active]="selectedStatusId === s.id"
+        (click)="selectStatus(s.id)"
+      >
+        <span class="archive-tab-dot" [style.background]="s.color"></span>{{ s.name }}
+      </span>
+    </div>
+
+    <div class="archive-panel-body">
+      <ng-container *ngIf="loading">
+        <div class="archive-row archive-row--skeleton" *ngFor="let s of skeletonRows">
+          <div class="skeleton" style="width:70%;height:13px"></div>
+          <div class="skeleton" style="width:40%;height:11px;margin-top:10px"></div>
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="!loading && !error">
+        <button type="button" class="archive-row" *ngFor="let row of rows" (click)="viewTask(row.id)">
+          <div class="archive-row-top">
+            <span class="archive-row-num">{{ row.number }}</span>
+            <span class="priority-pill" [class]="'priority-' + row.priority">{{ row.priority | titlecase }}</span>
+          </div>
+          <p class="archive-row-title">{{ row.title }}</p>
+          <div class="archive-row-footer">
+            <div class="archive-row-assignees" *ngIf="row.assignees.length">
+              <ng-container *ngFor="let a of row.assignees.slice(0, 3)">
+                <img *ngIf="a.avatarUrl" class="archive-assignee" [src]="a.avatarUrl" [alt]="a.initials" [appTooltip]="a.name" />
+                <span *ngIf="!a.avatarUrl" class="archive-assignee" [appTooltip]="a.name">{{ a.initials }}</span>
+              </ng-container>
+            </div>
+            <span class="archive-row-date">Archived {{ row.updatedAt }}</span>
+          </div>
+        </button>
+      </ng-container>
+
+      <p class="archive-empty" *ngIf="!loading && error">Couldn't load archived tasks. Please try again.</p>
+      <p class="archive-empty" *ngIf="!loading && !error && rows.length === 0">
+        No archived tasks{{ selectedStatusName ? ' in ' + selectedStatusName : '' }}.
+      </p>
+    </div>
+
+    <div class="archive-panel-pagination" *ngIf="!loading && !error && totalPages > 1">
+      <button type="button" class="page-btn" [disabled]="page <= 1" (click)="prevPage()" aria-label="Previous page">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9 3L5 7l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <span class="page-info">Page {{ page }} of {{ totalPages }}</span>
+      <button type="button" class="page-btn" [disabled]="page >= totalPages" (click)="nextPage()" aria-label="Next page">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M5 3l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </aside>
+</div>

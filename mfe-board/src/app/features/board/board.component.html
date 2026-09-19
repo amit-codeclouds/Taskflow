@@ -157,12 +157,12 @@
             </span>
           </span>
           <button
-            *ngIf="showArchiveAction(col)"
+            *ngIf="col.isArchievable"
             type="button"
             class="column-icon-btn"
-            aria-label="Archive status"
-            [appTooltip]="'Archive status'"
-            (click)="archiveStatus(col, $event)"
+            aria-label="View archived tasks"
+            [appTooltip]="'View archived tasks'"
+            (click)="viewArchivedForColumn(col, $event)"
           >
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
               <rect x="1.5" y="2" width="11" height="3" rx="1" stroke="currentColor" stroke-width="1.2"/>
@@ -268,13 +268,11 @@
 <!-- Archive / delete status confirmation (reusable modal) -->
 <app-confirmation-modal
   *ngIf="confirm"
-  [title]="confirm.kind === 'delete' ? 'Delete status?' : 'Archive'"
-  [message]="confirm.kind === 'delete'
-    ? ('Delete the “' + confirm.col.title + '” status?')
-    : 'After 2 days those task are automatically moved to archive section.'"
-  [confirmText]="confirm.kind === 'delete' ? 'Delete' : 'OK'"
-  [variant]="confirm.kind === 'delete' ? 'danger' : 'default'"
-  [showCancel]="confirm.kind === 'delete'"
+  title="Delete status?"
+  [message]="'Delete the “' + confirm.col.title + '” status?'"
+  confirmText="Delete"
+  variant="danger"
+  [showCancel]="true"
   [loading]="confirmLoading"
   (confirm)="onConfirm()"
   (cancel)="onCancelConfirm()"
@@ -287,6 +285,16 @@
   [teamName]="selectedTeam.name"
   (close)="closeExport()"
 ></app-export-tasks>
+
+<!-- Archived tasks panel — read-only, calls the same archived-tasks endpoint as
+     the dedicated /archived/:teamId table page -->
+<app-archived-tasks-panel
+  *ngIf="showArchivedPanel && selectedTeam"
+  [teamId]="selectedTeam.id"
+  [statuses]="archivableStatuses"
+  [initialStatusId]="archivedPanelInitialStatusId"
+  (close)="closeArchivedPanel()"
+></app-archived-tasks-panel>
 
 <!-- Shared column skeleton, reused by the initial load and per-team board load -->
 <ng-template #columnsSkeleton>
