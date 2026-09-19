@@ -145,6 +145,50 @@
   }
 }
 
+.nav-item-label { flex: 1; }
+
+// Task Assistant — AI agentic assistant, set apart with a glowing
+// conic-gradient ring — two opposite bright arcs sweeping over a dim ring
+// that's always visible around the full perimeter (not fully transparent in
+// between, so the border never has a "gap" while the bright arcs are
+// elsewhere) — instead of a text "AI" badge. The wrap's 1px padding +
+// overflow:hidden reveals the ring as a thin animated border; the inner
+// .nav-item--ai pill sits on top, masking the ring's center.
+.nav-item-ai-wrap {
+  position: relative;
+  display: block;
+  padding: 1px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.nav-item-ai-ring {
+  position: absolute;
+  inset: 0;
+  background: conic-gradient(from 0deg, rgba(97, 85, 221, 0.35) 0%, var(--color-accent) 6%, rgba(97, 85, 221, 0.35) 18%, rgba(97, 85, 221, 0.35) 50%, var(--color-accent) 56%, rgba(97, 85, 221, 0.35) 68%, rgba(97, 85, 221, 0.35) 100%);
+  filter: drop-shadow(0 0 3px var(--color-accent));
+  animation: ai-ring-spin 8s linear infinite;
+}
+@keyframes ai-ring-spin {
+  to { transform: rotate(360deg); }
+}
+
+.nav-item--ai {
+  position: relative;
+  border-radius: 7px;
+  background: linear-gradient(90deg, rgba(97, 85, 221, 0.08), var(--color-bg-800));
+  color: var(--color-accent-hover);
+
+  &:hover {
+    background: linear-gradient(90deg, rgba(97, 85, 221, 0.14), var(--color-bg-800));
+    color: var(--color-accent-hover);
+  }
+
+  &.nav-item--active {
+    background: linear-gradient(90deg, rgba(97, 85, 221, 0.2), rgba(97, 85, 221, 0.05));
+  }
+}
+.nav-item-ai-mark { flex-shrink: 0; color: var(--color-accent-hover); }
+
 .nav-item-indicator {
   position: absolute;
   left: 0;

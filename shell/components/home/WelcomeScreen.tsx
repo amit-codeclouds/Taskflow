@@ -1,11 +1,16 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 import { ClipboardList, Archive, Users, Building2 } from 'lucide-react';
 import StatCard from '@/components/ui/stat-card';
 import { useUserStats } from '@/lib/hooks/useUserStats';
 import { useMe } from '@/lib/hooks/useMe';
 import type { MeStats } from '@/lib/types/auth.types';
+
+// Same lucide "Sparkle" glyph used by the sidebar's Task Assistant nav item and
+// the /chat loading screen, so the AI mark reads as one consistent motif.
+const SPARKLE_PATH = 'M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z';
 
 // Presentation config for each stat card; the value is derived from GET /auth/me/stats.
 // Every accessor is null-safe and defaults missing keys to 0.
@@ -167,6 +172,87 @@ function BoardPreview() {
   );
 }
 
+// ─── Task Assistant banner ──────────────────────────────────────────────────
+
+function AssistantBanner() {
+  return (
+    <motion.div
+      className="relative overflow-hidden rounded-xl border border-border-subtle"
+      style={{ background: 'linear-gradient(120deg, color-mix(in srgb, var(--color-accent) 9%, var(--color-bg-700)), var(--color-bg-700) 65%)' }}
+      initial={{ opacity: 0, y: 16 }}
+      animate={{
+        opacity: 1,
+        y: 0,
+        boxShadow: [
+          '0 0 0 1px rgba(97,85,221,0.12), 0 0 0 0 rgba(97,85,221,0)',
+          '0 0 0 1px rgba(97,85,221,0.22), 0 0 24px 2px rgba(97,85,221,0.1)',
+          '0 0 0 1px rgba(97,85,221,0.12), 0 0 0 0 rgba(97,85,221,0)',
+        ],
+      }}
+      transition={{
+        opacity: { type: 'spring', stiffness: 300, damping: 30, delay: 0.26 },
+        y: { type: 'spring', stiffness: 300, damping: 30, delay: 0.26 },
+        boxShadow: { duration: 3, repeat: Infinity, ease: 'easeInOut', delay: 1 },
+      }}
+    >
+      {/* Decorative sparkles — twinkle, never spin */}
+      <motion.svg
+        className="absolute top-3 right-20" width="16" height="16" viewBox="0 0 24 24" fill="var(--color-accent-hover)"
+        animate={{ opacity: [0.25, 0.9, 0.25], scale: [0.8, 1.05, 0.8] }}
+        transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        <path d={SPARKLE_PATH} />
+      </motion.svg>
+      <motion.svg
+        className="absolute bottom-4 right-44" width="10" height="10" viewBox="0 0 24 24" fill="var(--color-accent)"
+        animate={{ opacity: [0.15, 0.7, 0.15], scale: [0.75, 1, 0.75] }}
+        transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
+      >
+        <path d={SPARKLE_PATH} />
+      </motion.svg>
+
+      <div className="relative flex items-center gap-5 px-6 py-5">
+        <div
+          className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: 'color-mix(in srgb, var(--color-accent) 16%, transparent)', color: 'var(--color-accent)' }}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d={SPARKLE_PATH} /></svg>
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="text-base font-semibold text-text-100">Task Assistant</h3>
+            <span
+              className="text-2xs font-semibold tracking-wide px-2 py-0.5 rounded-full shrink-0"
+              style={{ background: 'var(--color-accent)', color: '#fff' }}
+            >
+              AI Agent
+            </span>
+          </div>
+          <p className="text-sm text-text-200 leading-relaxed">
+            Create, update, or delete tasks in plain language, ask about anything across your tasks, teams, and boards, or get help using Taskflow itself — your assistant knows your workspace.
+          </p>
+        </div>
+
+        <Link href="/chat" className="shrink-0">
+          <motion.span
+            className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2.5 rounded-lg text-white whitespace-nowrap"
+            style={{ background: 'var(--color-accent)' }}
+            whileHover={{ scale: 1.02, boxShadow: '0 0 20px rgba(97,85,221,0.33)' }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+          >
+            Chat Now
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M2.5 6h7M6.5 3l3 3-3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </motion.span>
+        </Link>
+      </div>
+    </motion.div>
+  );
+}
+
 // ─── App showcase card ────────────────────────────────────────────────────────
 
 interface AppCardProps {
@@ -295,6 +381,9 @@ export default function WelcomeScreen() {
           />
         ))}
       </div>
+
+      {/* Task Assistant banner */}
+      <AssistantBanner />
 
       {/* App showcase */}
       <div className="flex flex-col gap-4">

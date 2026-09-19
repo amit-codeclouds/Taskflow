@@ -56,22 +56,55 @@ function useAgentHealth() {
   return { ready, slow };
 }
 
+// The lucide "Sparkle" glyph — reused at three sizes so it reads as one
+// consistent AI motif (same mark as the sidebar's Task Assistant icon).
+const SPARKLE_PATH = 'M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z';
+
 function AssistantLoader({ label, hint }: { label: string; hint?: string }) {
   return (
-    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-5 bg-bg-900">
-      <div className="relative w-[72px] h-[72px]">
+    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-7 bg-bg-900">
+      <div className="relative w-[140px] h-[140px] flex items-center justify-center">
+        {/* Ambient glow — breathes, never spins */}
         <motion.div
-          className="absolute inset-0 rounded-full"
-          style={{ background: 'conic-gradient(from 0deg, var(--color-accent), transparent 60%)' }}
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1.6, repeat: Infinity, ease: 'linear' }}
+          className="absolute w-[112px] h-[112px] rounded-full"
+          style={{ background: 'radial-gradient(circle, var(--color-accent) 0%, transparent 70%)', filter: 'blur(20px)' }}
+          animate={{ opacity: [0.2, 0.45, 0.2], scale: [0.9, 1.08, 0.9] }}
+          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
         />
-        <div className="absolute inset-[4px] rounded-full bg-bg-900" />
-        <motion.div
-          className="absolute inset-[16px] rounded-full bg-accent shadow-glow"
-          animate={{ scale: [0.85, 1.05, 0.85], opacity: [0.7, 1, 0.7] }}
-          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-        />
+
+        {/* Central mark — materializes once, then breathes gently */}
+        <motion.svg
+          width="60" height="60" viewBox="0 0 24 24" fill="var(--color-accent)"
+          initial={{ opacity: 0, scale: 0.4, rotate: -15 }}
+          animate={{ opacity: 1, scale: [1, 1.06, 1], rotate: 0 }}
+          transition={{
+            opacity: { duration: 0.5, ease: 'easeOut' },
+            rotate: { duration: 0.5, ease: 'easeOut' },
+            scale: { duration: 2.4, repeat: Infinity, ease: 'easeInOut', delay: 0.5 },
+          }}
+        >
+          <path d={SPARKLE_PATH} />
+        </motion.svg>
+
+        {/* Satellite sparkles — appear a beat later, twinkle in place */}
+        <motion.svg
+          width="20" height="20" viewBox="0 0 24 24" fill="var(--color-accent-hover)"
+          className="absolute top-3 right-2"
+          initial={{ opacity: 0, scale: 0.3 }}
+          animate={{ opacity: [0, 1, 0.55, 1], scale: [0.3, 1, 1] }}
+          transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut', delay: 0.35 }}
+        >
+          <path d={SPARKLE_PATH} />
+        </motion.svg>
+        <motion.svg
+          width="14" height="14" viewBox="0 0 24 24" fill="var(--color-accent)"
+          className="absolute bottom-4 left-3"
+          initial={{ opacity: 0, scale: 0.3 }}
+          animate={{ opacity: [0, 1, 0.55, 1], scale: [0.3, 1, 1] }}
+          transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut', delay: 0.8 }}
+        >
+          <path d={SPARKLE_PATH} />
+        </motion.svg>
       </div>
       <div className="flex flex-col items-center gap-1 text-center px-8">
         <p className="text-sm font-medium text-text-100">{label}</p>

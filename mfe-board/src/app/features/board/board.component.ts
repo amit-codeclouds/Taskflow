@@ -378,4 +378,18 @@ export class BoardComponent implements OnInit {
 
   @HostListener('document:click')
   closeDropdown() { this.dropdownOpen = false; this.filterOpen = false; }
+
+  // "+ Add Task" navigates to the Task MFE's /tasks/new (a different Multi-Zones
+  // app, reached via a hard <a> nav), and that page calls router.back() on
+  // success. The browser satisfies that back-navigation from its bfcache rather
+  // than reloading this page, so without this listener the board would keep
+  // showing its pre-navigation snapshot — the just-created task wouldn't appear
+  // until a manual refresh. `pageshow` with `persisted: true` is exactly that
+  // "restored from bfcache" signal, so refetch the board when it fires.
+  @HostListener('window:pageshow', ['$event'])
+  onPageShow(event: PageTransitionEvent): void {
+    if (event.persisted && this.selectedTeam) {
+      this.loadBoard(this.selectedTeam.id);
+    }
+  }
 }
