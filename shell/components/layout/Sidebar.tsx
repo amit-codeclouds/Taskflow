@@ -4,20 +4,23 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Users, UserCircle2, Settings, KanbanSquare, User, ChevronRight, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, Users, UserCircle2, Settings, KanbanSquare, User, ChevronRight, Sparkles, Sparkle } from 'lucide-react';
 import Skeleton from 'react-loading-skeleton';
 import Logo from '@/components/ui/Logo';
 import Avatar from '@/components/ui/Avatar';
 import { useAuth } from '@/lib/useAuth';
 
-type NavItem = { label: string; href: string; icon: React.ReactNode; external?: boolean };
+type NavItem = { label: string; href: string; icon: React.ReactNode; external?: boolean; highlight?: boolean };
 
 const WORKSPACE_ITEMS: NavItem[] = [
   { label: 'Home', href: '/', icon: <LayoutDashboard size={16} strokeWidth={1.5} /> },
 ];
 
+// Task Assistant is the AI agentic assistant (can create/edit tasks and answer
+// task questions) — visually distinct from plain nav links so it reads as a
+// different kind of thing, not just another page.
 const WORKSPACE_TRAILING_ITEMS: NavItem[] = [
-  { label: 'Task Assistant', href: '/chat', icon: <MessageSquare size={16} strokeWidth={1.5} /> },
+  { label: 'Task Assistant', href: '/chat', icon: <Sparkles size={16} strokeWidth={1.5} />, highlight: true },
 ];
 
 const TEAMS_CHILDREN = [
@@ -35,16 +38,45 @@ const TOOLS_ITEMS: NavItem[] = [
   { label: 'My Tasks', href: '/tasks', icon: <KanbanSquare size={16} strokeWidth={1.5} />, external: true },
 ];
 
-function NavLink({ label, href, icon, isActive, index, external }: NavItem & { isActive: boolean; index: number }) {
-  const inner = (
-    <span className={`relative flex items-center gap-3 h-11 px-4 rounded-lg text-sm transition-colors ${
-      isActive ? 'bg-accent-bg text-accent-hover font-medium' : 'text-text-200 hover:bg-bg-700 hover:text-text-100'
+function NavLink({ label, href, icon, isActive, index, external, highlight }: NavItem & { isActive: boolean; index: number }) {
+  const pill = (
+    <span className={`relative flex items-center gap-3 h-11 px-4 rounded-[7px] text-sm transition-colors ${
+      highlight
+        ? `bg-bg-800 ${isActive ? 'bg-gradient-to-r from-accent/20 to-accent/5' : 'bg-gradient-to-r from-accent/8 to-bg-800 hover:from-accent/14'} text-accent-hover font-medium`
+        : isActive
+          ? 'bg-accent-bg text-accent-hover font-medium'
+          : 'text-text-200 hover:bg-bg-700 hover:text-text-100'
     }`}>
       {isActive && <motion.span layoutId="activeNav" className="absolute left-0 top-[14%] h-[72%] w-[3px] bg-accent rounded-r-full" />}
       <span className="shrink-0 w-4 h-4">{icon}</span>
-      <span>{label}</span>
+      <span className="flex-1">{label}</span>
+      {highlight && (
+        <span className="shrink-0 text-accent-hover">
+          <Sparkle size={12} strokeWidth={1.5} fill="currentColor" />
+        </span>
+      )}
     </span>
   );
+
+  // Highlighted (AI) items get a glowing conic-gradient ring spinning behind
+  // the pill — two opposite bright arcs sweeping over a dim ring that's always
+  // visible around the full perimeter (not fully transparent in between, so
+  // the border never has a "gap" while the bright arcs are elsewhere).
+  // A 1px inset reveals it as a border.
+  const inner = highlight ? (
+    <span className="relative block rounded-lg p-px overflow-hidden">
+      <motion.span
+        className="absolute inset-0"
+        style={{
+          background: 'conic-gradient(from 0deg, rgba(97,85,221,0.35) 0%, var(--color-accent) 6%, rgba(97,85,221,0.35) 18%, rgba(97,85,221,0.35) 50%, var(--color-accent) 56%, rgba(97,85,221,0.35) 68%, rgba(97,85,221,0.35) 100%)',
+          filter: 'drop-shadow(0 0 3px var(--color-accent))',
+        }}
+        animate={{ rotate: 360 }}
+        transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
+      />
+      {pill}
+    </span>
+  ) : pill;
 
   return (
     <motion.div

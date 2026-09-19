@@ -261,7 +261,7 @@ export default function TaskFormScreen({ taskId }: { taskId?: string }) {
         router.push(`/${updated.id}`);
       } else {
         await createTask.mutateAsync(basePayload);
-        router.push('/');
+        router.back();
       }
     } finally {
       setSubmitting(false);

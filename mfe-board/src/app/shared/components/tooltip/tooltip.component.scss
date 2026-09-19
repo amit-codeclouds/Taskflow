@@ -1,0 +1,73 @@
+:host {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.app-tooltip {
+  position: relative;
+  max-width: 220px;
+  width: max-content;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--color-bg-600);
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-100);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.3);
+
+  opacity: 0;
+  transform: translateY(4px) scale(0.96);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+
+  &.is-visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.app-tooltip-arrow {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--color-bg-600);
+  border: 1px solid var(--color-border-subtle);
+  transform: rotate(45deg);
+}
+
+.app-tooltip--top .app-tooltip-arrow {
+  bottom: -5px;
+  left: 50%;
+  margin-left: -4px;
+  border-top: none;
+  border-left: none;
+}
+
+.app-tooltip--bottom .app-tooltip-arrow {
+  top: -5px;
+  left: 50%;
+  margin-left: -4px;
+  border-bottom: none;
+  border-right: none;
+}
+
+.app-tooltip--left .app-tooltip-arrow {
+  right: -5px;
+  top: 50%;
+  margin-top: -4px;
+  border-top: none;
+  border-right: none;
+}
+
+.app-tooltip--right .app-tooltip-arrow {
+  left: -5px;
+  top: 50%;
+  margin-top: -4px;
+  border-bottom: none;
+  border-left: none;
+}

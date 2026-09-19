@@ -5,6 +5,7 @@ import { Team } from '../../shared/interfaces/board.interface';
 import { BoardService } from '../../core/services/board/board.service';
 import { CreateStatusComponent } from '../../shared/modal/create-status/create-status.component';
 import { ExportTasksComponent } from '../../shared/modal/export-tasks/export-tasks.component';
+import { TooltipDirective } from '../../shared/directives/tooltip.directive';
 
 // One rendered status pill on a board card — only built for statuses that are
 // actually present in the team's `statusTaskCounts`.
@@ -15,6 +16,7 @@ interface StatusPill {
 }
 
 interface Assignee {
+  name: string;
   initials: string;
   avatarUrl?: string;
 }
@@ -82,7 +84,7 @@ export type TeamsTab = 'workspace' | 'assigned';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [NgFor, NgIf, RouterLink, CreateStatusComponent, ExportTasksComponent],
+  imports: [NgFor, NgIf, RouterLink, CreateStatusComponent, ExportTasksComponent, TooltipDirective],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -97,7 +99,7 @@ export class DashboardComponent implements OnInit {
   // "Workspace Teams" (owned/administered in the user's own workspace) vs
   // "Assigned Teams" (teams the user is a member of outside their workspace) —
   // mirrors the tabs on the shell's /teams and /teams/assigned screens.
-  activeTab: TeamsTab = 'workspace';
+  activeTab: TeamsTab = 'assigned';
 
   // Placeholder rows rendered while loading (skeleton cards).
   readonly skeletonCards = [0, 1, 2];
@@ -175,6 +177,7 @@ export class DashboardComponent implements OnInit {
   // team's `statusTaskCounts` — a status absent from the response gets no pill.
   private toSummary(team: Team): BoardSummary {
     const assignees: Assignee[] = (team.members ?? []).map(m => ({
+      name: m.name,
       initials: m.avatarInitials?.trim() || initialsFromName(m.name),
       avatarUrl: m.avatarUrl,
     }));
