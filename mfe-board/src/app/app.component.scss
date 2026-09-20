@@ -27,14 +27,18 @@
 }
 
 .loader-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  background: var(--color-accent);
+  width: 96px;
+  height: 96px;
   display: flex;
   align-items: center;
   justify-content: center;
   animation: iconPulse 1.2s ease-in-out infinite;
+}
+
+.loader-icon img {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 @keyframes iconPulse {
@@ -43,7 +47,7 @@
 }
 
 .loader-bar-track {
-  width: 144px;
+  width: 192px;
   height: 2px;
   background: var(--color-border-subtle);
   border-radius: 999px;

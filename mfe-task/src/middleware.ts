@@ -33,7 +33,16 @@ function isTokenValid(token: string | undefined): boolean {
   return exp * 1000 > Date.now();
 }
 
+// Static files (images, icons, …) are never auth-gated — without this, an
+// unauthenticated request for e.g. /brand/icon-mark.png gets redirected to the
+// /login HTML page and renders as a broken image.
+const STATIC_FILE = /\.[a-zA-Z0-9]+$/;
+
 export function middleware(request: NextRequest) {
+  if (STATIC_FILE.test(request.nextUrl.pathname)) {
+    return NextResponse.next();
+  }
+
   const accessToken = request.cookies.get('taskflow_access_token')?.value;
   const refreshToken = request.cookies.get('taskflow_refresh_token')?.value;
 

@@ -3,6 +3,12 @@ import type { NextRequest } from 'next/server';
 
 const PUBLIC_PATHS = ['/login', '/signup'];
 
+// Static files (images, icons, robots.txt, sitemap.xml, opengraph-image.png, …) are
+// never auth-gated — without this, an unauthenticated request for e.g. /brand/logo.png
+// gets redirected to the /login HTML page and renders as a broken image, and social /
+// search crawlers (which never carry the auth cookie) can't fetch them either.
+const STATIC_FILE = /\.[a-zA-Z0-9]+$/;
+
 // Decode a JWT payload in the Edge runtime (no Buffer) — base64url → UTF-8 JSON.
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   const parts = token.split('.');
@@ -38,6 +44,10 @@ function isTokenValid(token: string | undefined): boolean {
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (STATIC_FILE.test(pathname)) {
+    return NextResponse.next();
+  }
 
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
 

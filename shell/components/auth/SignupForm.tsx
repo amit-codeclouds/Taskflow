@@ -14,6 +14,7 @@ import { authService } from '@/lib/services/auth.service';
 import { extractErrorMessage } from '@/lib/http/extractError';
 import type { SignupPayload } from '@/lib/types/auth.types';
 import OtpModal from '@/components/Modals/OtpModal';
+import AuthLayout from '@/components/auth/AuthLayout';
 
 const STEP1_FIELDS = ['name', 'email', 'password', 'confirmPassword'] as const;
 
@@ -137,30 +138,12 @@ export default function SignupForm() {
   };
 
   return (
-    <div className="min-h-screen bg-bg-900 flex items-center justify-center px-4">
+    <AuthLayout>
       <motion.div
-        className="w-full max-w-[400px]"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 260, damping: 28 }}
       >
-        {/* Logo */}
-        <motion.div
-          className="flex justify-center mb-8"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 28, delay: 0.05 }}
-        >
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center shrink-0">
-              <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
-                <path d="M2 3h10M2 7h6M2 11h8" stroke="white" strokeWidth="1.75" strokeLinecap="round" />
-              </svg>
-            </div>
-            <span className="text-text-100 font-semibold text-lg tracking-tight">Taskflow</span>
-          </div>
-        </motion.div>
-
         {/* Card */}
         <motion.div
           className="bg-bg-800 rounded-xl border border-border-subtle p-8"
@@ -429,6 +412,6 @@ export default function SignupForm() {
           onClose={() => setOtpOpen(false)}
         />
       )}
-    </div>
+    </AuthLayout>
   );
 }
