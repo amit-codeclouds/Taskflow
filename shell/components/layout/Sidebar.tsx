@@ -38,6 +38,33 @@ const TOOLS_ITEMS: NavItem[] = [
   { label: 'My Tasks', href: '/tasks', icon: <KanbanSquare size={16} strokeWidth={1.5} />, external: true },
 ];
 
+// AI items get a small cluster of big/medium/small stars twinkling independently
+// (staggered opacity + scale pulses) instead of a static icon — a quick "magic AI"
+// flourish in place of the old spinning conic-gradient border.
+const TWINKLE_STARS = [
+  { size: 11, top: -3, right: 5, duration: 1.6, delay: 0 },
+  { size: 6, top: 5, right: -3, duration: 1.3, delay: 0.4 },
+  { size: 4, top: -5, right: -2, duration: 1.1, delay: 0.8 },
+];
+
+function TwinkleStars() {
+  return (
+    <span className="relative inline-block w-4 h-4 shrink-0 text-accent-hover">
+      {TWINKLE_STARS.map((s, i) => (
+        <motion.span
+          key={i}
+          className="absolute"
+          style={{ top: s.top, right: s.right }}
+          animate={{ opacity: [0.25, 1, 0.25], scale: [0.75, 1, 0.75] }}
+          transition={{ duration: s.duration, delay: s.delay, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <Sparkle size={s.size} strokeWidth={1.5} fill="currentColor" />
+        </motion.span>
+      ))}
+    </span>
+  );
+}
+
 function NavLink({ label, href, icon, isActive, index, external, highlight }: NavItem & { isActive: boolean; index: number }) {
   const pill = (
     <span className={`relative flex items-center gap-3 h-11 px-4 rounded-[7px] text-sm transition-colors ${
@@ -50,33 +77,9 @@ function NavLink({ label, href, icon, isActive, index, external, highlight }: Na
       {isActive && <motion.span layoutId="activeNav" className="absolute left-0 top-[14%] h-[72%] w-[3px] bg-accent rounded-r-full" />}
       <span className="shrink-0 w-4 h-4">{icon}</span>
       <span className="flex-1">{label}</span>
-      {highlight && (
-        <span className="shrink-0 text-accent-hover">
-          <Sparkle size={12} strokeWidth={1.5} fill="currentColor" />
-        </span>
-      )}
+      {highlight && <TwinkleStars />}
     </span>
   );
-
-  // Highlighted (AI) items get a glowing conic-gradient ring spinning behind
-  // the pill — two opposite bright arcs sweeping over a dim ring that's always
-  // visible around the full perimeter (not fully transparent in between, so
-  // the border never has a "gap" while the bright arcs are elsewhere).
-  // A 1px inset reveals it as a border.
-  const inner = highlight ? (
-    <span className="relative block rounded-lg p-px overflow-hidden">
-      <motion.span
-        className="absolute inset-0"
-        style={{
-          background: 'conic-gradient(from 0deg, rgba(97,85,221,0.35) 0%, var(--color-accent) 6%, rgba(97,85,221,0.35) 18%, rgba(97,85,221,0.35) 50%, var(--color-accent) 56%, rgba(97,85,221,0.35) 68%, rgba(97,85,221,0.35) 100%)',
-          filter: 'drop-shadow(0 0 3px var(--color-accent))',
-        }}
-        animate={{ rotate: 360 }}
-        transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
-      />
-      {pill}
-    </span>
-  ) : pill;
 
   return (
     <motion.div
@@ -87,9 +90,9 @@ function NavLink({ label, href, icon, isActive, index, external, highlight }: Na
       whileHover={isActive ? undefined : { x: 4 }}
     >
       {external ? (
-        <a href={href} className="block">{inner}</a>
+        <a href={href} className="block">{pill}</a>
       ) : (
-        <Link href={href} className="block">{inner}</Link>
+        <Link href={href} className="block">{pill}</Link>
       )}
     </motion.div>
   );
@@ -233,7 +236,9 @@ export default function Sidebar() {
     >
       <div className="absolute left-0 top-0 w-[3px] h-full bg-accent" />
 
-      <div className="h-16 flex items-center px-5 shrink-0"><Logo /></div>
+      <div className="h-16 flex items-center px-5 shrink-0">
+        <Link href="/"><Logo /></Link>
+      </div>
       <div className="mx-4 h-px bg-border-subtle shrink-0" />
 
       {/* Workspace indicator */}

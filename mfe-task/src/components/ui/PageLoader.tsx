@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function PageLoader() {
@@ -22,16 +23,15 @@ export default function PageLoader() {
         >
           <div className="flex flex-col items-center gap-5">
             <motion.div
-              className="w-12 h-12 rounded-2xl bg-accent flex items-center justify-center"
               animate={{ scale: [1, 1.08, 1] }}
               transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
             >
-              <svg width="22" height="22" viewBox="0 0 14 14" fill="none">
-                <path d="M2 3h10M2 7h6M2 11h8" stroke="white" strokeWidth="1.75" strokeLinecap="round" />
-              </svg>
+              {/* next/image doesn't prepend basePath into the optimizer's `url` query
+                  param for a plain string src, so it must be hardcoded here. */}
+              <Image src="/tasks/brand/icon-mark.png" alt="Taskflow" width={96} height={96} priority style={{ width: 96, height: 96 }} />
             </motion.div>
 
-            <div className="w-36 h-[2px] bg-bg-600 rounded-full overflow-hidden">
+            <div className="w-48 h-[2px] bg-bg-600 rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-accent rounded-full"
                 initial={{ x: '-100%' }}

@@ -4,11 +4,12 @@ import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
+import { ThemeToggleComponent } from '../../shared/components/theme-toggle/theme-toggle.component';
 
 @Component({
   selector: 'app-topbar',
   standalone: true,
-  imports: [NgIf, AvatarComponent],
+  imports: [NgIf, AvatarComponent, ThemeToggleComponent],
   templateUrl: './topbar.component.html',
   styleUrl: './topbar.component.scss'
 })

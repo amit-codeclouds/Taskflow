@@ -1,12 +1,23 @@
-export default function Logo() {
+import Image from 'next/image';
+
+export default function Logo({ height = 24, showText = true }: { height?: number; showText?: boolean }) {
   return (
-    <div className="flex items-center gap-2.5">
-      <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center shrink-0">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <path d="M2 3h10M2 7h6M2 11h8" stroke="white" strokeWidth="1.75" strokeLinecap="round" />
-        </svg>
-      </div>
-      <span className="text-text-100 font-semibold text-[15px] tracking-tight">Taskflow</span>
+    <div className="flex items-center gap-2">
+      {/* next/image doesn't prepend basePath into the optimizer's `url` query param
+          for a plain string src, so it must be hardcoded here or the image 404s. */}
+      <Image
+        src="/tasks/brand/icon-mark.png"
+        alt="Taskflow"
+        width={height}
+        height={height}
+        priority
+        style={{ height, width: height }}
+      />
+      {showText && (
+        <span className="text-text-100 font-semibold tracking-tight" style={{ fontSize: Math.round(height * 0.62) }}>
+          Taskflow
+        </span>
+      )}
     </div>
   );
 }
