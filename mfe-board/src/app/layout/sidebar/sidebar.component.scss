@@ -143,31 +143,6 @@
 
 .nav-item-label { flex: 1; }
 
-// Task Assistant — AI agentic assistant, set apart with a glowing
-// conic-gradient ring — two opposite bright arcs sweeping over a dim ring
-// that's always visible around the full perimeter (not fully transparent in
-// between, so the border never has a "gap" while the bright arcs are
-// elsewhere) — instead of a text "AI" badge. The wrap's 1px padding +
-// overflow:hidden reveals the ring as a thin animated border; the inner
-// .nav-item--ai pill sits on top, masking the ring's center.
-.nav-item-ai-wrap {
-  position: relative;
-  display: block;
-  padding: 1px;
-  border-radius: 8px;
-  overflow: hidden;
-}
-.nav-item-ai-ring {
-  position: absolute;
-  inset: 0;
-  background: conic-gradient(from 0deg, rgba(97, 85, 221, 0.35) 0%, var(--color-accent) 6%, rgba(97, 85, 221, 0.35) 18%, rgba(97, 85, 221, 0.35) 50%, var(--color-accent) 56%, rgba(97, 85, 221, 0.35) 68%, rgba(97, 85, 221, 0.35) 100%);
-  filter: drop-shadow(0 0 3px var(--color-accent));
-  animation: ai-ring-spin 8s linear infinite;
-}
-@keyframes ai-ring-spin {
-  to { transform: rotate(360deg); }
-}
-
 .nav-item--ai {
   position: relative;
   border-radius: 7px;
@@ -183,7 +158,49 @@
     background: linear-gradient(90deg, rgba(97, 85, 221, 0.2), rgba(97, 85, 221, 0.05));
   }
 }
-.nav-item-ai-mark { flex-shrink: 0; color: var(--color-accent-hover); }
+// Task Assistant — AI agentic assistant, set apart with a small cluster of
+// big/medium/small stars twinkling independently (staggered opacity + scale
+// pulses) instead of a static icon — a quick "magic AI" flourish.
+.nav-item-ai-stars {
+  position: relative;
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--color-accent-hover);
+}
+.nav-item-ai-star {
+  position: absolute;
+  animation: star-twinkle ease-in-out infinite;
+}
+.nav-item-ai-star--big {
+  width: 11px;
+  height: 11px;
+  top: 1px;
+  right: 4px;
+  animation-duration: 1.6s;
+  animation-delay: 0s;
+}
+.nav-item-ai-star--medium {
+  width: 6px;
+  height: 6px;
+  top: 9px;
+  right: -2px;
+  animation-duration: 1.3s;
+  animation-delay: 0.4s;
+}
+.nav-item-ai-star--small {
+  width: 4px;
+  height: 4px;
+  top: -1px;
+  right: -1px;
+  animation-duration: 1.1s;
+  animation-delay: 0.8s;
+}
+@keyframes star-twinkle {
+  0%, 100% { opacity: 0.25; transform: scale(0.75); }
+  50%      { opacity: 1;    transform: scale(1); }
+}
 
 .nav-item-indicator {
   position: absolute;

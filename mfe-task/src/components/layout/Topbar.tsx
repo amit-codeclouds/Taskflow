@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/useAuth';
 import Avatar from '@/components/ui/Avatar';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 
 function getPageInfo(pathname: string): { title: string; subtitle: string } {
   if (pathname.startsWith('/new'))  return { title: 'New Task',     subtitle: 'Create a task'         };
@@ -94,6 +95,8 @@ export default function Topbar() {
 
       {/* Right controls */}
       <div className="flex items-center gap-3">
+        <ThemeToggle />
+
         {/* Profile dropdown */}
         <div className="relative" ref={dropdownRef}>
           <motion.button

@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/useAuth';
 import { SettingsIcon } from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 
 function getPageInfo(pathname: string): { title: string; subtitle: string } {
   if (pathname.startsWith('/tasks'))    return { title: 'Tasks',    subtitle: 'Manage your work' };
@@ -102,6 +103,8 @@ export default function Topbar() {
 
       {/* Right controls */}
       <div className="flex items-center gap-3">
+        <ThemeToggle />
+
         {/* Bell — commented out for now
         <motion.button
           className="relative w-8 h-8 rounded-lg bg-bg-600 flex items-center justify-center text-text-200"
